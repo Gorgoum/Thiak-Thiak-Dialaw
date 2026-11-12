@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thiak Thiak Livreur</title>
+  <meta name="theme-color" content="#0b5d45">
+  <link rel="manifest" href="/manifest-livreur.json">
+  <link rel="icon" href="/icons/icon-96.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <header class="entete">
+    <a class="marque" href="#"><span class="logo"><svg class="ic" aria-hidden="true"><use href="/icons.svg#bike"></use></svg></span><span>Thiak Thiak <b>Livreur</b></span></a>
+    <button id="deco" hidden>Déconnexion</button>
+  </header>
+  <main>
+    <section id="auth"></section>
+
+    <section id="attente" hidden>
+      <div class="card">
+        <h2>Compte en attente de validation</h2>
+        <p>Merci <b class="nom"></b> ! L'administrateur doit valider votre compte avant que vous puissiez recevoir des courses.</p>
+        <button id="reverifier" class="primaire">Vérifier à nouveau</button>
+      </div>
+    </section>
+
+    <section id="app" hidden>
+      <div class="barre">
+        <div class="bonjour"><span class="avatar" id="avatar"></span><span><b class="nom"></b><br><small class="meta">Livreur thiak thiak</small></span></div>
+        <button id="btn-notif"></button>
+      </div>
+
+      <div class="card">
+        <label class="interrupteur">Je suis disponible
+          <input type="checkbox" id="dispo">
+        </label>
+        <p class="etat-dispo" id="etat-dispo">Activez pour recevoir les nouvelles courses.</p>
+      </div>
+
+      <div id="bloc-active"></div>
+      <div class="card carte-course bloc-carte" id="bloc-carte-course" hidden>
+        <div class="carte-cadre">
+          <div id="map-course"></div>
+          <div class="nav-bandeau" id="nav-bandeau" hidden>
+            <div class="nav-icone" id="nav-icone"></div>
+            <div class="nav-texte"><div class="nav-dist" id="nav-dist"></div><div class="nav-instr" id="nav-instr"></div></div>
+          </div>
+          <button type="button" class="btn nav-recentrer" id="nav-recentrer" hidden><svg class="ic"><use href="/icons.svg#locate"></use></svg> Recentrer</button>
+          <div class="nav-bas" id="nav-bas" hidden>
+            <div class="nav-reste"><b id="nav-reste">…</b><small id="nav-eta"></small></div>
+            <button type="button" class="btn-rond" id="nav-voix" aria-label="Voix"></button>
+            <button type="button" class="btn btn-danger" id="nav-stop">Quitter</button>
+          </div>
+          <div class="carte-outils">
+            <button type="button" class="btn-rond" id="recentrer-course" title="Voir tout le trajet" aria-label="Voir tout le trajet"><svg class="ic"><use href="/icons.svg#route"></use></svg></button>
+            <button type="button" class="btn-rond" id="plein-course" title="Agrandir la carte" aria-label="Agrandir la carte"><svg class="ic"><use href="/icons.svg#maximize-2"></use></svg></button>
+          </div>
+        </div>
+        <p class="aide" style="margin:10px 2px 0"><span class="puce puce-a" style="display:inline-grid;width:18px;height:18px;font-size:.62rem;vertical-align:-4px">A</span> départ ·
+          <span class="puce puce-b" style="display:inline-grid;width:18px;height:18px;font-size:.62rem;vertical-align:-4px">B</span> arrivée ·
+          <span class="point-livreur-legende"></span> vous</p>
+      </div>
+
+      <div class="card">
+        <h2>Courses disponibles</h2>
+        <div id="disponibles"></div>
+      </div>
+
+      <div class="card">
+        <h2>Aujourd'hui</h2>
+        <div id="gains"></div>
+      </div>
+
+      <div class="card">
+        <h2>Mon historique</h2>
+        <div id="historique"></div>
+      </div>
+    </section>
+    <p class="pied"><a href="/">Espace client</a></p>
+  </main>
+
+  <script src="/vendor/leaflet/leaflet.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>window.ROLE = 'livreur';</script>
+  <script src="/js/commun.js"></script>
+  <script src="/js/carte.js"></script>
+  <script src="/js/navigation.js"></script>
+  <script src="/js/livreur.js"></script>
+</body>
+</html>

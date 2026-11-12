@@ -1,0 +1,34 @@
+{
+  "name": "thiak-thiak-dialaw",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plateforme de livraison à domicile à Yène avec les livreurs thiak thiak",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "init-db": "node src/init-db.js",
+    "icones": "node scripts/generer-icones.js",
+    "lieux": "node scripts/importer-lieux-osm.js",
+    "sprite": "node scripts/generer-sprite.js",
+    "overture": "python scripts/importer-overture.py",
+    "cf:construire": "node scripts/construire-cloudflare.js",
+    "cf:dev": "npm run cf:construire && cd cloudflare && wrangler dev",
+    "cf:deployer": "npm run cf:construire && cd cloudflare && wrangler deploy",
+    "cf:admin": "node scripts/admin-cloudflare.js cloudflare/.admin.sql && cd cloudflare && wrangler d1 execute thiak-thiak --remote --file .admin.sql && node -e \"require('fs').unlinkSync('.admin.sql')\""
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "leaflet": "^1.9.4",
+    "lucide-static": "^0.460.0",
+    "pg": "^8.13.1",
+    "socket.io": "^4.8.1",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "wrangler": "^4.160.1"
+  }
+}

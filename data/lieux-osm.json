@@ -1,0 +1,807 @@
+[
+ {
+  "osm_id": "way/232491923",
+  "nom": "Accès plage",
+  "categorie": "rue",
+  "lat": 14.607874,
+  "lng": -17.152319
+ },
+ {
+  "osm_id": "node/13847023192",
+  "nom": "Aï",
+  "categorie": "village",
+  "lat": 14.73448,
+  "lng": -17.120662
+ },
+ {
+  "osm_id": "way/489805684",
+  "nom": "atelier de couture modou gueye",
+  "categorie": "commerce",
+  "lat": 14.679857,
+  "lng": -17.217485
+ },
+ {
+  "osm_id": "way/772126847",
+  "nom": "Auberge Chez Adrienne",
+  "categorie": "autre",
+  "lat": 14.629971,
+  "lng": -17.165506
+ },
+ {
+  "osm_id": "node/8176235217",
+  "nom": "Baat",
+  "categorie": "commerce",
+  "lat": 14.637624,
+  "lng": -17.174243
+ },
+ {
+  "osm_id": "node/7871212421",
+  "nom": "Bandia",
+  "categorie": "village",
+  "lat": 14.623721,
+  "lng": -17.027504
+ },
+ {
+  "osm_id": "node/4256044311",
+  "nom": "Bilole",
+  "categorie": "village",
+  "lat": 14.571405,
+  "lng": -17.055448
+ },
+ {
+  "osm_id": "node/4256044335",
+  "nom": "Boudoune",
+  "categorie": "village",
+  "lat": 14.57295,
+  "lng": -17.057602
+ },
+ {
+  "osm_id": "node/7640374405",
+  "nom": "Cap Rouge",
+  "categorie": "quartier",
+  "lat": 14.635029,
+  "lng": -17.173251
+ },
+ {
+  "osm_id": "node/4830512130",
+  "nom": "case de sante de miname",
+  "categorie": "sante",
+  "lat": 14.681514,
+  "lng": -17.216748
+ },
+ {
+  "osm_id": "way/223288778",
+  "nom": "Case de santé-maternité de Toubab Dialaw",
+  "categorie": "sante",
+  "lat": 14.607307,
+  "lng": -17.147877
+ },
+ {
+  "osm_id": "node/4945451457",
+  "nom": "Case publique",
+  "categorie": "autre",
+  "lat": 14.680199,
+  "lng": -17.218884
+ },
+ {
+  "osm_id": "node/2265116996",
+  "nom": "Chez Binta",
+  "categorie": "commerce",
+  "lat": 14.6066,
+  "lng": -17.152093
+ },
+ {
+  "osm_id": "way/627377379",
+  "nom": "Collège de Yène",
+  "categorie": "ecole",
+  "lat": 14.640426,
+  "lng": -17.173727
+ },
+ {
+  "osm_id": "node/4039309289",
+  "nom": "Daga",
+  "categorie": "village",
+  "lat": 14.635178,
+  "lng": -17.130424
+ },
+ {
+  "osm_id": "node/3962741557",
+  "nom": "Dene Babacar DIOP",
+  "categorie": "village",
+  "lat": 14.737886,
+  "lng": -17.177057
+ },
+ {
+  "osm_id": "node/3303351290",
+  "nom": "Diamniadio",
+  "categorie": "village",
+  "lat": 14.720219,
+  "lng": -17.184244
+ },
+ {
+  "osm_id": "node/2529459961",
+  "nom": "Diass",
+  "categorie": "village",
+  "lat": 14.641597,
+  "lng": -17.08426
+ },
+ {
+  "osm_id": "node/13846997055",
+  "nom": "Diémbès",
+  "categorie": "village",
+  "lat": 14.734369,
+  "lng": -17.116781
+ },
+ {
+  "osm_id": "node/9215098337",
+  "nom": "Dougar AITHIA",
+  "categorie": "quartier",
+  "lat": 14.711392,
+  "lng": -17.159876
+ },
+ {
+  "osm_id": "node/6348426192",
+  "nom": "Dougard peulh",
+  "categorie": "village",
+  "lat": 14.715236,
+  "lng": -17.158532
+ },
+ {
+  "osm_id": "node/3417348465",
+  "nom": "DOUGHAR",
+  "categorie": "village",
+  "lat": 14.7139,
+  "lng": -17.161525
+ },
+ {
+  "osm_id": "node/3421562897",
+  "nom": "Ecole Arabe",
+  "categorie": "ecole",
+  "lat": 14.627413,
+  "lng": -17.104587
+ },
+ {
+  "osm_id": "way/532570137",
+  "nom": "Ecole DAARA Arabe",
+  "categorie": "ecole",
+  "lat": 14.622383,
+  "lng": -17.161178
+ },
+ {
+  "osm_id": "way/490875008",
+  "nom": "Ecole élémentaire de Miname",
+  "categorie": "ecole",
+  "lat": 14.681317,
+  "lng": -17.218659
+ },
+ {
+  "osm_id": "way/627391146",
+  "nom": "Ecole élémentaire de Sendou",
+  "categorie": "ecole",
+  "lat": 14.672361,
+  "lng": -17.206902
+ },
+ {
+  "osm_id": "way/232533993",
+  "nom": "Ecole élémentaire de Yène Guedji",
+  "categorie": "ecole",
+  "lat": 14.642762,
+  "lng": -17.170508
+ },
+ {
+  "osm_id": "way/818068738",
+  "nom": "Ecole élémentaire de Yène Kao",
+  "categorie": "ecole",
+  "lat": 14.636408,
+  "lng": -17.172318
+ },
+ {
+  "osm_id": "way/232491938",
+  "nom": "Ecole Elémentaire Toubab Dialaw",
+  "categorie": "ecole",
+  "lat": 14.608201,
+  "lng": -17.148863
+ },
+ {
+  "osm_id": "way/532570138",
+  "nom": "Ecole Franco-Arabe",
+  "categorie": "ecole",
+  "lat": 14.621476,
+  "lng": -17.159183
+ },
+ {
+  "osm_id": "way/292619576",
+  "nom": "Ecole primaire de Nianghal",
+  "categorie": "ecole",
+  "lat": 14.628314,
+  "lng": -17.160821
+ },
+ {
+  "osm_id": "way/532436526",
+  "nom": "Ecole primaire de Nianghal 2",
+  "categorie": "ecole",
+  "lat": 14.621602,
+  "lng": -17.155825
+ },
+ {
+  "osm_id": "way/217216897",
+  "nom": "Ecole Primaire Nditakh",
+  "categorie": "ecole",
+  "lat": 14.631295,
+  "lng": -17.16505
+ },
+ {
+  "osm_id": "way/293038154",
+  "nom": "Ecole Primaire Nianghal",
+  "categorie": "ecole",
+  "lat": 14.612383,
+  "lng": -17.152515
+ },
+ {
+  "osm_id": "way/1268788669",
+  "nom": "Église du Grand Monarque et du Christ de Lumière",
+  "categorie": "culte",
+  "lat": 14.602562,
+  "lng": -17.144783
+ },
+ {
+  "osm_id": "way/1444285599",
+  "nom": "Église Sainte Rita",
+  "categorie": "culte",
+  "lat": 14.610911,
+  "lng": -17.151318
+ },
+ {
+  "osm_id": "way/489811453",
+  "nom": "epicerie",
+  "categorie": "commerce",
+  "lat": 14.67933,
+  "lng": -17.217485
+ },
+ {
+  "osm_id": "way/217221552",
+  "nom": "Espace Sobbo Badé",
+  "categorie": "autre",
+  "lat": 14.60552,
+  "lng": -17.151951
+ },
+ {
+  "osm_id": "way/256643020",
+  "nom": "Espace Sobbo Badé",
+  "categorie": "autre",
+  "lat": 14.605723,
+  "lng": -17.151161
+ },
+ {
+  "osm_id": "node/8980924319",
+  "nom": "Gandoul",
+  "categorie": "village",
+  "lat": 14.714683,
+  "lng": -17.130763
+ },
+ {
+  "osm_id": "node/13847195241",
+  "nom": "Gandoul Sérère",
+  "categorie": "village",
+  "lat": 14.716366,
+  "lng": -17.126437
+ },
+ {
+  "osm_id": "node/4678685074",
+  "nom": "Garas",
+  "categorie": "village",
+  "lat": 14.737884,
+  "lng": -17.118767
+ },
+ {
+  "osm_id": "way/245977827",
+  "nom": "Gendarmerie de Yéne/Toubab Dialaw",
+  "categorie": "autre",
+  "lat": 14.605759,
+  "lng": -17.146248
+ },
+ {
+  "osm_id": "way/532570140",
+  "nom": "Grand Mosqué de Nianghal",
+  "categorie": "culte",
+  "lat": 14.621544,
+  "lng": -17.158967
+ },
+ {
+  "osm_id": "way/232520138",
+  "nom": "Halles aux poissons",
+  "categorie": "commerce",
+  "lat": 14.618588,
+  "lng": -17.158363
+ },
+ {
+  "osm_id": "way/245977828",
+  "nom": "Halles de Toubab Dialaw",
+  "categorie": "commerce",
+  "lat": 14.606692,
+  "lng": -17.146936
+ },
+ {
+  "osm_id": "node/3775042118",
+  "nom": "Iris Hôtel",
+  "categorie": "autre",
+  "lat": 14.595836,
+  "lng": -17.146865
+ },
+ {
+  "osm_id": "node/4830512129",
+  "nom": "jardin tex texe de miname",
+  "categorie": "ecole",
+  "lat": 14.681384,
+  "lng": -17.216614
+ },
+ {
+  "osm_id": "node/8176235218",
+  "nom": "K'méléon",
+  "categorie": "commerce",
+  "lat": 14.607417,
+  "lng": -17.152504
+ },
+ {
+  "osm_id": "node/8176235417",
+  "nom": "K'you gallery",
+  "categorie": "autre",
+  "lat": 14.607544,
+  "lng": -17.152124
+ },
+ {
+  "osm_id": "way/648729458",
+  "nom": "Keur Baye Diangue",
+  "categorie": "quartier",
+  "lat": 14.565543,
+  "lng": -17.058775
+ },
+ {
+  "osm_id": "node/13848384163",
+  "nom": "Keur Dali Cissé",
+  "categorie": "village",
+  "lat": 14.72154,
+  "lng": -17.076659
+ },
+ {
+  "osm_id": "node/13848333940",
+  "nom": "Keur Douka Sissé",
+  "categorie": "village",
+  "lat": 14.711565,
+  "lng": -17.083534
+ },
+ {
+  "osm_id": "node/3421563598",
+  "nom": "Keur Lamane",
+  "categorie": "village",
+  "lat": 14.609227,
+  "lng": -17.092256
+ },
+ {
+  "osm_id": "way/648729457",
+  "nom": "Keur Lamane",
+  "categorie": "quartier",
+  "lat": 14.565077,
+  "lng": -17.059566
+ },
+ {
+  "osm_id": "node/13848205777",
+  "nom": "Keur Souleymane Tiakoum",
+  "categorie": "village",
+  "lat": 14.713355,
+  "lng": -17.082175
+ },
+ {
+  "osm_id": "node/3955012976",
+  "nom": "Kiniabour",
+  "categorie": "village",
+  "lat": 14.558142,
+  "lng": -17.065688
+ },
+ {
+  "osm_id": "node/8176235317",
+  "nom": "L'escale",
+  "categorie": "commerce",
+  "lat": 14.610006,
+  "lng": -17.153467
+ },
+ {
+  "osm_id": "node/2539925691",
+  "nom": "La Guinguette",
+  "categorie": "commerce",
+  "lat": 14.660385,
+  "lng": -17.193974
+ },
+ {
+  "osm_id": "way/245977830",
+  "nom": "La Pierre de Lisse",
+  "categorie": "autre",
+  "lat": 14.579762,
+  "lng": -17.139197
+ },
+ {
+  "osm_id": "node/3303352377",
+  "nom": "Landou",
+  "categorie": "village",
+  "lat": 14.719606,
+  "lng": -17.083389
+ },
+ {
+  "osm_id": "way/280422677",
+  "nom": "Le rocher chez Nabou",
+  "categorie": "commerce",
+  "lat": 14.606876,
+  "lng": -17.152344
+ },
+ {
+  "osm_id": "node/3446885042",
+  "nom": "Lene",
+  "categorie": "village",
+  "lat": 14.721959,
+  "lng": -17.052878
+ },
+ {
+  "osm_id": "node/8621430920",
+  "nom": "Les Délices de Mbiné Mangouné (LDMM)",
+  "categorie": "commerce",
+  "lat": 14.605218,
+  "lng": -17.147278
+ },
+ {
+  "osm_id": "node/2534037468",
+  "nom": "Les enfants d'Ornella",
+  "categorie": "ecole",
+  "lat": 14.61481,
+  "lng": -17.154017
+ },
+ {
+  "osm_id": "way/217218657",
+  "nom": "Lycée de Yène",
+  "categorie": "ecole",
+  "lat": 14.628656,
+  "lng": -17.161071
+ },
+ {
+  "osm_id": "way/294367683",
+  "nom": "Mairie de Yène",
+  "categorie": "autre",
+  "lat": 14.640822,
+  "lng": -17.173059
+ },
+ {
+  "osm_id": "way/374087172",
+  "nom": "Marché central de Yène Guedji",
+  "categorie": "marche",
+  "lat": 14.640123,
+  "lng": -17.172087
+ },
+ {
+  "osm_id": "node/4039309390",
+  "nom": "Mbounka Bambara",
+  "categorie": "village",
+  "lat": 14.693836,
+  "lng": -17.16082
+ },
+ {
+  "osm_id": "node/4254413830",
+  "nom": "Mbourouk",
+  "categorie": "village",
+  "lat": 14.683614,
+  "lng": -17.130401
+ },
+ {
+  "osm_id": "node/4819981364",
+  "nom": "Miname",
+  "categorie": "quartier",
+  "lat": 14.67944,
+  "lng": -17.217805
+ },
+ {
+  "osm_id": "way/401510020",
+  "nom": "Mosquée de Cité Fass",
+  "categorie": "culte",
+  "lat": 14.641465,
+  "lng": -17.172402
+ },
+ {
+  "osm_id": "way/532436451",
+  "nom": "Mosquée de hobbi",
+  "categorie": "culte",
+  "lat": 14.619398,
+  "lng": -17.159055
+ },
+ {
+  "osm_id": "node/4830541104",
+  "nom": "Mosquée de miname",
+  "categorie": "culte",
+  "lat": 14.679332,
+  "lng": -17.218065
+ },
+ {
+  "osm_id": "node/5834379618",
+  "nom": "Mosquée de Yène Guedji",
+  "categorie": "culte",
+  "lat": 14.641563,
+  "lng": -17.176242
+ },
+ {
+  "osm_id": "node/13847144442",
+  "nom": "Narkokal",
+  "categorie": "village",
+  "lat": 14.731896,
+  "lng": -17.120149
+ },
+ {
+  "osm_id": "node/2411146661",
+  "nom": "Nditakh",
+  "categorie": "village",
+  "lat": 14.631435,
+  "lng": -17.167146
+ },
+ {
+  "osm_id": "node/4039309290",
+  "nom": "Ndoukhoura Peuhl",
+  "categorie": "village",
+  "lat": 14.685052,
+  "lng": -17.164791
+ },
+ {
+  "osm_id": "node/4039309291",
+  "nom": "Ndoukhoura Wolof",
+  "categorie": "village",
+  "lat": 14.68123,
+  "lng": -17.167365
+ },
+ {
+  "osm_id": "node/13847144487",
+  "nom": "Ngaring",
+  "categorie": "village",
+  "lat": 14.731401,
+  "lng": -17.111754
+ },
+ {
+  "osm_id": "node/2265107634",
+  "nom": "Nianghal",
+  "categorie": "village",
+  "lat": 14.621445,
+  "lng": -17.159222
+ },
+ {
+  "osm_id": "node/13847084175",
+  "nom": "Palabine",
+  "categorie": "village",
+  "lat": 14.730672,
+  "lng": -17.115071
+ },
+ {
+  "osm_id": "node/3774944158",
+  "nom": "Pamecas",
+  "categorie": "commerce",
+  "lat": 14.639176,
+  "lng": -17.173074
+ },
+ {
+  "osm_id": "node/4820242106",
+  "nom": "Penne bagage",
+  "categorie": "commerce",
+  "lat": 14.680126,
+  "lng": -17.216395
+ },
+ {
+  "osm_id": "node/2530740590",
+  "nom": "Pharmacie de Toubab Dialaw",
+  "categorie": "sante",
+  "lat": 14.605481,
+  "lng": -17.148095
+ },
+ {
+  "osm_id": "node/3774944157",
+  "nom": "Pharmacie Massawa",
+  "categorie": "sante",
+  "lat": 14.639116,
+  "lng": -17.173038
+ },
+ {
+  "osm_id": "node/9011965568",
+  "nom": "Popenguine sérère",
+  "categorie": "quartier",
+  "lat": 14.566825,
+  "lng": -17.100693
+ },
+ {
+  "osm_id": "node/2406466994",
+  "nom": "Popenguine-Ndayane",
+  "categorie": "village",
+  "lat": 14.559134,
+  "lng": -17.114005
+ },
+ {
+  "osm_id": "node/2265107636",
+  "nom": "Poste de Santé de Nianghal",
+  "categorie": "sante",
+  "lat": 14.627777,
+  "lng": -17.160704
+ },
+ {
+  "osm_id": "node/2539925694",
+  "nom": "Poste de santé de Yéne",
+  "categorie": "sante",
+  "lat": 14.64001,
+  "lng": -17.17391
+ },
+ {
+  "osm_id": "node/3774957984",
+  "nom": "Poste de Yène",
+  "categorie": "autre",
+  "lat": 14.629819,
+  "lng": -17.163336
+ },
+ {
+  "osm_id": "node/4256044154",
+  "nom": "Quantine Assane",
+  "categorie": "village",
+  "lat": 14.568666,
+  "lng": -17.058973
+ },
+ {
+  "osm_id": "node/12593312701",
+  "nom": "Résidence Keur Fleurie",
+  "categorie": "autre",
+  "lat": 14.643031,
+  "lng": -17.177803
+ },
+ {
+  "osm_id": "way/232437007",
+  "nom": "Route du Centre Jules François Bocandé",
+  "categorie": "rue",
+  "lat": 14.60535,
+  "lng": -17.137304
+ },
+ {
+  "osm_id": "way/232552469",
+  "nom": "Rue Ibrahima",
+  "categorie": "rue",
+  "lat": 14.646734,
+  "lng": -17.176953
+ },
+ {
+  "osm_id": "way/1160309361",
+  "nom": "Rue Wadial",
+  "categorie": "rue",
+  "lat": 14.606602,
+  "lng": -17.144135
+ },
+ {
+  "osm_id": "node/12222175944",
+  "nom": "Sanghé",
+  "categorie": "village",
+  "lat": 14.565651,
+  "lng": -17.060094
+ },
+ {
+  "osm_id": "node/2411146662",
+  "nom": "Sendou",
+  "categorie": "village",
+  "lat": 14.670716,
+  "lng": -17.20459
+ },
+ {
+  "osm_id": "node/286750662",
+  "nom": "Sindia",
+  "categorie": "village",
+  "lat": 14.582622,
+  "lng": -17.034832
+ },
+ {
+  "osm_id": "node/3446885043",
+  "nom": "Soune Sérère",
+  "categorie": "village",
+  "lat": 14.708737,
+  "lng": -17.061741
+ },
+ {
+  "osm_id": "node/3446885044",
+  "nom": "Soune Wolof",
+  "categorie": "village",
+  "lat": 14.704173,
+  "lng": -17.04834
+ },
+ {
+  "osm_id": "node/13353935439",
+  "nom": "Station Ola",
+  "categorie": "commerce",
+  "lat": 14.672707,
+  "lng": -17.114402
+ },
+ {
+  "osm_id": "node/2530740589",
+  "nom": "Supérette la Fidélité",
+  "categorie": "commerce",
+  "lat": 14.609163,
+  "lng": -17.150313
+ },
+ {
+  "osm_id": "node/2540119239",
+  "nom": "Théatre de l'Engouement",
+  "categorie": "autre",
+  "lat": 14.599375,
+  "lng": -17.127995
+ },
+ {
+  "osm_id": "node/4107462790",
+  "nom": "Théatre Gérard Chenet",
+  "categorie": "autre",
+  "lat": 14.591581,
+  "lng": -17.130838
+ },
+ {
+  "osm_id": "node/3446885045",
+  "nom": "Thiambokh",
+  "categorie": "village",
+  "lat": 14.697838,
+  "lng": -17.04572
+ },
+ {
+  "osm_id": "node/11371257383",
+  "nom": "Thiep bou dieune",
+  "categorie": "commerce",
+  "lat": 14.607919,
+  "lng": -17.152664
+ },
+ {
+  "osm_id": "node/9008933532",
+  "nom": "Thioupam",
+  "categorie": "quartier",
+  "lat": 14.551136,
+  "lng": -17.108356
+ },
+ {
+  "osm_id": "node/2265073628",
+  "nom": "Tode",
+  "categorie": "village",
+  "lat": 14.648702,
+  "lng": -17.183871
+ },
+ {
+  "osm_id": "node/2408366621",
+  "nom": "Toubab Dialaw",
+  "categorie": "village",
+  "lat": 14.604236,
+  "lng": -17.149083
+ },
+ {
+  "osm_id": "node/3446885046",
+  "nom": "Touly",
+  "categorie": "village",
+  "lat": 14.730714,
+  "lng": -17.081276
+ },
+ {
+  "osm_id": "node/3767691628",
+  "nom": "Vetosolutions",
+  "categorie": "autre",
+  "lat": 14.641976,
+  "lng": -17.174465
+ },
+ {
+  "osm_id": "node/13847087626",
+  "nom": "Yéba",
+  "categorie": "village",
+  "lat": 14.731815,
+  "lng": -17.115423
+ },
+ {
+  "osm_id": "node/13847141545",
+  "nom": "Yéba Inda",
+  "categorie": "village",
+  "lat": 14.724225,
+  "lng": -17.113457
+ },
+ {
+  "osm_id": "node/2265074387",
+  "nom": "Yène",
+  "categorie": "village",
+  "lat": 14.639083,
+  "lng": -17.173448
+ }
+]

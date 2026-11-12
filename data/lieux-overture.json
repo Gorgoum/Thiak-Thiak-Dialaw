@@ -1,0 +1,597 @@
+[
+ {
+  "osm_id": "overture/229be469-68f8-4366-b020-f5638dad6de6",
+  "nom": "ADUNA",
+  "categorie": "commerce",
+  "lat": 14.606433,
+  "lng": -17.147063
+ },
+ {
+  "osm_id": "overture/df482b79-107f-450f-94b9-62c8bdfcc1bf",
+  "nom": "Aduna Lab",
+  "categorie": "commerce",
+  "lat": 14.604847,
+  "lng": -17.14468
+ },
+ {
+  "osm_id": "overture/589fd5c4-a223-41f1-a7cf-b7a2371d8a74",
+  "nom": "Airport Plaza by WIN Holding",
+  "categorie": "autre",
+  "lat": 14.6392,
+  "lng": -17.0878
+ },
+ {
+  "osm_id": "overture/4e8c50d5-b58c-4bf4-8d42-6823b82da662",
+  "nom": "American Beach Club in Saly",
+  "categorie": "commerce",
+  "lat": 14.630095,
+  "lng": -17.166138
+ },
+ {
+  "osm_id": "overture/d62111a1-ba65-4e71-a722-e00e7112e5e5",
+  "nom": "Association Djarama",
+  "categorie": "commerce",
+  "lat": 14.591447,
+  "lng": -17.130452
+ },
+ {
+  "osm_id": "overture/3b216b8e-1142-4c6a-9fb9-76eb4658475d",
+  "nom": "Auberge Chez Adrienne",
+  "categorie": "commerce",
+  "lat": 14.629971,
+  "lng": -17.165502
+ },
+ {
+  "osm_id": "overture/79fc5e4c-699f-4715-a5b2-d3a1a626a085",
+  "nom": "Avenir de grand mbour",
+  "categorie": "autre",
+  "lat": 14.6653,
+  "lng": -17.1289
+ },
+ {
+  "osm_id": "overture/15209dd7-5de6-42f3-90bd-3b6db0fec92e",
+  "nom": "BAAT",
+  "categorie": "autre",
+  "lat": 14.637757,
+  "lng": -17.174385
+ },
+ {
+  "osm_id": "overture/620f1b5f-a6b5-4468-951c-ad8f65e7f276",
+  "nom": "Basilique Notre-Dame de la Delivrance",
+  "categorie": "culte",
+  "lat": 14.554644,
+  "lng": -17.111579
+ },
+ {
+  "osm_id": "overture/df1ae83e-3b6e-4a82-865f-44ccbcff2a74",
+  "nom": "Begue Pokai HOTEL",
+  "categorie": "commerce",
+  "lat": 14.61683,
+  "lng": -17.153904
+ },
+ {
+  "osm_id": "overture/34d00445-37a4-4956-829c-21dcbbda9320",
+  "nom": "Bnbpopenguine",
+  "categorie": "commerce",
+  "lat": 14.550122,
+  "lng": -17.109072
+ },
+ {
+  "osm_id": "overture/6ee5a893-1240-4092-b522-1d44c366f921",
+  "nom": "Cabano Alberte",
+  "categorie": "commerce",
+  "lat": 14.554093,
+  "lng": -17.113845
+ },
+ {
+  "osm_id": "overture/f1e78e09-9009-4f0a-9b02-e9bab6da585d",
+  "nom": "Centrale a charbon Bargny-Minam",
+  "categorie": "autre",
+  "lat": 14.686554,
+  "lng": -17.214315
+ },
+ {
+  "osm_id": "overture/e8d6ea83-c871-4a58-8ce5-0b6bd808bede",
+  "nom": "Centre cuturel Gérard Chenet",
+  "categorie": "autre",
+  "lat": 14.600333,
+  "lng": -17.124387
+ },
+ {
+  "osm_id": "overture/98af6804-ee53-4917-bf3a-14289ce5f7bb",
+  "nom": "Centre de Formation Professionnelle de Bargny",
+  "categorie": "ecole",
+  "lat": 14.6939,
+  "lng": -17.2336
+ },
+ {
+  "osm_id": "overture/4263a850-d83e-44c8-aac8-4d06ffed3541",
+  "nom": "Centre De Santé de Popenguine",
+  "categorie": "autre",
+  "lat": 14.55848,
+  "lng": -17.11336
+ },
+ {
+  "osm_id": "overture/01f9a5ef-9a84-4a24-9ec8-d7d8ce689d4d",
+  "nom": "Clinique Rassoul Med de Bargny",
+  "categorie": "sante",
+  "lat": 14.698225,
+  "lng": -17.233171
+ },
+ {
+  "osm_id": "overture/c0d53146-e24e-457b-82a9-877e4166e5d1",
+  "nom": "College du Senegal",
+  "categorie": "ecole",
+  "lat": 14.55848,
+  "lng": -17.11336
+ },
+ {
+  "osm_id": "overture/8a157415-aa62-4f3f-8282-db39d13487f2",
+  "nom": "Commune de Yene Dialaw",
+  "categorie": "commerce",
+  "lat": 14.6429,
+  "lng": -17.17442
+ },
+ {
+  "osm_id": "overture/c7471536-9d83-4fa8-bf25-67e60bbfb7ce",
+  "nom": "Complexe academic golden park",
+  "categorie": "autre",
+  "lat": 14.69702,
+  "lng": -17.22993
+ },
+ {
+  "osm_id": "overture/0e03880d-fb63-4f1a-9cbb-e1da95267675",
+  "nom": "crestone popenguine",
+  "categorie": "commerce",
+  "lat": 14.55678,
+  "lng": -17.11109
+ },
+ {
+  "osm_id": "overture/790043ba-a4e2-426e-a6d2-79af8c246d5c",
+  "nom": "Curaan: Centre Unifié de Recherches Apicole et Agro-écologique du Niombato",
+  "categorie": "commerce",
+  "lat": 14.66998,
+  "lng": -17.20369
+ },
+ {
+  "osm_id": "overture/311c5308-4770-427f-9881-052fae234e9c",
+  "nom": "Dagga Basket School",
+  "categorie": "ecole",
+  "lat": 14.63763,
+  "lng": -17.12906
+ },
+ {
+  "osm_id": "overture/c5ab5b87-877c-4eff-b551-9143160a80e2",
+  "nom": "Dahiratoul fathou Toubab dialaw",
+  "categorie": "autre",
+  "lat": 14.60648,
+  "lng": -17.14702
+ },
+ {
+  "osm_id": "overture/21eef095-2eb0-4baa-92b3-89243c30d177",
+  "nom": "Dekk Jamm",
+  "categorie": "commerce",
+  "lat": 14.609516,
+  "lng": -17.142025
+ },
+ {
+  "osm_id": "overture/2968eb23-3553-4e3a-9a73-05c996c8568f",
+  "nom": "Diakhate Élevage Bargny",
+  "categorie": "autre",
+  "lat": 14.69725,
+  "lng": -17.23022
+ },
+ {
+  "osm_id": "overture/91a9c997-d943-4a26-9956-0769c4f341da",
+  "nom": "Dialaw Medical Hospital",
+  "categorie": "sante",
+  "lat": 14.605642,
+  "lng": -17.147742
+ },
+ {
+  "osm_id": "overture/67d280c0-6476-4398-839f-0f1e0166f8c6",
+  "nom": "Diass Football Academy",
+  "categorie": "autre",
+  "lat": 14.6392,
+  "lng": -17.0878
+ },
+ {
+  "osm_id": "overture/3a03db85-c9d2-489b-aa08-91f30c16626f",
+  "nom": "EBENE",
+  "categorie": "commerce",
+  "lat": 14.5575,
+  "lng": -17.1139
+ },
+ {
+  "osm_id": "overture/ea190dfd-0d3c-4582-8053-6c6551f1b161",
+  "nom": "Echo Côtier",
+  "categorie": "commerce",
+  "lat": 14.55848,
+  "lng": -17.11336
+ },
+ {
+  "osm_id": "overture/fb2ead93-d0c1-40de-b232-9a2ce7a87135",
+  "nom": "Espace culturel Gérard Chenet",
+  "categorie": "autre",
+  "lat": 14.605855,
+  "lng": -17.151247
+ },
+ {
+  "osm_id": "overture/3d9bf690-3bdb-42ea-889b-e847f604c3c6",
+  "nom": "Espace SOBOBADE",
+  "categorie": "autre",
+  "lat": 14.641223,
+  "lng": -17.171803
+ },
+ {
+  "osm_id": "overture/f77d19a4-8469-473d-bbb9-bb7ba5865a36",
+  "nom": "ETS MARCO",
+  "categorie": "autre",
+  "lat": 14.65069,
+  "lng": -17.151375
+ },
+ {
+  "osm_id": "overture/06543f83-0de2-4d12-8aa8-29221c13c3a9",
+  "nom": "Fati immobilier",
+  "categorie": "commerce",
+  "lat": 14.606494,
+  "lng": -17.146819
+ },
+ {
+  "osm_id": "overture/329aff8f-9110-4771-bafa-75dbb4f34e31",
+  "nom": "gite peace and love kaïraba",
+  "categorie": "commerce",
+  "lat": 14.606433,
+  "lng": -17.147063
+ },
+ {
+  "osm_id": "overture/e164e9d0-4e9d-4f5d-a70d-d7395a5dfa1d",
+  "nom": "Grande Mosquée Santa Yalla",
+  "categorie": "autre",
+  "lat": 14.69702,
+  "lng": -17.22993
+ },
+ {
+  "osm_id": "overture/6b3edd47-3214-4082-ab69-e3d6eb4a4daa",
+  "nom": "Horizon Immobilier",
+  "categorie": "commerce",
+  "lat": 14.641719,
+  "lng": -17.174314
+ },
+ {
+  "osm_id": "overture/6a8879c6-8728-4d7b-b66e-359179eba5dc",
+  "nom": "hotel la pierre de lisse",
+  "categorie": "autre",
+  "lat": 14.56807,
+  "lng": -17.13006
+ },
+ {
+  "osm_id": "overture/a3d45f03-eda9-4dbc-94c2-5d35fc96bee7",
+  "nom": "Incub-institut",
+  "categorie": "ecole",
+  "lat": 14.692511,
+  "lng": -17.229927
+ },
+ {
+  "osm_id": "overture/49bec811-c9b1-4cb0-b12a-4e58e1e1aae1",
+  "nom": "Institut Culturel Panafricain de Recherche",
+  "categorie": "autre",
+  "lat": 14.649505,
+  "lng": -17.18007
+ },
+ {
+  "osm_id": "overture/553aa1b3-01f9-4d03-97c4-62d0d277a5f0",
+  "nom": "Institution Marc Perrot",
+  "categorie": "ecole",
+  "lat": 14.606549,
+  "lng": -17.138872
+ },
+ {
+  "osm_id": "overture/b284b4d1-ffa0-419b-9b82-0424efce693f",
+  "nom": "IRIS HOTEL",
+  "categorie": "commerce",
+  "lat": 14.606433,
+  "lng": -17.147063
+ },
+ {
+  "osm_id": "overture/5a3b5b9d-2c5c-471e-93b2-a207deb6b4d4",
+  "nom": "Iris Hotel",
+  "categorie": "commerce",
+  "lat": 14.595725,
+  "lng": -17.147109
+ },
+ {
+  "osm_id": "overture/e41edf01-9bad-4566-afab-9b460a55587d",
+  "nom": "IRIS HOTEL",
+  "categorie": "commerce",
+  "lat": 14.606106,
+  "lng": -17.150269
+ },
+ {
+  "osm_id": "overture/901ac900-edcc-494a-a06c-922095050380",
+  "nom": "K'meleon",
+  "categorie": "commerce",
+  "lat": 14.60648,
+  "lng": -17.14702
+ },
+ {
+  "osm_id": "overture/d4792313-57f3-49d6-bee4-eb0b3830a08e",
+  "nom": "Keur Dofie",
+  "categorie": "commerce",
+  "lat": 14.605536,
+  "lng": -17.151106
+ },
+ {
+  "osm_id": "overture/d7c0587a-fc47-4e3d-89e6-c72ec5935191",
+  "nom": "Keur Khadim Couture Chez Gamou Camara",
+  "categorie": "commerce",
+  "lat": 14.6653,
+  "lng": -17.1289
+ },
+ {
+  "osm_id": "overture/ccb65b37-ad7f-4cfa-8006-8edac92b48d6",
+  "nom": "La colline bleue",
+  "categorie": "commerce",
+  "lat": 14.606987,
+  "lng": -17.147749
+ },
+ {
+  "osm_id": "overture/a6db4832-4770-4dc0-9eb7-cb48a3e52e55",
+  "nom": "La Mimosa \" Auberge/Restaurant\"",
+  "categorie": "commerce",
+  "lat": 14.6389,
+  "lng": -17.1733
+ },
+ {
+  "osm_id": "overture/f6fe2923-27a3-4a7e-9afa-9434fb99e1c8",
+  "nom": "La Pierre de Lisse",
+  "categorie": "commerce",
+  "lat": 14.580019,
+  "lng": -17.138882
+ },
+ {
+  "osm_id": "overture/d43ec471-8709-4a0f-9c7b-7fd5d8509d73",
+  "nom": "La Plage De Toubab Dialaw",
+  "categorie": "autre",
+  "lat": 14.605731,
+  "lng": -17.151264
+ },
+ {
+  "osm_id": "overture/7f69f373-10d8-4194-9020-965bf0818d16",
+  "nom": "La résidence Latinaya",
+  "categorie": "commerce",
+  "lat": 14.556801,
+  "lng": -17.111523
+ },
+ {
+  "osm_id": "overture/802b6f35-9538-4119-ab4b-05b69b693876",
+  "nom": "La Résidence latinaya",
+  "categorie": "commerce",
+  "lat": 14.55315,
+  "lng": -17.112419
+ },
+ {
+  "osm_id": "overture/b43ad9e1-8cb3-47f9-b093-c6e770e13cbf",
+  "nom": "La Source Ndiambalane",
+  "categorie": "commerce",
+  "lat": 14.60648,
+  "lng": -17.14702
+ },
+ {
+  "osm_id": "overture/b087f435-a823-41eb-a902-005971144885",
+  "nom": "La Villa Serere",
+  "categorie": "commerce",
+  "lat": 14.552867,
+  "lng": -17.10603
+ },
+ {
+  "osm_id": "overture/29edece8-e9a9-4286-b046-de4aa72a78f7",
+  "nom": "Le Balafon",
+  "categorie": "commerce",
+  "lat": 14.550787,
+  "lng": -17.109525
+ },
+ {
+  "osm_id": "overture/ead77b2b-ecad-43b5-aebd-97bf1bc86c72",
+  "nom": "Le Petit Châtheau del BruNetto",
+  "categorie": "autre",
+  "lat": 14.605387,
+  "lng": -17.149787
+ },
+ {
+  "osm_id": "overture/fbc01406-d02c-4408-902d-ab3cce8eec92",
+  "nom": "Le Pâtissier Bargny",
+  "categorie": "commerce",
+  "lat": 14.694669,
+  "lng": -17.236655
+ },
+ {
+  "osm_id": "overture/e69fbfbb-21e7-430a-bb89-37f659013605",
+  "nom": "Lebou Gui",
+  "categorie": "commerce",
+  "lat": 14.607746,
+  "lng": -17.152669
+ },
+ {
+  "osm_id": "overture/6c561c48-7282-41a7-af77-2ea20bc797e3",
+  "nom": "Les Délices de Mbiné Mangouné",
+  "categorie": "commerce",
+  "lat": 14.6389,
+  "lng": -17.1733
+ },
+ {
+  "osm_id": "overture/8472deee-bac8-4a4f-801a-f98c1463ac86",
+  "nom": "Mampuya",
+  "categorie": "commerce",
+  "lat": 14.604162,
+  "lng": -17.128901
+ },
+ {
+  "osm_id": "overture/d9e3acc0-4af7-4f6f-adb9-2d581443fb27",
+  "nom": "MoneyGram",
+  "categorie": "commerce",
+  "lat": 14.698942,
+  "lng": -17.233823
+ },
+ {
+  "osm_id": "overture/bb751b2c-5669-4ac9-92bc-a51863d25220",
+  "nom": "MoneyGram",
+  "categorie": "commerce",
+  "lat": 14.69451,
+  "lng": -17.2357
+ },
+ {
+  "osm_id": "overture/b6737af7-97af-4b98-a2c8-5c29b85eb1f7",
+  "nom": "Médiathèque de Bargny Abasse Ndione",
+  "categorie": "autre",
+  "lat": 14.69397,
+  "lng": -17.229914
+ },
+ {
+  "osm_id": "overture/fbcb39ce-7998-40a5-ab50-d8d939d09f82",
+  "nom": "Métisse de l'Empire",
+  "categorie": "commerce",
+  "lat": 14.554716,
+  "lng": -17.113088
+ },
+ {
+  "osm_id": "overture/d7d77d45-a2fe-4db2-9e40-56738350da60",
+  "nom": "Popenglace",
+  "categorie": "commerce",
+  "lat": 14.550556,
+  "lng": -17.108307
+ },
+ {
+  "osm_id": "overture/e5f9ff19-4f75-4071-9ff6-3ed6cff9a83e",
+  "nom": "Popenguine-Ndayane",
+  "categorie": "autre",
+  "lat": 14.5575,
+  "lng": -17.113889
+ },
+ {
+  "osm_id": "overture/4f488251-90e8-4e5a-ad55-8123e2025a03",
+  "nom": "Poz Tacos Dakar",
+  "categorie": "commerce",
+  "lat": 14.600836,
+  "lng": -17.08759
+ },
+ {
+  "osm_id": "overture/140047bf-083a-46bf-a650-5f01aa88eeda",
+  "nom": "Radiotelevisionfulbe",
+  "categorie": "autre",
+  "lat": 14.693867,
+  "lng": -17.149315
+ },
+ {
+  "osm_id": "overture/8ab16b0b-0496-42c5-9a36-5e2ab51f3637",
+  "nom": "Restaurant chez Marie",
+  "categorie": "commerce",
+  "lat": 14.550286,
+  "lng": -17.108087
+ },
+ {
+  "osm_id": "overture/6241cf45-27d2-43bd-b839-130ba8c91501",
+  "nom": "Royal Bâtiment Immo",
+  "categorie": "commerce",
+  "lat": 14.638456,
+  "lng": -17.087646
+ },
+ {
+  "osm_id": "overture/2de989ba-8294-441f-82d2-8f9c91ae18a0",
+  "nom": "Saadimex Group",
+  "categorie": "commerce",
+  "lat": 14.682709,
+  "lng": -17.165968
+ },
+ {
+  "osm_id": "overture/d0d4fc5b-7a94-4311-b253-9e95f1b4fb53",
+  "nom": "Sendou power station",
+  "categorie": "autre",
+  "lat": 14.689064,
+  "lng": -17.217628
+ },
+ {
+  "osm_id": "overture/e95853d3-af09-4ae7-a0d8-8f7594c7838a",
+  "nom": "Sendou power station",
+  "categorie": "autre",
+  "lat": 14.68853,
+  "lng": -17.21507
+ },
+ {
+  "osm_id": "overture/765cd685-91db-490c-a88a-8c807ce84c3a",
+  "nom": "Set WECC Services",
+  "categorie": "commerce",
+  "lat": 14.560653,
+  "lng": -17.105566
+ },
+ {
+  "osm_id": "overture/aa409262-af25-4b19-95b0-53b740f0eea0",
+  "nom": "Shell",
+  "categorie": "commerce",
+  "lat": 14.67178,
+  "lng": -17.16867
+ },
+ {
+  "osm_id": "overture/ef5c5fc3-3243-497d-930a-eb31ecac5dc1",
+  "nom": "Site Marial de Popenguine",
+  "categorie": "culte",
+  "lat": 14.555315,
+  "lng": -17.11024
+ },
+ {
+  "osm_id": "overture/b6e84019-b6b3-4f00-894b-de1f4bf8a71d",
+  "nom": "Sobo Bade",
+  "categorie": "commerce",
+  "lat": 14.605608,
+  "lng": -17.151668
+ },
+ {
+  "osm_id": "overture/57bf6869-8958-42b4-b501-5ee76900764d",
+  "nom": "Ter'hal SHOP Bargny",
+  "categorie": "commerce",
+  "lat": 14.69725,
+  "lng": -17.23021
+ },
+ {
+  "osm_id": "overture/6eb20aaf-508c-4ca0-b082-77ddcc913f46",
+  "nom": "Terre d'Afrique",
+  "categorie": "commerce",
+  "lat": 14.57766,
+  "lng": -17.138239
+ },
+ {
+  "osm_id": "overture/575e83a0-7b71-4247-baa1-d7792dcb0c93",
+  "nom": "Toubab Dialo",
+  "categorie": "autre",
+  "lat": 14.606113,
+  "lng": -17.15027
+ },
+ {
+  "osm_id": "overture/000888bc-6730-4b9a-9ed1-9aa9a8377ebe",
+  "nom": "Villa Delpop Popenguine",
+  "categorie": "commerce",
+  "lat": 14.55617,
+  "lng": -17.116807
+ },
+ {
+  "osm_id": "overture/195ac835-3a1b-4a96-ab33-af8e1cd739b0",
+  "nom": "VILLA ROKA",
+  "categorie": "commerce",
+  "lat": 14.597468,
+  "lng": -17.147601
+ },
+ {
+  "osm_id": "overture/7076b7a4-b55f-44fc-9445-818b1d2bbd24",
+  "nom": "Yénn dialao toubab dialao",
+  "categorie": "commerce",
+  "lat": 14.60648,
+  "lng": -17.14702
+ },
+ {
+  "osm_id": "overture/db378b95-73f1-4fee-ac35-863bef3cdd45",
+  "nom": "École des Sables",
+  "categorie": "autre",
+  "lat": 14.595381,
+  "lng": -17.14541
+ }
+]

@@ -1,0 +1,45 @@
+# Thiak Thiak Dialaw sur Cloudflare Workers (plan gratuit)
+name = "thiak-thiak-dialaw"
+main = "src/index.js"
+compatibility_date = "2025-10-01"
+workers_dev = true
+# Compte Cloudflare « Thiak Thiak Dialaw » (séparé de celui de Nangu)
+account_id = "076bb060c32e5b547c99815e36d127fa"
+
+# Pages et fichiers statiques (préparés par « npm run cf:construire »)
+[assets]
+directory = "./public"
+binding = "ASSETS"
+html_handling = "none"   # garder les adresses exactes (/livreur.html), sans redirection
+
+# Base de données D1 (SQLite) — l'identifiant est rempli après « wrangler d1 create »
+[[d1_databases]]
+binding = "DB"
+database_name = "thiak-thiak"
+database_id = "5fc866e6-cdd9-4380-bbdc-076870cc1f28"
+migrations_dir = "migrations"
+
+# Temps réel : Durable Object (stockage SQLite, disponible sur le plan gratuit)
+[[durable_objects.bindings]]
+name = "DIFFUSION"
+class_name = "Diffusion"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Diffusion"]
+
+# Nangu est dans un autre compte : appel par son adresse publique (pas de liaison de service).
+# Toutes les minutes, en secours du webhook : vérifie les paiements en attente auprès de Nangu.
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+NANGU_API_URL = "https://api.nangu-pay.workers.dev"
+NANGU_PROVIDERS = "wave,orange_money"
+VAPID_SUBJECT = "mailto:contact@thiakthiak.sn"
+
+# Secrets (jamais dans ce fichier) : wrangler secret put <NOM>
+#   JWT_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, NANGU_SECRET_KEY, NANGU_WEBHOOK_SECRET
+
+[observability]
+enabled = true

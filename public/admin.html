@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thiak Thiak Admin</title>
+  <meta name="theme-color" content="#0b5d45">
+  <link rel="icon" href="/icons/icon-96.png">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <style>main { max-width: 1100px; }</style>
+</head>
+<body>
+  <header class="entete">
+    <a class="marque" href="#"><span class="logo"><svg class="ic" aria-hidden="true"><use href="/icons.svg#bike"></use></svg></span><span>Thiak Thiak <b>Admin</b></span></a>
+    <button id="deco" hidden>Déconnexion</button>
+  </header>
+  <main>
+    <section id="auth"></section>
+
+    <section id="app" hidden>
+      <div class="stats" id="stats"></div>
+
+      <div class="card">
+        <h2>Livreurs</h2>
+        <div class="defile"><table class="tableau" id="livreurs"></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Courses</h2>
+        <div class="onglets" id="filtres">
+          <button data-statut="" class="actif">Toutes</button>
+          <button data-statut="en_attente">En attente</button>
+          <button data-statut="acceptee">Acceptées</button>
+          <button data-statut="recuperee">En livraison</button>
+          <button data-statut="livree">Livrées</button>
+          <button data-statut="annulee">Annulées</button>
+        </div>
+        <div class="defile"><table class="tableau" id="courses"></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Lieux de Yène</h2>
+        <p class="aide">Ajoutez les quartiers et repères que tout le monde connaît (Yène Kao, Yène Kel, boutique de…) et qui manquent sur OpenStreetMap. Ils apparaîtront dans la recherche des clients.</p>
+        <div id="bloc-carte" class="bloc-carte">
+          <div class="recherche">
+            <svg class="ic ic-recherche" aria-hidden="true"><use href="/icons.svg#search"></use></svg>
+            <input id="recherche" type="search" autocomplete="off" placeholder="Aller à un lieu existant…">
+            <ul id="suggestions" class="suggestions" hidden></ul>
+          </div>
+          <div class="carte-cadre">
+            <div id="map" style="height:420px"></div>
+            <button type="button" id="plein-ecran" class="btn-rond btn-plein" aria-label="Agrandir la carte"><svg class="ic"><use href="/icons.svg#maximize-2"></use></svg></button>
+          </div>
+          <p class="aide">Touchez la carte à l'endroit exact du lieu, puis donnez-lui un nom.</p>
+        </div>
+        <form id="f-lieu">
+          <div class="grille-params">
+            <label>Nom du lieu<input name="nom" required maxlength="120" placeholder="Ex : Yène Kao"></label>
+            <label>Catégorie
+              <select name="categorie">
+                <option value="quartier">Quartier</option>
+                <option value="village">Village</option>
+                <option value="rue">Rue</option>
+                <option value="culte">Mosquée / lieu de culte</option>
+                <option value="ecole">École</option>
+                <option value="sante">Santé</option>
+                <option value="marche">Marché</option>
+                <option value="commerce">Commerce</option>
+                <option value="autre">Autre repère</option>
+              </select>
+            </label>
+          </div>
+          <button class="primaire">Ajouter ce lieu</button>
+        </form>
+        <h3 style="font-size:1rem;margin:20px 0 4px">Appris des livraisons <span class="pastille" id="nb-proposes" hidden></span></h3>
+        <p class="aide">Repères écrits par les clients sur des courses livrées. Validez ceux qui sont de vrais lieux publics (boutique, boulangerie, quartier…) ; refusez les adresses privées (« maison de … »).</p>
+        <div class="defile"><table class="tableau" id="lieux-proposes"></table></div>
+        <h3 style="font-size:1rem;margin:20px 0 8px">Lieux ajoutés ou validés par vous</h3>
+        <div class="defile"><table class="tableau" id="lieux-admin"></table></div>
+      </div>
+
+      <div class="card">
+        <h2>Tarifs et réglages</h2>
+        <form id="f-params">
+          <div class="grille-params">
+            <label>Prise en charge (FCFA)<input name="prix_base" type="number" min="0" step="50"></label>
+            <label>Prix par km (FCFA)<input name="prix_km" type="number" min="0" step="10"></label>
+            <label>Prix minimum (FCFA)<input name="prix_min" type="number" min="0" step="50"></label>
+            <label>Facteur route<input name="facteur_route" type="number" min="1" step="0.05"></label>
+            <label>Commission plateforme (%)<input name="commission_pct" type="number" min="0" max="100" step="1"></label>
+            <label>Rayon de notification (km)<input name="rayon_km" type="number" min="1" step="1"></label>
+            <label>Zone de service autour de Yène (km)<input name="zone_km" type="number" min="1" step="1"></label>
+          </div>
+          <button class="primaire">Enregistrer</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script src="/vendor/leaflet/leaflet.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>window.ROLE = 'admin';</script>
+  <script src="/js/commun.js"></script>
+  <script src="/js/carte.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

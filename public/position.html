@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Envoyer ma position — Thiak Thiak Dialaw</title>
+  <meta name="theme-color" content="#0b5d45">
+  <link rel="icon" href="/icons/icon-96.png">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="page-position">
+  <header class="entete">
+    <span class="marque">
+      <span class="logo"><svg class="ic" aria-hidden="true"><use href="/icons.svg#bike"></use></svg></span>
+      <span>Thiak Thiak <b>Dialaw</b></span>
+    </span>
+  </header>
+  <main>
+    <div class="card carte-position">
+      <div class="icone-ronde" id="icone"><svg class="ic" aria-hidden="true"><use href="/icons.svg#map-pin"></use></svg></div>
+      <h2 id="titre">Une livraison arrive</h2>
+      <p id="texte">Pour que le livreur trouve l'endroit exact, envoyez votre position. Restez à l'endroit où il doit venir.</p>
+      <button id="envoyer" class="primaire">
+        <svg class="ic" aria-hidden="true"><use href="/icons.svg#navigation"></use></svg> Envoyer ma position
+      </button>
+      <p class="etat" id="etat" role="status" aria-live="polite"></p>
+    </div>
+    <p class="pied"><svg class="ic ic-sm" aria-hidden="true"><use href="/icons.svg#shield-check"></use></svg> Votre position sert uniquement à cette livraison.</p>
+  </main>
+  <script>window.ROLE = 'destinataire';</script>
+  <script src="/js/commun.js"></script>
+  <script>
+    const code = new URLSearchParams(location.search).get('d');
+    const etat = document.getElementById('etat');
+    const bouton = document.getElementById('envoyer');
+    const icone = document.getElementById('icone');
+
+    function fin(titre, texte, reussi = false) {
+      document.getElementById('titre').textContent = titre;
+      document.getElementById('texte').textContent = texte;
+      icone.innerHTML = ico(reussi ? 'circle-check' : 'triangle-alert');
+      icone.classList.toggle('ok', reussi);
+      bouton.hidden = true;
+      etat.textContent = '';
+    }
+
+    (async () => {
+      if (!code) return fin('Lien incomplet', 'Demandez à la personne de vous renvoyer le lien.');
+      try {
+        const d = await api('GET', '/api/positions/' + encodeURIComponent(code));
+        if (d.expiree) return fin('Lien expiré', 'Ce lien n\'est plus valable. Demandez-en un nouveau.');
+        if (d.demandeur) document.getElementById('titre').textContent = `${d.demandeur} vous envoie une livraison`;
+        if (d.recue_le) etat.textContent = 'Position déjà envoyée. Vous pouvez la renvoyer si vous avez bougé.';
+      } catch (e) { return fin('Lien invalide', 'Demandez à la personne de vous renvoyer le lien.'); }
+    })();
+
+    bouton.onclick = () => {
+      if (!navigator.geolocation) return toast('Votre téléphone ne permet pas d\'envoyer la position', true);
+      bouton.disabled = true;
+      bouton.innerHTML = `${ico('loader-circle', 'tourne')} Localisation…`;
+      etat.textContent = 'Autorisez la localisation si votre téléphone le demande.';
+      const envoyer = async (p) => {
+        try {
+          await api('POST', '/api/positions/' + encodeURIComponent(code), {
+            lat: p.coords.latitude, lng: p.coords.longitude, precision: p.coords.accuracy,
+          });
+          fin('Position envoyée', 'Merci. Le livreur viendra jusqu\'à vous.', true);
+        } catch (e) { toast(e.message, true); reinit(); }
+      };
+      const echec = (e) => {
+        reinit();
+        etat.textContent = e.code === 1
+          ? 'Localisation refusée. Touchez le cadenas à gauche de l\'adresse, autorisez la position, puis réessayez.'
+          : 'Position introuvable. Activez la localisation (GPS) du téléphone, sortez si vous êtes à l\'intérieur, puis réessayez.';
+      };
+      // GPS précis d'abord, puis position approximative (Wi-Fi / réseau) si le GPS ne répond pas
+      navigator.geolocation.getCurrentPosition(envoyer, (e) => {
+        if (e.code === 1) return echec(e);
+        etat.textContent = 'GPS lent, recherche d\'une position approximative…';
+        navigator.geolocation.getCurrentPosition(envoyer, echec, { enableHighAccuracy: false, timeout: 15000, maximumAge: 120000 });
+      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    };
+    function reinit() {
+      bouton.disabled = false;
+      bouton.innerHTML = `${ico('navigation')} Envoyer ma position`;
+    }
+  </script>
+</body>
+</html>

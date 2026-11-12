@@ -1,0 +1,9 @@
+node_modules/
+.env
+.vapid.json
+
+# Version Cloudflare : fichiers générés et secrets locaux
+cloudflare/public/
+cloudflare/.wrangler/
+cloudflare/.dev.vars
+cloudflare/.admin.sql

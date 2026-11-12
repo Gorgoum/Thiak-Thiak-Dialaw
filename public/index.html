@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Thiak Thiak Dialaw — Livraison à Yène</title>
+  <meta name="description" content="Faites-vous livrer partout à Yène, sans vous déplacer.">
+  <meta name="theme-color" content="#0b5d45">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/icon-96.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="preload" href="/vendor/inter/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="page-client avec-barre">
+  <header class="entete">
+    <a class="marque" href="/">
+      <span class="logo"><svg class="ic" aria-hidden="true"><use href="/icons.svg#bike"></use></svg></span>
+      <span>Thiak Thiak <b>Dialaw</b></span>
+    </a>
+    <button type="button" id="ouvrir-suivi" class="btn btn-ghost" hidden>
+      <svg class="ic" aria-hidden="true"><use href="/icons.svg#list"></use></svg>
+      <span>Mes livraisons</span>
+      <span class="pastille" id="nb-actives" hidden></span>
+    </button>
+  </header>
+
+  <main class="client">
+    <!-- Carte -->
+    <section class="volet-carte bloc-carte" id="bloc-carte" aria-label="Carte">
+      <div class="carte-cadre">
+        <div id="map"></div>
+        <div class="carte-recherche recherche">
+          <svg class="ic ic-recherche" aria-hidden="true"><use href="/icons.svg#search"></use></svg>
+          <input id="recherche" type="search" autocomplete="off" enterkeyhint="search" aria-label="Rechercher un lieu"
+                 placeholder="Rechercher un lieu ou coller une position">
+          <ul id="suggestions" class="suggestions" role="listbox" hidden></ul>
+        </div>
+        <div class="carte-outils">
+          <button type="button" class="btn-rond" id="me-localiser" title="Me localiser" aria-label="Me localiser">
+            <svg class="ic" aria-hidden="true"><use href="/icons.svg#locate-fixed"></use></svg>
+          </button>
+          <button type="button" class="btn-rond" id="plein-ecran" title="Agrandir la carte" aria-label="Agrandir la carte">
+            <svg class="ic" aria-hidden="true"><use href="/icons.svg#maximize-2"></use></svg>
+          </button>
+        </div>
+        <div class="carte-aide" id="aide-carte"></div>
+      </div>
+      <div class="raccourcis" id="raccourcis" aria-label="Aller à un village"></div>
+    </section>
+
+    <!-- Formulaire -->
+    <section class="volet-form">
+      <form id="f-course" novalidate>
+        <div class="bloc">
+          <h2 class="titre-bloc"><span class="num">1</span> Itinéraire</h2>
+          <div class="itineraire">
+            <div class="etape-trajet actif" data-type="depart">
+              <span class="puce puce-a">A</span>
+              <div class="etape-corps">
+                <div class="etape-entete">
+                  <span class="etape-titre">Départ</span>
+                  <span class="etape-etat" id="etat-depart">À placer sur la carte</span>
+                </div>
+                <div class="champ-lieu">
+                  <input name="depart_repere" maxlength="300" autocomplete="off" aria-label="Repère du départ"
+                         placeholder="Lieu ou repère : boutique de Modou, près de la mosquée…">
+                  <ul class="suggestions" id="sugg-depart" role="listbox" hidden></ul>
+                </div>
+                <div class="etape-coord" id="coord-depart" hidden></div>
+                <div class="etape-actions">
+                  <button type="button" class="chip" data-gps="depart"><svg class="ic ic-sm"><use href="/icons.svg#locate-fixed"></use></svg>Ma position</button>
+                  <button type="button" class="chip" data-demander="depart"><svg class="ic ic-sm"><use href="/icons.svg#send"></use></svg>Envoyer un lien</button>
+                </div>
+                <div class="attente-pos" id="attente-depart" hidden></div>
+              </div>
+            </div>
+            <div class="etape-trajet" data-type="arrivee">
+              <span class="puce puce-b">B</span>
+              <div class="etape-corps">
+                <div class="etape-entete">
+                  <span class="etape-titre">Arrivée</span>
+                  <span class="etape-etat" id="etat-arrivee">À placer sur la carte</span>
+                </div>
+                <div class="champ-lieu">
+                  <input name="arrivee_repere" maxlength="300" autocomplete="off" aria-label="Repère de l'arrivée"
+                         placeholder="Lieu ou repère : maison bleue derrière l'école…">
+                  <ul class="suggestions" id="sugg-arrivee" role="listbox" hidden></ul>
+                </div>
+                <div class="etape-coord" id="coord-arrivee" hidden></div>
+                <div class="etape-actions">
+                  <button type="button" class="chip" data-gps="arrivee"><svg class="ic ic-sm"><use href="/icons.svg#locate-fixed"></use></svg>Ma position</button>
+                  <button type="button" class="chip" data-demander="arrivee"><svg class="ic ic-sm"><use href="/icons.svg#send"></use></svg>Demander au destinataire</button>
+                </div>
+                <div class="attente-pos" id="attente-arrivee" hidden></div>
+              </div>
+            </div>
+          </div>
+          <div class="recents" id="recents" hidden>
+            <div class="recents-titre"><svg class="ic ic-sm"><use href="/icons.svg#history"></use></svg>Adresses récentes</div>
+            <div class="raccourcis" id="recents-liste"></div>
+          </div>
+        </div>
+
+        <div class="bloc">
+          <h2 class="titre-bloc"><span class="num">2</span> Que faut-il livrer ?</h2>
+          <div class="segment" role="radiogroup" aria-label="Type de service">
+            <label><input type="radio" name="type" value="colis" checked><span><svg class="ic"><use href="/icons.svg#package"></use></svg>Livrer un colis</span></label>
+            <label><input type="radio" name="type" value="achat"><span><svg class="ic"><use href="/icons.svg#shopping-bag"></use></svg>Acheter pour moi</span></label>
+          </div>
+          <div class="raccourcis choix-rapides" id="choix-rapides" aria-label="Choix rapides"></div>
+          <label class="champ">Description
+            <textarea name="description" maxlength="500" rows="2" placeholder="Ex : un sac de riz de 25 kg, fragile…"></textarea>
+          </label>
+          <label class="champ" id="l-montant" hidden>Budget des achats (FCFA)
+            <input name="montant_achat" type="number" inputmode="numeric" min="0" step="50" placeholder="5 000">
+            <small>Avancé par le livreur, à lui rembourser à la livraison.</small>
+          </label>
+        </div>
+
+        <div class="bloc">
+          <h2 class="titre-bloc"><span class="num">3</span> Vos coordonnées</h2>
+          <div class="coord-connues" id="coord-connues" hidden>
+            <span class="avatar" id="coord-avatar"></span>
+            <span class="qui"><b id="coord-nom"></b><small id="coord-tel"></small></span>
+            <button type="button" class="btn btn-ghost" id="coord-modifier">Modifier</button>
+          </div>
+          <div class="grille-2" id="coord-saisie">
+            <label class="champ">Votre nom
+              <input name="client_nom" maxlength="100" autocomplete="name">
+            </label>
+            <label class="champ">Votre téléphone
+              <input name="client_tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="77 123 45 67">
+            </label>
+          </div>
+          <details class="replier" id="bloc-destinataire">
+            <summary><svg class="ic ic-sm"><use href="/icons.svg#chevron-down"></use></svg>Le destinataire est une autre personne</summary>
+            <div class="grille-2">
+              <label class="champ">Nom du destinataire
+                <input name="destinataire_nom" maxlength="100">
+              </label>
+              <label class="champ">Son téléphone
+                <input name="destinataire_tel" type="tel" inputmode="tel" placeholder="77 123 45 67">
+              </label>
+            </div>
+          </details>
+        </div>
+
+      </form>
+    </section>
+  </main>
+
+  <!-- Barre de commande -->
+  <div class="barre-commande">
+    <div class="resume">
+      <span class="resume-prix" id="resume-prix">— FCFA</span>
+      <span class="resume-detail" id="resume-detail">Placez le départ et l'arrivée</span>
+    </div>
+    <button type="submit" form="f-course" class="btn btn-primaire" id="btn-commander">
+      Commander <svg class="ic" aria-hidden="true"><use href="/icons.svg#arrow-right"></use></svg>
+    </button>
+  </div>
+
+  <!-- Confirmation avant envoi -->
+  <div class="tiroir" id="confirmation" hidden>
+    <div class="tiroir-fond" data-fermer-conf></div>
+    <aside class="tiroir-panneau panneau-conf" role="dialog" aria-modal="true" aria-labelledby="titre-conf">
+      <header>
+        <h2 id="titre-conf">Vérifiez votre commande</h2>
+        <button type="button" class="btn-rond" data-fermer-conf aria-label="Fermer"><svg class="ic"><use href="/icons.svg#x"></use></svg></button>
+      </header>
+      <div class="contenu" id="conf-contenu"></div>
+      <footer class="conf-pied">
+        <button type="button" class="btn" data-fermer-conf>Modifier</button>
+        <button type="button" class="btn btn-primaire" id="conf-envoyer"></button>
+      </footer>
+    </aside>
+  </div>
+
+  <!-- Tiroir : mes livraisons -->
+  <div class="tiroir" id="tiroir" hidden>
+    <div class="tiroir-fond" data-fermer></div>
+    <aside class="tiroir-panneau" role="dialog" aria-modal="true" aria-labelledby="titre-tiroir">
+      <header>
+        <h2 id="titre-tiroir">Mes livraisons</h2>
+        <button type="button" class="btn-rond" data-fermer aria-label="Fermer"><svg class="ic"><use href="/icons.svg#x"></use></svg></button>
+      </header>
+      <div class="contenu">
+        <button type="button" id="btn-notif" class="btn" style="width:100%;margin-bottom:14px"></button>
+        <div id="liste"></div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="/vendor/leaflet/leaflet.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>window.ROLE = 'client';</script>
+  <script src="/js/commun.js"></script>
+  <script src="/js/carte.js"></script>
+  <script src="/js/client.js"></script>
+</body>
+</html>
