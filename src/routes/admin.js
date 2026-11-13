@@ -6,6 +6,12 @@ const { parametres } = require('../tarifs');
 const { SELECT_COURSE } = require('../courses-service');
 
 router.use(exiger('admin'));
+// Un admin retiré perd l'accès tout de suite, même si son jeton n'a pas expiré
+router.use(a(async (req, res, next) => {
+  const r = await query(`SELECT 1 FROM utilisateurs WHERE id = $1 AND role = 'admin'`, [req.user.id]);
+  if (!r.rows.length) return res.status(401).json({ erreur: 'Compte administrateur introuvable, reconnectez-vous' });
+  next();
+}));
 
 router.get('/stats', a(async (req, res) => {
   const p = await parametres();
@@ -107,6 +113,19 @@ router.post('/lieux/:id/valider', a(async (req, res) => {
   res.json(r.rows[0]);
 }));
 
+// Modifier le nom ou la catégorie d'un lieu
+router.put('/lieux/:id', a(async (req, res) => {
+  const { nom, categorie } = req.body || {};
+  const n = String(nom || '').trim().slice(0, 120);
+  if (n.length < 2) return res.status(400).json({ erreur: 'Indiquez le nom du lieu' });
+  const r = await query(
+    'UPDATE lieux SET nom = $2, categorie = $3 WHERE id = $1 RETURNING id, nom, categorie, lat, lng, source',
+    [req.params.id, n, CATEGORIES.includes(categorie) ? categorie : 'autre']
+  );
+  if (!r.rows.length) return res.status(404).json({ erreur: 'Lieu introuvable' });
+  res.json(r.rows[0]);
+}));
+
 router.delete('/lieux/:id', a(async (req, res) => {
   const r = await query('DELETE FROM lieux WHERE id = $1 RETURNING id', [req.params.id]);
   if (!r.rows.length) return res.status(404).json({ erreur: 'Lieu introuvable' });
@@ -129,6 +148,170 @@ router.put('/parametres', a(async (req, res) => {
     );
   }
   res.json(await parametres());
+}));
+
+// =========================================================================
+// Comptes : livreurs et administrateurs (ajouter, modifier, supprimer)
+// =========================================================================
+const bcrypt = require('bcryptjs');
+const { normaliserTel } = require('../auth');
+const { diffuserMaj, notifierNouvelleCourse } = require('../courses-service');
+const push = require('../push');
+
+/** Vérifie nom, téléphone et PIN (PIN facultatif en modification). Renvoie les valeurs propres. */
+async function lireCompte(b, { id = null, pinObligatoire = true } = {}) {
+  const nom = String(b.nom || '').trim().slice(0, 100);
+  const tel = normaliserTel(b.telephone);
+  const pin = String(b.pin || '').trim();
+  if (nom.length < 2) return { erreur: 'Indiquez le nom' };
+  if (!tel) return { erreur: 'Numéro invalide (ex : 77 123 45 67)' };
+  if ((pinObligatoire || pin) && !/^\d{4}$/.test(pin)) return { erreur: 'Le code PIN doit contenir 4 chiffres' };
+  const pris = await query('SELECT id FROM utilisateurs WHERE telephone = $1 AND id <> $2', [tel, id || 0]);
+  if (pris.rows.length) return { erreur: 'Ce numéro est déjà utilisé par un autre compte' };
+  return { nom, tel, pin };
+}
+
+async function creerCompte(req, res, role) {
+  const v = await lireCompte(req.body || {});
+  if (v.erreur) return res.status(400).json({ erreur: v.erreur });
+  const r = await query(
+    `INSERT INTO utilisateurs (nom, telephone, pin_hash, role, actif) VALUES ($1, $2, $3, $4, true)
+     RETURNING id, nom, telephone, role, actif`,
+    [v.nom, v.tel, await bcrypt.hash(v.pin, 10), role]
+  );
+  req.app.get('io').to('admins').emit('livreurs:changement');
+  res.status(201).json(r.rows[0]);
+}
+
+async function modifierCompte(req, res, role) {
+  const v = await lireCompte(req.body || {}, { id: req.params.id, pinObligatoire: false });
+  if (v.erreur) return res.status(400).json({ erreur: v.erreur });
+  const r = v.pin
+    ? await query(`UPDATE utilisateurs SET nom = $2, telephone = $3, pin_hash = $4 WHERE id = $1 AND role = '${role}' RETURNING id, nom, telephone`,
+      [req.params.id, v.nom, v.tel, await bcrypt.hash(v.pin, 10)])
+    : await query(`UPDATE utilisateurs SET nom = $2, telephone = $3 WHERE id = $1 AND role = '${role}' RETURNING id, nom, telephone`,
+      [req.params.id, v.nom, v.tel]);
+  if (!r.rows.length) return res.status(404).json({ erreur: 'Compte introuvable' });
+  req.app.get('io').to('admins').emit('livreurs:changement');
+  res.json(r.rows[0]);
+}
+
+router.post('/livreurs', a((req, res) => creerCompte(req, res, 'livreur')));
+router.put('/livreurs/:id', a((req, res) => modifierCompte(req, res, 'livreur')));
+
+// Supprimer un livreur : impossible pendant une course ; ses anciennes courses restent, sans nom de livreur
+router.delete('/livreurs/:id', a(async (req, res) => {
+  const enCours = await query(`SELECT 1 FROM courses WHERE livreur_id = $1 AND statut IN ('acceptee', 'recuperee')`, [req.params.id]);
+  if (enCours.rows.length) return res.status(409).json({ erreur: 'Ce livreur a une course en cours : remettez-la en attente avant de le supprimer' });
+  await query('UPDATE courses SET livreur_id = NULL WHERE livreur_id = $1', [req.params.id]);
+  const r = await query(`DELETE FROM utilisateurs WHERE id = $1 AND role = 'livreur' RETURNING id`, [req.params.id]);
+  if (!r.rows.length) return res.status(404).json({ erreur: 'Livreur introuvable' });
+  req.app.get('io').to('admins').emit('livreurs:changement');
+  res.json({ ok: true });
+}));
+
+router.get('/admins', a(async (req, res) => {
+  const r = await query(`SELECT id, nom, telephone, cree_le FROM utilisateurs WHERE role = 'admin' ORDER BY nom`);
+  res.json(r.rows.map((u) => ({ ...u, moi: u.id === req.user.id })));
+}));
+router.post('/admins', a((req, res) => creerCompte(req, res, 'admin')));
+router.put('/admins/:id', a((req, res) => modifierCompte(req, res, 'admin')));
+router.delete('/admins/:id', a(async (req, res) => {
+  if (Number(req.params.id) === req.user.id) return res.status(400).json({ erreur: 'Vous ne pouvez pas supprimer votre propre compte' });
+  const n = (await query(`SELECT count(*)::int AS n FROM utilisateurs WHERE role = 'admin'`)).rows[0].n;
+  if (n <= 1) return res.status(400).json({ erreur: 'Il faut garder au moins un administrateur' });
+  const r = await query(`DELETE FROM utilisateurs WHERE id = $1 AND role = 'admin' RETURNING id`, [req.params.id]);
+  if (!r.rows.length) return res.status(404).json({ erreur: 'Administrateur introuvable' });
+  res.json({ ok: true });
+}));
+
+// =========================================================================
+// Courses : modifier, annuler, attribuer, remettre en attente, terminer, supprimer
+// =========================================================================
+const FINIES = ['livree', 'annulee'];
+const lireStatut = async (id) => (await query('SELECT id, statut, livreur_id, paiement_statut FROM courses WHERE id = $1', [id])).rows[0];
+
+router.put('/courses/:id', a(async (req, res) => {
+  const b = req.body || {};
+  const c = await lireStatut(req.params.id);
+  if (!c) return res.status(404).json({ erreur: 'Course introuvable' });
+  const texte = (v, max) => String(v || '').trim().slice(0, max);
+  const prix = Math.round(Number(b.prix));
+  if (!Number.isFinite(prix) || prix < 0) return res.status(400).json({ erreur: 'Prix invalide' });
+  if (texte(b.description, 500).length < 2) return res.status(400).json({ erreur: 'Indiquez ce qu\'il faut livrer' });
+  if (!texte(b.depart_repere, 300) || !texte(b.arrivee_repere, 300)) return res.status(400).json({ erreur: 'Indiquez le départ et l\'arrivée' });
+  const tel = normaliserTel(b.client_tel);
+  if (!tel) return res.status(400).json({ erreur: 'Numéro du client invalide' });
+  const destTel = b.destinataire_tel ? normaliserTel(b.destinataire_tel) : null;
+  if (b.destinataire_tel && !destTel) return res.status(400).json({ erreur: 'Numéro du destinataire invalide' });
+  await query(
+    `UPDATE courses SET description = $2, prix = $3, depart_repere = $4, arrivee_repere = $5,
+       client_nom = $6, client_tel = $7, destinataire_nom = $8, destinataire_tel = $9 WHERE id = $1`,
+    [req.params.id, texte(b.description, 500), prix, texte(b.depart_repere, 300), texte(b.arrivee_repere, 300),
+      texte(b.client_nom, 100) || 'Client', tel, texte(b.destinataire_nom, 100) || null, destTel]
+  );
+  res.json(await diffuserMaj(req.app.get('io'), req.params.id, { notifierClient: false }));
+}));
+
+router.post('/courses/:id/annuler', a(async (req, res) => {
+  const c = await lireStatut(req.params.id);
+  if (!c) return res.status(404).json({ erreur: 'Course introuvable' });
+  if (FINIES.includes(c.statut)) return res.status(400).json({ erreur: 'Cette course est déjà terminée' });
+  await query(`UPDATE courses SET statut = 'annulee', annulee_le = now() WHERE id = $1`, [req.params.id]);
+  const course = await diffuserMaj(req.app.get('io'), req.params.id, { message: 'Votre livraison a été annulée par Thiak Thiak Dialaw. Appelez-nous pour plus d\'informations.' });
+  res.json({ ...course, a_rembourser: c.paiement_statut === 'paye' });
+}));
+
+// Remettre en attente : le livreur est retiré et les autres livreurs sont de nouveau prévenus
+router.post('/courses/:id/liberer', a(async (req, res) => {
+  const c = await lireStatut(req.params.id);
+  if (!c) return res.status(404).json({ erreur: 'Course introuvable' });
+  if (!['acceptee', 'recuperee'].includes(c.statut)) return res.status(400).json({ erreur: 'Seule une course en cours peut être remise en attente' });
+  await query(`UPDATE courses SET statut = 'en_attente', livreur_id = NULL, acceptee_le = NULL, recuperee_le = NULL WHERE id = $1`, [req.params.id]);
+  const io = req.app.get('io');
+  const course = await diffuserMaj(io, req.params.id, { message: 'Nous cherchons un autre livreur pour votre livraison.' });
+  io.to('user:' + c.livreur_id).emit('course:maj', course); // l'ancien livreur voit la course disparaître
+  await notifierNouvelleCourse(io, course);
+  res.json(course);
+}));
+
+// Attribuer (ou réattribuer) une course à un livreur précis
+router.post('/courses/:id/attribuer', a(async (req, res) => {
+  const livreurId = Number((req.body || {}).livreur_id);
+  const c = await lireStatut(req.params.id);
+  if (!c) return res.status(404).json({ erreur: 'Course introuvable' });
+  if (!['en_attente', 'acceptee'].includes(c.statut)) return res.status(400).json({ erreur: 'Cette course ne peut plus changer de livreur' });
+  const l = (await query(`SELECT id, actif FROM utilisateurs WHERE id = $1 AND role = 'livreur'`, [livreurId])).rows[0];
+  if (!l || !l.actif) return res.status(400).json({ erreur: 'Choisissez un livreur validé' });
+  const occupe = await query(`SELECT 1 FROM courses WHERE livreur_id = $1 AND statut IN ('acceptee', 'recuperee') AND id <> $2`, [livreurId, req.params.id]);
+  if (occupe.rows.length) return res.status(409).json({ erreur: 'Ce livreur a déjà une course en cours' });
+  await query(`UPDATE courses SET statut = 'acceptee', livreur_id = $2, acceptee_le = now() WHERE id = $1`, [req.params.id, livreurId]);
+  const io = req.app.get('io');
+  const course = await diffuserMaj(io, req.params.id);
+  if (c.livreur_id && c.livreur_id !== livreurId) io.to('user:' + c.livreur_id).emit('course:maj', course);
+  await push.envoyer([livreurId], {
+    titre: 'Course attribuée par l\'administrateur', corps: `${course.depart_repere} → ${course.arrivee_repere}`,
+    url: '/livreur.html', tag: 'course-' + course.id, urgent: true,
+  });
+  res.json(course);
+}));
+
+// Marquer livrée (correction quand le livreur a oublié de confirmer)
+router.post('/courses/:id/terminer', a(async (req, res) => {
+  const c = await lireStatut(req.params.id);
+  if (!c) return res.status(404).json({ erreur: 'Course introuvable' });
+  if (!['acceptee', 'recuperee'].includes(c.statut)) return res.status(400).json({ erreur: 'Seule une course en cours peut être marquée livrée' });
+  await query(`UPDATE courses SET statut = 'livree', livree_le = now(), recuperee_le = coalesce(recuperee_le, now()) WHERE id = $1`, [req.params.id]);
+  res.json(await diffuserMaj(req.app.get('io'), req.params.id));
+}));
+
+router.delete('/courses/:id', a(async (req, res) => {
+  const c = await lireStatut(req.params.id);
+  if (!c) return res.status(404).json({ erreur: 'Course introuvable' });
+  if (['acceptee', 'recuperee'].includes(c.statut)) return res.status(409).json({ erreur: 'Course en cours : annulez-la ou remettez-la en attente avant de la supprimer' });
+  await query('DELETE FROM courses WHERE id = $1', [req.params.id]);
+  req.app.get('io').to(['livreurs', 'admins']).emit('courses:changement');
+  res.json({ ok: true });
 }));
 
 module.exports = router;

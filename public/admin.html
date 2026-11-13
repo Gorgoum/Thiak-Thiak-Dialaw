@@ -23,7 +23,7 @@
       <div class="stats" id="stats"></div>
 
       <div class="card">
-        <h2>Livreurs</h2>
+        <h2>Livreurs <button type="button" class="btn-ajout" id="ajout-livreur"><svg class="ic ic-sm"><use href="/icons.svg#plus"></use></svg> Ajouter un livreur</button></h2>
         <div class="defile"><table class="tableau" id="livreurs"></table></div>
       </div>
 
@@ -82,6 +82,12 @@
       </div>
 
       <div class="card">
+        <h2>Administrateurs <button type="button" class="btn-ajout" id="ajout-admin"><svg class="ic ic-sm"><use href="/icons.svg#plus"></use></svg> Ajouter un administrateur</button></h2>
+        <p class="aide">Les administrateurs ont tous les droits : livreurs, courses, lieux et tarifs.</p>
+        <div class="defile"><table class="tableau" id="admins"></table></div>
+      </div>
+
+      <div class="card">
         <h2>Tarifs et réglages</h2>
         <form id="f-params">
           <div class="grille-params">
@@ -98,6 +104,21 @@
       </div>
     </section>
   </main>
+
+  <!-- Fenêtre de modification (livreur, administrateur, course, lieu) -->
+  <dialog id="fenetre" class="fenetre" aria-labelledby="fenetre-titre">
+    <form method="dialog" id="fenetre-form">
+      <header>
+        <h2 id="fenetre-titre"></h2>
+        <button type="button" class="btn-rond" data-fermer-fenetre aria-label="Fermer"><svg class="ic"><use href="/icons.svg#x"></use></svg></button>
+      </header>
+      <div class="fenetre-corps" id="fenetre-corps"></div>
+      <footer id="fenetre-pied">
+        <button type="button" data-fermer-fenetre>Fermer</button>
+        <button type="submit" class="btn-primaire" id="fenetre-ok">Enregistrer</button>
+      </footer>
+    </form>
+  </dialog>
 
   <script src="/vendor/leaflet/leaflet.js"></script>
   <script src="/vendor/maplibre/maplibre-gl.js"></script>

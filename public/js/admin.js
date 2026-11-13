@@ -16,35 +16,175 @@ async function chargerStats() {
     .map(([v, l]) => `<div class="stat"><div class="v">${esc(v)}</div><div class="l">${l}</div></div>`).join('');
 }
 
+let livreurs = []; // derniers livreurs chargés (pour les fenêtres « Modifier » et « Attribuer »)
+let courses = new Map();
+
 async function chargerLivreurs() {
-  const l = await api('GET', '/api/admin/livreurs');
+  livreurs = await api('GET', '/api/admin/livreurs');
   document.getElementById('livreurs').innerHTML = `
-    <tr><th>Nom</th><th>Téléphone</th><th>État</th><th>Livrées</th><th>Note</th><th></th></tr>
-    ${l.map((x) => `<tr>
-      <td>${esc(x.nom)}</td>
+    <tr><th>Nom</th><th>Actions</th><th>Téléphone</th><th>État</th><th>Livrées</th><th>Note</th></tr>
+    ${livreurs.map((x) => `<tr>
+      <td><b>${esc(x.nom)}</b></td>
+      <td class="actions-ligne">${x.actif
+        ? `<button data-livreur="${x.id}" data-actif="0">${ico('power', 'ic-sm')} Désactiver</button>`
+        : `<button class="jaune" data-livreur="${x.id}" data-actif="1">${ico('check', 'ic-sm')} Valider</button>`}
+        <button data-modifier-livreur="${x.id}">${ico('settings', 'ic-sm')} Modifier</button>
+        <button class="danger" data-supprimer-livreur="${x.id}" aria-label="Supprimer ${esc(x.nom)}">${ico('trash-2', 'ic-sm')}</button></td>
       <td>${lienTel(x.telephone)}</td>
       <td>${!x.actif ? '<span class="badge b-en_attente">À valider</span>' : x.disponible ? '<span class="badge b-livree">Disponible</span>' : '<span class="badge b-annulee">Hors ligne</span>'}</td>
       <td>${x.nb_livrees}</td>
       <td>${x.note_moyenne ?? '–'}</td>
-      <td>${x.actif
-        ? `<button class="danger" data-livreur="${x.id}" data-actif="0">Désactiver</button>`
-        : `<button class="jaune" data-livreur="${x.id}" data-actif="1">Valider</button>`}</td>
     </tr>`).join('') || '<tr><td colspan="6" class="vide">Aucun livreur inscrit.</td></tr>'}`;
 }
 
 async function chargerCourses() {
   const c = await api('GET', '/api/admin/courses' + (filtre ? '?statut=' + filtre : ''));
+  courses = new Map(c.map((x) => [x.id, x]));
   document.getElementById('courses').innerHTML = `
-    <tr><th>#</th><th>Date</th><th>Statut</th><th>Trajet</th><th>Client</th><th>Livreur</th><th>Prix</th></tr>
-    ${c.map((x) => `<tr>
+    <tr><th>#</th><th></th><th>Date</th><th>Statut</th><th>Trajet</th><th>Client</th><th>Livreur</th><th>Prix</th></tr>
+    ${c.map((x) => `<tr class="ligne-cliquable" data-gerer-course="${x.id}">
       <td>${x.id}</td>
+      <td><button data-gerer-course="${x.id}">${ico('settings', 'ic-sm')} Gérer</button></td>
       <td>${dateCourte(x.cree_le)}</td>
       <td>${badge(x.statut)}</td>
       <td><div class="trajet" style="margin:0"><div>${esc(x.depart_repere)}</div><div>${esc(x.arrivee_repere)}</div></div><span class="meta">${ico(x.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${esc(x.description)}</span></td>
       <td>${esc(x.client_nom)}<br>${lienTel(x.client_tel)}</td>
       <td>${x.livreur_nom ? `${esc(x.livreur_nom)}<br>${lienTel(x.livreur_tel)}` : '–'}</td>
       <td class="prix-course">${fcfa(x.prix)}</td>
-    </tr>`).join('') || '<tr><td colspan="7" class="vide">Aucune course.</td></tr>'}`;
+    </tr>`).join('') || '<tr><td colspan="8" class="vide">Aucune course.</td></tr>'}`;
+}
+
+async function chargerAdmins() {
+  const l = await api('GET', '/api/admin/admins');
+  document.getElementById('admins').innerHTML = `
+    <tr><th>Nom</th><th>Téléphone</th><th>Actions</th></tr>
+    ${l.map((x) => `<tr>
+      <td>${esc(x.nom)}${x.moi ? ' <span class="badge b-livree">Vous</span>' : ''}</td>
+      <td>${lienTel(x.telephone)}</td>
+      <td class="actions-ligne">
+        <button data-modifier-admin="${x.id}" data-nom="${esc(x.nom)}" data-tel="${esc(x.telephone)}">${ico('settings', 'ic-sm')} Modifier</button>
+        ${x.moi ? '' : `<button class="danger" data-supprimer-admin="${x.id}" aria-label="Supprimer ${esc(x.nom)}">${ico('trash-2', 'ic-sm')}</button>`}</td>
+    </tr>`).join('')}`;
+}
+
+// =========================================================================
+// Fenêtre de modification
+// =========================================================================
+const fenetre = document.getElementById('fenetre');
+let surEnregistrer = null;
+
+/** Ouvre la fenêtre : titre, contenu HTML, action du bouton Enregistrer (null = pas de bouton). */
+function ouvrirFenetre(titre, contenu, enregistrer, libelle = 'Enregistrer') {
+  document.getElementById('fenetre-titre').textContent = titre;
+  document.getElementById('fenetre-corps').innerHTML = contenu;
+  const ok = document.getElementById('fenetre-ok');
+  ok.hidden = !enregistrer;
+  ok.textContent = libelle;
+  surEnregistrer = enregistrer;
+  fenetre.showModal();
+  const premier = fenetre.querySelector('.fenetre-corps input, .fenetre-corps select');
+  if (premier) premier.focus();
+}
+const fermerFenetre = () => fenetre.close();
+fenetre.addEventListener('click', (e) => {
+  if (e.target === fenetre || e.target.closest('[data-fermer-fenetre]')) fermerFenetre();
+});
+document.getElementById('fenetre-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!surEnregistrer) return;
+  const d = Object.fromEntries(new FormData(e.target));
+  const ok = document.getElementById('fenetre-ok');
+  ok.disabled = true;
+  try {
+    await surEnregistrer(d);
+    fermerFenetre();
+  } catch (err) { toast(err.message, true); } finally { ok.disabled = false; }
+});
+
+const champ = (label, nom, valeur = '', attrs = '') => `<label>${label}<input name="${nom}" value="${esc(valeur ?? '')}" ${attrs}></label>`;
+const champsCompte = (u = {}) => `
+  ${champ('Nom complet', 'nom', u.nom, 'required maxlength="100" autocomplete="off"')}
+  ${champ('Téléphone', 'telephone', u.telephone, 'required type="tel" inputmode="tel" placeholder="77 123 45 67"')}
+  ${champ(u.id ? 'Nouveau code PIN (laisser vide pour ne pas changer)' : 'Code PIN (4 chiffres)', 'pin', '',
+    `${u.id ? '' : 'required'} inputmode="numeric" pattern="\\d{4}" maxlength="4" autocomplete="new-password"`)}`;
+
+function fenetreCompte(role, u = null) {
+  const qui = role === 'admin' ? 'administrateur' : 'livreur';
+  const route = role === 'admin' ? '/api/admin/admins' : '/api/admin/livreurs';
+  ouvrirFenetre(u ? `Modifier le ${qui}` : `Ajouter un ${qui}`, champsCompte(u || {}), async (d) => {
+    if (u) await api('PUT', `${route}/${u.id}`, d);
+    else await api('POST', route, d);
+    toast(u ? 'Modifications enregistrées' : `${d.nom} ajouté. Donnez-lui son numéro et son code PIN pour se connecter.`);
+    toutCharger();
+  }, u ? 'Enregistrer' : 'Ajouter');
+}
+
+// ---------- Gérer une course ----------
+function fenetreCourse(x) {
+  const enCours = ['acceptee', 'recuperee'].includes(x.statut);
+  const finie = ['livree', 'annulee'].includes(x.statut);
+  const libres = livreurs.filter((l) => l.actif);
+  const actions = [];
+  if (['en_attente', 'acceptee'].includes(x.statut) && libres.length) {
+    actions.push(`<div class="ligne-action">
+      <select id="choix-livreur" aria-label="Livreur">${libres.map((l) => `<option value="${l.id}" ${l.id === x.livreur_id ? 'selected' : ''}>${esc(l.nom)}${l.disponible ? ' · disponible' : ''}</option>`).join('')}</select>
+      <button type="button" data-action="attribuer">${ico('bike', 'ic-sm')} ${x.livreur_id ? 'Changer de livreur' : 'Attribuer'}</button></div>`);
+  }
+  if (enCours) {
+    actions.push(`<button type="button" data-action="liberer">${ico('undo-2', 'ic-sm')} Remettre en attente (retirer le livreur)</button>`);
+    actions.push(`<button type="button" class="ok" data-action="terminer">${ico('circle-check', 'ic-sm')} Marquer comme livrée</button>`);
+  }
+  if (!finie) actions.push(`<button type="button" class="danger" data-action="annuler">${ico('circle-x', 'ic-sm')} Annuler la course</button>`);
+  if (!enCours) actions.push(`<button type="button" class="danger" data-action="supprimer">${ico('trash-2', 'ic-sm')} Supprimer définitivement</button>`);
+
+  ouvrirFenetre(`Course n° ${x.id}`, `
+    <p class="meta" style="margin:0 0 12px">${badge(x.statut)} · ${dateCourte(x.cree_le)} · ${Number(x.distance_km).toLocaleString('fr-FR')} km
+      ${x.paiement !== 'especes' ? ` · ${x.paiement === 'wave' ? 'Wave' : 'Orange Money'} (${x.paiement_statut === 'paye' ? 'payé' : 'non payé'})` : ' · espèces'}</p>
+    <div class="actions-course">${actions.join('')}</div>
+    <h3 class="sous-titre-fenetre">Modifier les informations</h3>
+    ${champ('Départ', 'depart_repere', x.depart_repere, 'required maxlength="300"')}
+    ${champ('Arrivée', 'arrivee_repere', x.arrivee_repere, 'required maxlength="300"')}
+    ${champ('À livrer', 'description', x.description, 'required maxlength="500"')}
+    ${champ('Prix (FCFA)', 'prix', x.prix, 'required type="number" min="0" step="50"')}
+    <div class="grille-2">
+      ${champ('Nom du client', 'client_nom', x.client_nom, 'maxlength="100"')}
+      ${champ('Téléphone du client', 'client_tel', x.client_tel, 'required type="tel"')}
+      ${champ('Nom du destinataire', 'destinataire_nom', x.destinataire_nom, 'maxlength="100"')}
+      ${champ('Téléphone du destinataire', 'destinataire_tel', x.destinataire_tel, 'type="tel"')}
+    </div>`, async (d) => {
+    await api('PUT', `/api/admin/courses/${x.id}`, d);
+    toast('Course modifiée');
+    toutCharger();
+  });
+
+  document.querySelector('#fenetre-corps .actions-course').onclick = async (e) => {
+    const b = e.target.closest('[data-action]');
+    if (!b) return;
+    const a = b.dataset.action;
+    const questions = {
+      liberer: 'Retirer le livreur et proposer de nouveau cette course aux autres livreurs ?',
+      terminer: 'Marquer cette course comme livrée ?',
+      annuler: `Annuler la course n° ${x.id} ? Le client sera prévenu.`,
+      supprimer: `Supprimer définitivement la course n° ${x.id} ? Elle disparaîtra aussi des statistiques.`,
+    };
+    if (questions[a] && !confirm(questions[a])) return;
+    b.disabled = true;
+    try {
+      if (a === 'attribuer') {
+        await api('POST', `/api/admin/courses/${x.id}/attribuer`, { livreur_id: Number(document.getElementById('choix-livreur').value) });
+        toast('Course attribuée : le livreur est prévenu');
+      } else if (a === 'supprimer') {
+        await api('DELETE', `/api/admin/courses/${x.id}`);
+        toast('Course supprimée');
+      } else {
+        const r = await api('POST', `/api/admin/courses/${x.id}/${a}`);
+        toast({ liberer: 'Course remise en attente', terminer: 'Course marquée livrée', annuler: 'Course annulée' }[a]);
+        if (r && r.a_rembourser) toast('Cette course était déjà payée en ligne : pensez à rembourser le client.', true);
+      }
+      fermerFenetre();
+      toutCharger();
+    } catch (err) { toast(err.message, true); b.disabled = false; }
+  };
 }
 
 async function chargerParams() {
@@ -53,15 +193,50 @@ async function chargerParams() {
   for (const [k, v] of Object.entries(p)) if (f[k]) f[k].value = v;
 }
 
-const toutCharger = () => Promise.all([chargerStats(), chargerLivreurs(), chargerCourses()]).catch((e) => toast(e.message, true));
+const toutCharger = () => Promise.all([chargerStats(), chargerLivreurs(), chargerCourses(), chargerAdmins()]).catch((e) => toast(e.message, true));
 
 document.getElementById('livreurs').addEventListener('click', async (e) => {
-  const b = e.target.closest('button[data-livreur]');
+  const b = e.target.closest('button');
   if (!b) return;
   try {
-    await api('POST', `/api/admin/livreurs/${b.dataset.livreur}/activer`, { actif: b.dataset.actif === '1' });
-    toast(b.dataset.actif === '1' ? 'Livreur validé' : 'Livreur désactivé');
+    if (b.dataset.livreur) {
+      await api('POST', `/api/admin/livreurs/${b.dataset.livreur}/activer`, { actif: b.dataset.actif === '1' });
+      toast(b.dataset.actif === '1' ? 'Livreur validé' : 'Livreur désactivé');
+    } else if (b.dataset.modifierLivreur) {
+      fenetreCompte('livreur', livreurs.find((l) => l.id === Number(b.dataset.modifierLivreur)));
+      return;
+    } else if (b.dataset.supprimerLivreur) {
+      const l = livreurs.find((x) => x.id === Number(b.dataset.supprimerLivreur));
+      if (!confirm(`Supprimer définitivement ${l.nom} ?\n\nSes anciennes courses restent, sans nom de livreur. Pour garder l'historique, préférez « Désactiver ».`)) return;
+      await api('DELETE', `/api/admin/livreurs/${l.id}`);
+      toast('Livreur supprimé');
+    } else return;
     toutCharger();
+  } catch (err) { toast(err.message, true); }
+});
+document.getElementById('ajout-livreur').onclick = () => fenetreCompte('livreur');
+document.getElementById('ajout-admin').onclick = () => fenetreCompte('admin');
+
+document.getElementById('courses').addEventListener('click', (e) => {
+  if (e.target.closest('a')) return; // un toucher sur un numéro lance l'appel, sans ouvrir la fenêtre
+  const b = e.target.closest('[data-gerer-course]');
+  if (b) fenetreCourse(courses.get(Number(b.dataset.gererCourse)));
+});
+
+document.getElementById('admins').addEventListener('click', async (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  try {
+    if (b.dataset.modifierAdmin) {
+      fenetreCompte('admin', { id: Number(b.dataset.modifierAdmin), nom: b.dataset.nom, telephone: b.dataset.tel });
+      return;
+    }
+    if (b.dataset.supprimerAdmin) {
+      if (!confirm('Retirer cet administrateur ? Il ne pourra plus se connecter.')) return;
+      await api('DELETE', `/api/admin/admins/${b.dataset.supprimerAdmin}`);
+      toast('Administrateur retiré');
+      chargerAdmins();
+    }
   } catch (err) { toast(err.message, true); }
 });
 
@@ -93,7 +268,9 @@ async function chargerLieuxAdmin() {
     ${lieux.map((l) => `<tr>
       <td><a href="#" data-aller="${l.lat},${l.lng}">${esc(l.nom)}</a></td>
       <td>${ico(ICONES[l.categorie] || 'map-pin', 'ic-sm')} ${esc(NOMS_CATEGORIES[l.categorie] || l.categorie)}</td>
-      <td><button class="danger" data-supprimer-lieu="${l.id}">Supprimer</button></td>
+      <td class="actions-ligne">
+        <button data-modifier-lieu="${l.id}" data-nom="${esc(l.nom)}" data-cat="${esc(l.categorie)}">${ico('settings', 'ic-sm')} Modifier</button>
+        <button class="danger" data-supprimer-lieu="${l.id}" aria-label="Supprimer ${esc(l.nom)}">${ico('trash-2', 'ic-sm')}</button></td>
     </tr>`).join('') || '<tr><td colspan="3" class="vide">Aucun lieu ajouté pour l\'instant.</td></tr>'}`;
 }
 
@@ -153,6 +330,18 @@ function initLieux() {
       const [lat, lng] = aller.dataset.aller.split(',').map(Number);
       carteLieux.flyTo([lat, lng], ZOOM_LIEU);
       document.getElementById('bloc-carte').scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+    const m = e.target.closest('[data-modifier-lieu]');
+    if (m) {
+      ouvrirFenetre('Modifier le lieu', `
+        ${champ('Nom du lieu', 'nom', m.dataset.nom, 'required maxlength="120"')}
+        <label>Catégorie<select name="categorie">${optionsCategories(m.dataset.cat)}</select></label>`, async (d) => {
+        await api('PUT', `/api/admin/lieux/${m.dataset.modifierLieu}`, d);
+        toast('Lieu modifié');
+        await c.rafraichir(true);
+        chargerLieuxAdmin();
+      });
       return;
     }
     const b = e.target.closest('[data-supprimer-lieu]');
