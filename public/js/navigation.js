@@ -20,6 +20,22 @@ const DIRECTIONS = {
   uturn: ['demi-tour', 'undo-2'],
 };
 
+// Carte de navigation orientée (MapLibre)
+const STYLE_NAV = 'https://tiles.openfreemap.org/styles/liberty';
+const INCLINAISON = 55; // degrés : vue en perspective, comme un GPS
+const ZOOM_NAV = 17.3;
+
+/** Cap (0 = nord, 90 = est) du point a vers le point b, en degrés ; a, b = [lat, lng]. */
+function capDeg(a, b) {
+  const r = Math.PI / 180;
+  const p1 = a[0] * r;
+  const p2 = b[0] * r;
+  const dl = (b[1] - a[1]) * r;
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return ((Math.atan2(y, x) / r) + 360) % 360;
+}
+
 const fmtDistance = (m) => (m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`);
 const fmtDistanceVoix = (m) => (m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} mètres` : `${(m / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} kilomètres`);
 const ordinal = (n) => (n === 1 ? '1re' : `${n}e`);
@@ -94,6 +110,7 @@ const Guidage = {
     this.surFin = surFin;
     this.actif = true;
     this.suivre = true;
+    this.cap = 0;
     this.voix = Stock.get('tt_voix') !== 'non';
     document.body.classList.add('guidage');
     $nav('nav-bandeau').hidden = false;
@@ -101,8 +118,81 @@ const Guidage = {
     this.afficher(ico('loader-circle', 'tourne'), 'Calcul de l\'itinéraire…', '');
     this.majBoutonVoix();
     carte.on('dragstart', this._lacher = () => { this.suivre = false; $nav('nav-recentrer').hidden = false; });
+    this.carteNav = this.creerCarteNav(position);
     try { this.verrouEcran = await navigator.wakeLock.request('screen'); } catch { /* non supporté */ }
     await this.calculer(position);
+  },
+
+  // ---------- Carte de navigation orientée (MapLibre), comme un GPS ----------
+  // La carte tourne dans le sens de la route, inclinée en 3D, flèche du livreur en bas de l'écran.
+  // Sans WebGL : on garde la carte Leaflet habituelle (nord en haut).
+  creerCarteNav(position) {
+    const el = $nav('nav-carte');
+    if (!el || !window.maplibregl || (typeof webglDisponible === 'function' && !webglDisponible())) return null;
+    el.hidden = false;
+    let m;
+    try {
+      m = new maplibregl.Map({
+        container: el,
+        style: STYLE_NAV,
+        center: [position.lng, position.lat],
+        zoom: 17,
+        pitch: INCLINAISON,
+        bearing: 0,
+        attributionControl: { compact: true },
+        dragRotate: true,
+      });
+    } catch (e) {
+      el.hidden = true;
+      return null;
+    }
+    m.on('dragstart', () => { this.suivre = false; $nav('nav-recentrer').hidden = false; });
+
+    const fleche = document.createElement('div');
+    fleche.className = 'fleche-nav';
+    fleche.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 L19.5 20 L12 16.2 L4.5 20 Z"/></svg>';
+    this.marqueurMoi = new maplibregl.Marker({ element: fleche, rotationAlignment: 'map', pitchAlignment: 'map' })
+      .setLngLat([position.lng, position.lat]).addTo(m);
+
+    const pin = document.createElement('div');
+    pin.innerHTML = '<div class="pin pin-arrivee"><span>B</span></div>';
+    this.marqueurCible = new maplibregl.Marker({ element: pin, anchor: 'bottom', offset: [0, -4] })
+      .setLngLat([this.cible.lng, this.cible.lat]).addTo(m);
+    return m;
+  },
+
+  /** Trace (ou met à jour) l'itinéraire sur la carte de navigation. */
+  tracerRouteNav() {
+    const m = this.carteNav;
+    if (!m || !this.route) return;
+    const donnees = { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: this.route.coords.map(([lat, lng]) => [lng, lat]) } };
+    const appliquer = () => {
+      const source = m.getSource('itineraire');
+      if (source) { source.setData(donnees); return; }
+      m.addSource('itineraire', { type: 'geojson', data: donnees });
+      const style = { 'line-cap': 'round', 'line-join': 'round' };
+      m.addLayer({ id: 'itineraire-bord', type: 'line', source: 'itineraire', layout: style, paint: { 'line-color': '#1a56c4', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 6, 18, 18] } });
+      m.addLayer({ id: 'itineraire', type: 'line', source: 'itineraire', layout: style, paint: { 'line-color': '#4285f4', 'line-width': ['interpolate', ['linear'], ['zoom'], 13, 4, 18, 13] } });
+    };
+    if (m.isStyleLoaded()) appliquer(); else m.once('load', appliquer);
+  },
+
+  /** Suit le livreur : carte tournée dans le sens de la route, livreur dans le bas de l'écran. */
+  suivreSurCarteNav(pos, instantane = false) {
+    const m = this.carteNav;
+    if (!m) return;
+    this.marqueurMoi.setLngLat([pos.lng, pos.lat]).setRotation(this.cap);
+    if (!this.suivre) return;
+    const hauteur = m.getContainer().clientHeight || 600;
+    m.easeTo({
+      center: [pos.lng, pos.lat],
+      bearing: this.cap,
+      pitch: INCLINAISON,
+      zoom: ZOOM_NAV,
+      padding: { top: Math.round(hauteur * 0.45), bottom: 90, left: 0, right: 0 },
+      duration: instantane ? 0 : 1000,
+      essential: true,
+    });
   },
 
   async calculer(position) {
@@ -122,6 +212,7 @@ const Guidage = {
       L.polyline(this.route.coords, { color: '#ffffff', weight: 10, opacity: 0.9, interactive: false }).addTo(this.carte),
       L.polyline(this.route.coords, { color: '#2e90fa', weight: 6, opacity: 1, interactive: false }).addTo(this.carte),
     ];
+    this.tracerRouteNav();
     this.majPosition(position, true);
   },
 
@@ -138,8 +229,14 @@ const Guidage = {
     }
     // Hors du trajet ? (deux mesures de suite pour éviter les sauts du GPS)
     let min = Infinity;
+    let segment = 0;
     const c = this.route.coords;
-    for (let i = 0; i < c.length - 1; i++) min = Math.min(min, distanceSegmentM(pos, c[i], c[i + 1]));
+    for (let i = 0; i < c.length - 1; i++) {
+      const d = distanceSegmentM(pos, c[i], c[i + 1]);
+      if (d < min) { min = d; segment = i; }
+    }
+    // Sens de la marche = direction du tronçon de route où se trouve le livreur (stable même à pied ou à l'arrêt)
+    if (c.length > 1) this.cap = capDeg(c[segment], c[Math.min(segment + 1, c.length - 1)]);
     this.horsRoute = min > SEUIL_HORS_ROUTE_M ? this.horsRoute + 1 : 0;
     if (this.horsRoute >= 2 && Date.now() - this.dernierCalcul > 10000) {
       this.parler('Nouvel itinéraire');
@@ -172,7 +269,8 @@ const Guidage = {
     $nav('nav-reste').textContent = `${minutes} min · ${fmtDistance(reste)}`;
     $nav('nav-eta').textContent = `Arrivée vers ${heure}`;
 
-    if (this.suivre) this.carte.setView([pos.lat, pos.lng], Math.max(this.carte.getZoom(), 17), { animate: true });
+    if (this.carteNav) this.suivreSurCarteNav(pos, premiere);
+    else if (this.suivre) this.carte.setView([pos.lat, pos.lng], Math.max(this.carte.getZoom(), 17), { animate: true });
   },
 
   reste(pos, dEtape) {
@@ -195,6 +293,11 @@ const Guidage = {
     if (this.carte && this._lacher) this.carte.off('dragstart', this._lacher);
     if (this.verrouEcran) { this.verrouEcran.release().catch(() => {}); this.verrouEcran = null; }
     if ('speechSynthesis' in window) speechSynthesis.cancel();
+    if (this.carteNav) {
+      this.carteNav.remove();
+      this.carteNav = null;
+      $nav('nav-carte').hidden = true;
+    }
     this.actif = false;
     this.route = null;
     if (nettoyer) {
@@ -208,7 +311,9 @@ const Guidage = {
   recentrer() {
     this.suivre = true;
     $nav('nav-recentrer').hidden = true;
-    if (maPosition) this.carte.setView([maPosition.lat, maPosition.lng], 17);
+    if (!maPosition) return;
+    if (this.carteNav) this.suivreSurCarteNav(maPosition);
+    else this.carte.setView([maPosition.lat, maPosition.lng], 17);
   },
 
   basculerVoix() {

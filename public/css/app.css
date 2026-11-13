@@ -721,3 +721,17 @@ body.guidage .carte-course .leaflet-control-zoom { display: none !important; }
 .leaflet-container:not(.mode-satellite) .etiquette-lieu { box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
 .leaflet-container { background: #f2efe9; }
 .leaflet-container.mode-satellite { background: #1b2a24; }
+
+/* ---------- Carte de navigation orientée (guidage du livreur) ---------- */
+.nav-carte { position: absolute; inset: 0; z-index: 500; background: #f2efe9; }
+.nav-carte .maplibregl-ctrl-bottom-right { bottom: calc(80px + env(safe-area-inset-bottom)); }
+.fleche-nav {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, .35), 0 0 0 8px rgba(66, 133, 244, .22);
+}
+.fleche-nav svg { width: 28px; height: 28px; fill: #4285f4; stroke: #1a56c4; stroke-width: 1; }
+/* pendant le guidage, rien de la carte du dessous ne dépasse */
+body.guidage .carte-course .bouton-fond,
+body.guidage .carte-course .leaflet-control-attribution { display: none !important; }
+.nav-carte .maplibregl-ctrl-attrib { font-size: 9px; background: rgba(255, 255, 255, .6); }
