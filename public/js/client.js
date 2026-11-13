@@ -677,16 +677,16 @@ function avancer(type) {
 /** Ce qui manque à l'étape n, ou null si elle est complète. */
 function manque(n) {
   if (n === 1 && !points.depart) {
-    return { label: 'Choisissez le départ', faire: () => toast('Touchez « Je suis ici », touchez la carte ou écrivez le nom du lieu.') };
+    return { label: 'Choisir le départ', faire: () => toast('Touchez « Je suis ici », touchez la carte ou écrivez le nom du lieu.') };
   }
   if (n === 2) {
-    if (!points.arrivee) return { label: 'Choisissez l\'arrivée', faire: () => toast('Touchez « Chez moi, ici », touchez la carte ou écrivez le nom du lieu.') };
+    if (!points.arrivee) return { label: 'Choisir l\'arrivée', faire: () => toast('Touchez « Chez moi, ici », touchez la carte ou écrivez le nom du lieu.') };
     if (memeEndroit()) return { label: 'Départ = arrivée', faire: () => toast('Le départ et l\'arrivée sont au même endroit. Touchez la carte là où il faut livrer.', true) };
     if (erreurDevis) return { label: 'Hors zone', faire: () => toast(erreurDevis, true) };
     if (!dernierDevis) return { label: 'Calcul du prix…', faire: () => {} };
   }
   if (n === 3 && !form.description.value.trim()) {
-    return { label: 'Choisissez ci-dessus', faire: () => toast('Touchez ce qu\'il faut livrer, par exemple « Colis ».') };
+    return { label: 'Faites un choix', faire: () => toast('Touchez ce qu\'il faut livrer, par exemple « Colis ».') };
   }
   if (n === 4) {
     if (!telValide()) {

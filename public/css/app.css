@@ -854,3 +854,14 @@ body.page-livreur { font-size: 16.5px; }
 .page-livreur .course .actions button:disabled { opacity: .55; }
 .note-gps { display: flex; align-items: flex-start; gap: 8px; margin: -4px 0 14px; padding: 10px 12px; border-radius: 12px; background: var(--brand-50); color: var(--ink-2); font-size: .92rem; line-height: 1.35; }
 .note-gps .ic { flex: none; margin-top: 2px; color: var(--brand); }
+/* Tous les téléphones : bouton jamais coupé, rien sous la barre d'accueil de l'iPhone */
+.barre-commande .btn-primaire { white-space: normal; line-height: 1.15; text-align: center; padding: 6px 18px; }
+.volet-form { padding-bottom: calc(var(--barre-h) + 28px + env(safe-area-inset-bottom)); }
+header.entete { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+/* Téléphone couché : carte plus basse pour laisser la place à la question */
+@media (max-height: 500px) and (orientation: landscape) {
+  .volet-carte #map { height: 46vh; }
+  body[data-etape="3"] .volet-carte #map, body[data-etape="4"] .volet-carte #map { height: 90px; }
+  .progression { margin-bottom: 10px; }
+}
+.devis .prix, .prix-course, .conf-total b { white-space: nowrap; }
