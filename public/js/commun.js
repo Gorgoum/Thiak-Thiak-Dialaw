@@ -103,6 +103,7 @@ function ecranAuth(conteneur, { inscription = true, titre = '' } = {}, onOk) {
     const ins = mode === 'inscription';
     conteneur.innerHTML = `
       <div class="card auth">
+        <img class="logo-complet" src="/img/logo.webp" alt="Thiak Thiak Dialaw" width="900" height="600">
         ${titre ? `<p class="sous-titre">${titre}</p>` : ''}
         <h2>${ins ? 'Créer un compte' : 'Connexion'}</h2>
         <form>

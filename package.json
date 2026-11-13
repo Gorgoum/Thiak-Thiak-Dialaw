@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "init-db": "node src/init-db.js",
-    "icones": "node scripts/generer-icones.js",
+    "icones": "python scripts/generer-logo.py",
     "lieux": "node scripts/importer-lieux-osm.js",
     "sprite": "node scripts/generer-sprite.js",
     "overture": "python scripts/importer-overture.py",
