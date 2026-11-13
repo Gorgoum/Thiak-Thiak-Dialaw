@@ -900,8 +900,17 @@ form.onsubmit = (e) => {
 // Démarrage
 // =========================================================================
 function initCarte() {
-  carte = creerCarte('map').carte;
-  carte.on('click', (e) => placer(mode, e.latlng));
+  const outilsCarte = creerCarte('map');
+  carte = outilsCarte.carte;
+  // Toucher la carte : sur un nom de lieu, on choisit ce lieu (comme Google Maps) ; ailleurs, on pose le point
+  carte.on('click', (e) => {
+    const lieu = outilsCarte.lieuSousLeDoigt(e.latlng);
+    if (!lieu) return placer(mode, e.latlng);
+    const type = mode;
+    form[type + '_repere'].dataset.ancre = JSON.stringify({ nom: lieu.nom, lat: lieu.lat, lng: lieu.lng });
+    placerAvecRepere(type, lieu.lat, lieu.lng, lieu.nom, true);
+    toast(`${type === 'depart' ? 'Départ' : 'Arrivée'} : « ${lieu.nom} »`);
+  });
 
   brancherRecherche($('recherche'), $('suggestions'), (lieu) => {
     $('recherche').value = '';

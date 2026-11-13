@@ -54,6 +54,9 @@ async function chargerLieux(forcer = false) {
 const STYLE_PLAN = 'https://tiles.openfreemap.org/styles/liberty';
 const ATTRIBUTION_PLAN = '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
 const CLE_FOND = 'tt_fond';
+// Couches de noms de la carte Plan que l'on peut toucher pour choisir un lieu
+const COUCHES_NOMS = ['poi_r20', 'poi_r7', 'poi_r1', 'poi_transit', 'label_other', 'label_village', 'label_town',
+  'highway-name-path', 'highway-name-minor', 'highway-name-major'];
 
 function webglDisponible() {
   try {
@@ -165,7 +168,7 @@ function creerCarte(idDiv) {
           interactive: false,
           keyboard: false,
           icon: L.divIcon({ className: 'etiquette-village' + (l.categorie === 'quartier' ? ' quartier' : ''), html: esc(l.nom), iconSize: null }),
-        }).addTo(osm ? coucheVillages : coucheLieux);
+        }).addTo(osm ? coucheVillages : coucheLieux).lieu = l; // le lieu, pour le toucher
       } else {
         L.marker([l.lat, l.lng], {
           interactive: false,
@@ -175,13 +178,54 @@ function creerCarte(idDiv) {
             html: `${ico(ICONES[l.categorie] || 'map-pin')}${esc(l.nom)}`,
             iconSize: null,
           }),
-        }).addTo(osm ? coucheLieuxOsm : coucheLieux);
+        }).addTo(osm ? coucheLieuxOsm : coucheLieux).lieu = l;
       }
     }
   }
   carte.on('zoomend', majCouches);
   rafraichir().then(majCouches).catch(() => {});
-  return { carte, rafraichir };
+  /**
+   * Lieu sous le doigt (comme toucher un nom sur Google Maps) : d'abord nos étiquettes visibles,
+   * puis les noms écrits par la carte Plan (lieux, hameaux, villages, rues). Renvoie { nom, lat, lng, rue } ou null.
+   */
+  function lieuSousLeDoigt(latlng) {
+    // 1. nos étiquettes affichées : on teste la surface réelle de chaque étiquette à l'écran
+    const doigt = carte.latLngToContainerPoint(latlng);
+    const cadre = carte.getContainer().getBoundingClientRect();
+    const x = cadre.left + doigt.x;
+    const y = cadre.top + doigt.y;
+    const MARGE = 8; // pixels autour de l'étiquette, pour un doigt
+    for (const couche of [coucheLieux, coucheLieuxOsm, coucheVillages]) {
+      if (!carte.hasLayer(couche)) continue;
+      for (const m of couche.getLayers()) {
+        const el = m.getElement && m.getElement();
+        if (!el || !m.lieu) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width && x >= r.left - MARGE && x <= r.right + MARGE && y >= r.top - MARGE && y <= r.bottom + MARGE) {
+          const l = m.lieu;
+          return { nom: nomAvecVillage(l), lat: l.lat, lng: l.lng, rue: l.categorie === 'rue' };
+        }
+      }
+    }
+
+    const plan = fonds.plan;
+    if (fondActif !== 'plan' || !plan || typeof plan.getMaplibreMap !== 'function') return null;
+    const gl = plan.getMaplibreMap();
+    if (!gl || !gl.isStyleLoaded()) return null;
+    const couches = COUCHES_NOMS.filter((id) => gl.getLayer(id));
+    if (!couches.length) return null;
+    const p = gl.project([latlng.lng, latlng.lat]);
+    const trouves = gl.queryRenderedFeatures([[p.x - 14, p.y - 14], [p.x + 14, p.y + 14]], { layers: couches });
+    const f = trouves.find((x) => x.properties && (x.properties['name:fr'] || x.properties.name));
+    if (!f) return null;
+    const nom = f.properties['name:fr'] || f.properties.name;
+    if (f.geometry && f.geometry.type === 'Point') {
+      return { nom, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], rue: false };
+    }
+    return { nom, lat: latlng.lat, lng: latlng.lng, rue: true }; // nom de rue : on garde l'endroit touché
+  }
+
+  return { carte, rafraichir, lieuSousLeDoigt };
 }
 
 /**
