@@ -87,8 +87,10 @@ function majCarteCourse(c) {
   if (cle !== cleCourse) {
     const avant = cleCourse;
     cleCourse = cle;
-    // colis récupéré pendant le guidage : on enchaîne directement vers l'arrivée
+    // Guidage automatique : course acceptée → vers le départ ; colis récupéré → vers l'arrivée.
+    // Il ne redémarre pas tout seul pour une étape que le livreur a quittée ou déjà atteinte.
     if (Guidage.actif && avant && avant.startsWith(c.id + ':')) demarrerGuidage();
+    else if (!Guidage.actif && Stock.get(CLE_NAV_QUITTE) !== cle) demarrerGuidage();
     else if (!Guidage.actif) recadrerCourse(c);
   }
   document.getElementById('recentrer-course').onclick = () => recadrerCourse(c);
@@ -100,6 +102,8 @@ function majCarteCourse(c) {
 // Guidage étape par étape
 // =========================================================================
 let courseActive = null;
+const CLE_NAV_QUITTE = 'tt_nav_quitte'; // « course:statut » pour laquelle le guidage a été quitté ou terminé
+const memoriserFinGuidage = () => { if (cleCourse) Stock.set(CLE_NAV_QUITTE, cleCourse); };
 
 function quitterGuidage() {
   Guidage.arreter();
@@ -134,6 +138,7 @@ async function demarrerGuidage() {
   setTimeout(() => carteCourse.invalidateSize(), 50);
   await Guidage.demarrer(carteCourse, cible, pos, {
     surFin: () => {
+      memoriserFinGuidage();
       quitterGuidage();
       document.getElementById('bloc-active').scrollIntoView({ behavior: 'smooth' });
       toast(versDepart ? 'Arrivé au départ : récupérez le colis puis confirmez.' : 'Arrivé à destination : remettez le colis puis confirmez.');
@@ -141,7 +146,7 @@ async function demarrerGuidage() {
   });
 }
 
-document.getElementById('nav-stop').onclick = quitterGuidage;
+document.getElementById('nav-stop').onclick = () => { memoriserFinGuidage(); quitterGuidage(); };
 document.getElementById('nav-voix').onclick = () => Guidage.basculerVoix();
 document.getElementById('nav-recentrer').onclick = () => Guidage.recentrer();
 
@@ -286,7 +291,7 @@ document.getElementById('app').addEventListener('click', async (e) => {
     if (b.dataset.accepter) {
       b.disabled = true;
       await api('POST', `/api/livreur/courses/${b.dataset.accepter}/accepter`);
-      toast('Course acceptée ! Le client est prévenu.');
+      toast('Course acceptée ! Le guidage vers le départ démarre.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (b.dataset.etape) {
       const msgs = { recuperee: 'Confirmer que vous avez récupéré le colis ?', livree: 'Confirmer la livraison et l\'encaissement ?', liberer: 'Rendre cette course aux autres livreurs ?' };
