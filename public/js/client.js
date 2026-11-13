@@ -413,10 +413,6 @@ function prixVide(texte) {
   $('resume-detail').textContent = texte;
   $('resume-detail').classList.remove('alerte');
   majBouton();
-api('GET', '/api/config').then((cfg) => {
-  paiementsEnLigne = cfg.paiement_en_ligne || [];
-  paiementTest = !!cfg.paiement_test;
-}).catch(() => {});
 }
 
 /** Recalcule prix, distance, durée et tracé. recadrer : zoomer sur l'itinéraire (après un placement). */
@@ -837,11 +833,22 @@ function ouvrirConfirmation() {
 // =========================================================================
 let paiementsEnLigne = [];  // fournisseurs disponibles, lus sur /api/config
 let paiementTest = false;
+/** Lit les moyens de paiement disponibles ; recommence si le réseau a échoué. */
+let configChargee = null;
+function chargerConfig() {
+  if (!configChargee) {
+    configChargee = api('GET', '/api/config').then((cfg) => {
+      paiementsEnLigne = cfg.paiement_en_ligne || [];
+      paiementTest = !!cfg.paiement_test;
+    }).catch(() => { configChargee = null; });
+  }
+  return configChargee;
+}
 const CLE_PAIEMENT = 'tt_paiement';
 const MOYENS = {
   wave: { nom: 'Wave', logo: 'W', classe: 'wave', aide: 'Payez maintenant, confirmé automatiquement' },
   orange_money: { nom: 'Orange Money', logo: 'OM', classe: 'orange', aide: 'Max it ou #144#, confirmé automatiquement' },
-  especes: { nom: 'Espèces', logo: 'F', classe: 'especes', aide: 'Au livreur, à la livraison' },
+  especes: { nom: 'Espèces', logo: ico('banknote'), classe: 'especes', aide: 'Au livreur, à la livraison' },
 };
 
 function moyenChoisi() {
@@ -1006,10 +1013,11 @@ async function envoyerCommande() {
 }
 $('conf-envoyer').onclick = envoyerCommande;
 
-form.onsubmit = (e) => {
+form.onsubmit = async (e) => {
   e.preventDefault();
   const a = prochaineAction();
   if (a) { a.faire(); return; }
+  await chargerConfig(); // Wave / Orange Money proposés dès qu'ils sont disponibles
   ouvrirConfirmation();
 };
 
@@ -1062,6 +1070,7 @@ function initCarte() {
 }
 
 initCarte();
+chargerConfig();
 afficherCoordonnees();
 afficherChoixRapides();
 allerEtape(1);
