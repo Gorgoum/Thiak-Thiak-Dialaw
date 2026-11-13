@@ -134,13 +134,25 @@ function fenetreCourse(x) {
     actions.push(`<button type="button" data-action="liberer">${ico('undo-2', 'ic-sm')} Remettre en attente (retirer le livreur)</button>`);
     actions.push(`<button type="button" class="ok" data-action="terminer">${ico('circle-check', 'ic-sm')} Marquer comme livrée</button>`);
   }
+  // Paiement en ligne pas encore confirmé : vérifier chez Nangu ou valider à la main
+  const enLigne = x.paiement !== 'especes';
+  const moyen = x.paiement === 'wave' ? 'Wave' : 'Orange Money';
+  const etatsPaiement = { paye: 'payé', en_attente: 'en attente', expire: 'expiré', annule: 'annulé', a_la_livraison: 'à la livraison' };
+  const blocPaiement = enLigne ? `
+    <div class="bloc-paiement ${x.paiement_statut === 'paye' ? 'paye' : ''}">
+      <div><b>${ico(x.paiement_statut === 'paye' ? 'circle-check' : 'wallet', 'ic-sm')} Paiement ${moyen} : ${etatsPaiement[x.paiement_statut] || x.paiement_statut}</b>
+        <small>${fcfa(x.montant_du || x.prix)}${x.paye_le ? ` · reçu le ${dateCourte(x.paye_le)}` : ''}</small></div>
+      ${x.paiement_statut === 'paye' ? '' : `
+        <button type="button" data-action="rapprocher">${ico('refresh-cw', 'ic-sm')} Vérifier auprès de Nangu</button>
+        <button type="button" class="ok" data-action="valider-paiement">${ico('check', 'ic-sm')} Valider le paiement manuellement</button>`}
+    </div>` : '';
   if (!finie) actions.push(`<button type="button" class="danger" data-action="annuler">${ico('circle-x', 'ic-sm')} Annuler la course</button>`);
   if (!enCours) actions.push(`<button type="button" class="danger" data-action="supprimer">${ico('trash-2', 'ic-sm')} Supprimer définitivement</button>`);
 
   ouvrirFenetre(`Course n° ${x.id}`, `
     <p class="meta" style="margin:0 0 12px">${badge(x.statut)} · ${dateCourte(x.cree_le)} · ${Number(x.distance_km).toLocaleString('fr-FR')} km
-      ${x.paiement !== 'especes' ? ` · ${x.paiement === 'wave' ? 'Wave' : 'Orange Money'} (${x.paiement_statut === 'paye' ? 'payé' : 'non payé'})` : ' · espèces'}</p>
-    <div class="actions-course">${actions.join('')}</div>
+      ${enLigne ? '' : ' · espèces à la livraison'}</p>
+    <div class="actions-course">${blocPaiement}${actions.join('')}</div>
     <h3 class="sous-titre-fenetre">Modifier les informations</h3>
     ${champ('Départ', 'depart_repere', x.depart_repere, 'required maxlength="300"')}
     ${champ('Arrivée', 'arrivee_repere', x.arrivee_repere, 'required maxlength="300"')}
@@ -168,9 +180,25 @@ function fenetreCourse(x) {
       supprimer: `Supprimer définitivement la course n° ${x.id} ? Elle disparaîtra aussi des statistiques.`,
     };
     if (questions[a] && !confirm(questions[a])) return;
+    let reference = '';
+    if (a === 'valider-paiement') {
+      reference = prompt(`Valider à la main le paiement ${moyen} de ${fcfa(x.montant_du || x.prix)} ?\n\nFaites-le seulement si vous avez vu l'argent arriver sur le compte ${moyen}. La course sera proposée aux livreurs.\n\nRéférence de la transaction (facultatif) :`, '');
+      if (reference === null) return; // « Annuler » : rien n'est fait
+    }
     b.disabled = true;
     try {
-      if (a === 'attribuer') {
+      if (a === 'rapprocher') {
+        const r = await api('POST', `/api/admin/courses/${x.id}/rapprocher`);
+        const lisible = { succeeded: 'payé', pending: 'pas encore payé', processing: 'en cours de traitement', expired: 'expiré', canceled: 'annulé' }[r.statut_nangu] || r.statut_nangu;
+        toast(`Nangu indique : ${lisible}.${r.change ? ' La course est mise à jour.' : ''}`, r.statut_nangu !== 'succeeded');
+        fermerFenetre();
+        toutCharger();
+        return;
+      }
+      if (a === 'valider-paiement') {
+        await api('POST', `/api/admin/courses/${x.id}/valider-paiement`, { reference });
+        toast('Paiement validé. La course est proposée aux livreurs.');
+      } else if (a === 'attribuer') {
         await api('POST', `/api/admin/courses/${x.id}/attribuer`, { livreur_id: Number(document.getElementById('choix-livreur').value) });
         toast('Course attribuée : le livreur est prévenu');
       } else if (a === 'supprimer') {

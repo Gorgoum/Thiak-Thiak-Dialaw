@@ -305,6 +305,24 @@ router.post('/courses/:id/terminer', a(async (req, res) => {
   res.json(await diffuserMaj(req.app.get('io'), req.params.id));
 }));
 
+// Paiement en ligne : vérifier chez Nangu, ou valider à la main
+const paiements = require('../paiements');
+const erreurPaiement = (res, e) => res.status(e.status || 502).json({ erreur: e.status ? e.message : 'Nangu ne répond pas : ' + e.message });
+
+router.post('/courses/:id/rapprocher', a(async (req, res) => {
+  try {
+    const r = await paiements.rapprocher(req.app.get('io'), req.params.id);
+    const { lireCourse } = require('../courses-service');
+    res.json({ ...r, course: await lireCourse(req.params.id) });
+  } catch (e) { erreurPaiement(res, e); }
+}));
+
+router.post('/courses/:id/valider-paiement', a(async (req, res) => {
+  try {
+    res.json(await paiements.validerManuellement(req.app.get('io'), req.params.id, { adminId: req.user.id, reference: (req.body || {}).reference }));
+  } catch (e) { erreurPaiement(res, e); }
+}));
+
 router.delete('/courses/:id', a(async (req, res) => {
   const c = await lireStatut(req.params.id);
   if (!c) return res.status(404).json({ erreur: 'Course introuvable' });

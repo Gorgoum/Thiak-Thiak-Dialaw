@@ -63,6 +63,40 @@ export async function releverPaiementsEnAttente(c) {
   return r.rows.length;
 }
 
+/** Rapprochement par l'admin : relit l'état réel du paiement chez Nangu et l'applique. */
+export async function rapprocher(c, courseId) {
+  const x = (await c.db.query('SELECT id, nangu_id FROM courses WHERE id = $1', [courseId])).rows[0];
+  if (!x) throw Object.assign(new Error('Course introuvable'), { status: 404 });
+  if (!x.nangu_id) throw Object.assign(new Error('Aucun paiement Nangu pour cette course'), { status: 400 });
+  if (!nangu.actif(c.env)) throw Object.assign(new Error('Paiement en ligne non configuré (clé Nangu absente)'), { status: 400 });
+  const p = await nangu.lirePaiement(c.env, x.nangu_id);
+  derniereLecture.set(x.nangu_id, Date.now());
+  const change = await appliquer(c, p);
+  return { statut_nangu: p.status, montant: p.amount_due ?? null, change: !!change };
+}
+
+/** Validation manuelle par l'admin (argent vu sur le compte, notification perdue…). Trace dans evenements_nangu. */
+export async function validerManuellement(c, courseId, { adminId, reference = '' }) {
+  const x = (await c.db.query('SELECT id, statut, paiement, paiement_statut FROM courses WHERE id = $1', [courseId])).rows[0];
+  if (!x) throw Object.assign(new Error('Course introuvable'), { status: 404 });
+  if (x.paiement === 'especes') throw Object.assign(new Error('Cette course se paie en espèces au livreur'), { status: 400 });
+  if (x.paiement_statut === 'paye') throw Object.assign(new Error('Ce paiement est déjà validé'), { status: 400 });
+  const rouvrir = ['attente_paiement', 'annulee'].includes(x.statut);
+  await c.db.query(
+    `UPDATE courses SET paiement_statut = 'paye', paye_le = ${MAINTENANT},
+       statut = CASE WHEN statut IN ('attente_paiement', 'annulee') THEN 'en_attente' ELSE statut END,
+       annulee_le = CASE WHEN statut IN ('attente_paiement', 'annulee') THEN NULL ELSE annulee_le END
+     WHERE id = $1`,
+    [x.id]
+  );
+  const ref = String(reference || '').trim().slice(0, 80);
+  await c.db.query('INSERT INTO evenements_nangu (id, type) VALUES ($1, $2)',
+    [`manuel-${x.id}-${Date.now()}`, `admin:${adminId}:valide:course-${x.id}${ref ? ':' + ref : ''}`]);
+  const course = await diffuserMaj(c, x.id, { message: 'Paiement reçu. Nous cherchons un livreur pour vous.' });
+  if (rouvrir) c.attendre(notifierNouvelleCourse(c, course).catch((e) => console.error('Notification :', e.message)));
+  return course;
+}
+
 export async function traiterEvenement(c, evt) {
   const deja = await c.db.query('SELECT id FROM evenements_nangu WHERE id = $1', [evt.id]);
   if (deja.rows.length) return false;

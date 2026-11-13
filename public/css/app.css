@@ -903,3 +903,9 @@ header.entete { padding-left: max(16px, env(safe-area-inset-left)); padding-righ
 .ligne-cliquable { cursor: pointer; }
 .ligne-cliquable:hover td { background: var(--surface-2); }
 .tableau a[href^="tel:"] { white-space: nowrap; }
+.bloc-paiement { display: grid; gap: 8px; padding: 12px; border-radius: 14px; background: #fff6e6; border: 1px solid #fcd9a1; margin-bottom: 4px; }
+.bloc-paiement > div { display: flex; flex-direction: column; gap: 2px; }
+.bloc-paiement b { display: flex; align-items: center; gap: 6px; }
+.bloc-paiement small { color: var(--ink-3); }
+.bloc-paiement.paye { background: var(--brand-50); border-color: var(--brand-100); }
+@media (prefers-color-scheme: dark) { .bloc-paiement { background: #2b1d07; border-color: #5c3d0c; } }

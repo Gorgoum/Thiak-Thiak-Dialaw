@@ -75,4 +75,44 @@ async function traiterEvenement(io, evt) {
   return true;
 }
 
-module.exports = { confirmer, terminer, appliquer, synchroniser, traiterEvenement };
+/**
+ * Rapprochement par l'admin : relit l'état réel du paiement chez Nangu et l'applique.
+ * Renvoie le statut Nangu (succeeded, pending, expired, canceled…) et la course à jour.
+ */
+async function rapprocher(io, courseId) {
+  const c = (await query('SELECT id, nangu_id FROM courses WHERE id = $1', [courseId])).rows[0];
+  if (!c) throw Object.assign(new Error('Course introuvable'), { status: 404 });
+  if (!c.nangu_id) throw Object.assign(new Error('Aucun paiement Nangu pour cette course'), { status: 400 });
+  if (!nangu.actif()) throw Object.assign(new Error('Paiement en ligne non configuré (clé Nangu absente)'), { status: 400 });
+  const p = await nangu.lirePaiement(c.nangu_id);
+  derniereLecture.set(c.nangu_id, Date.now());
+  const change = await appliquer(io, p);
+  return { statut_nangu: p.status, montant: p.amount_due ?? null, change: !!change };
+}
+
+/**
+ * Validation manuelle par l'admin (argent vu sur le compte Wave / Orange Money, notification perdue…).
+ * La course devient visible des livreurs si elle attendait ce paiement. Trace gardée dans evenements_nangu.
+ */
+async function validerManuellement(io, courseId, { adminId, reference = '' }) {
+  const c = (await query('SELECT id, statut, paiement, paiement_statut FROM courses WHERE id = $1', [courseId])).rows[0];
+  if (!c) throw Object.assign(new Error('Course introuvable'), { status: 404 });
+  if (c.paiement === 'especes') throw Object.assign(new Error('Cette course se paie en espèces au livreur'), { status: 400 });
+  if (c.paiement_statut === 'paye') throw Object.assign(new Error('Ce paiement est déjà validé'), { status: 400 });
+  const rouvrir = ['attente_paiement', 'annulee'].includes(c.statut);
+  await query(
+    `UPDATE courses SET paiement_statut = 'paye', paye_le = now(),
+       statut = CASE WHEN statut IN ('attente_paiement', 'annulee') THEN 'en_attente' ELSE statut END,
+       annulee_le = CASE WHEN statut IN ('attente_paiement', 'annulee') THEN NULL ELSE annulee_le END
+     WHERE id = $1`,
+    [c.id]
+  );
+  const ref = String(reference || '').trim().slice(0, 80);
+  await query('INSERT INTO evenements_nangu (id, type) VALUES ($1, $2)',
+    [`manuel-${c.id}-${Date.now()}`, `admin:${adminId}:valide:course-${c.id}${ref ? ':' + ref : ''}`]);
+  const course = await diffuserMaj(io, c.id, { message: 'Paiement reçu. Nous cherchons un livreur pour vous.' });
+  if (rouvrir) notifierNouvelleCourse(io, course).catch((e) => console.error('Notification :', e.message));
+  return course;
+}
+
+module.exports = { confirmer, terminer, appliquer, synchroniser, traiterEvenement, rapprocher, validerManuellement };

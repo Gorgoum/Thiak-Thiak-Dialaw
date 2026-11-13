@@ -3,7 +3,8 @@ import { HttpErreur, json, lireCorps } from '../outils.js';
 import { DEBUT_JOUR, MAINTENANT } from '../db.js';
 import { exiger, hacherPin, normaliserTel } from '../securite.js';
 import { parametres, pointValide } from '../tarifs.js';
-import { SELECT_COURSE, diffuserMaj, notifierNouvelleCourse } from '../courses-service.js';
+import { SELECT_COURSE, diffuserMaj, notifierNouvelleCourse, lireCourse } from '../courses-service.js';
+import { rapprocher, validerManuellement } from '../paiements.js';
 import { envoyer } from '../push.js';
 import { CATEGORIES } from '../lieux.js';
 
@@ -299,6 +300,23 @@ export function enregistrerGestion(r) {
     if (!['acceptee', 'recuperee'].includes(course.statut)) throw new HttpErreur(400, 'Seule une course en cours peut être marquée livrée');
     await c.db.query(`UPDATE courses SET statut = 'livree', livree_le = ${MAINTENANT}, recuperee_le = coalesce(recuperee_le, ${MAINTENANT}) WHERE id = $1`, [course.id]);
     return json(await diffuserMaj(c, course.id));
+  });
+
+  // ---------- Paiement en ligne : vérifier chez Nangu, ou valider à la main ----------
+  const erreurPaiement = (e) => new HttpErreur(e.status || 502, e.status ? e.message : 'Nangu ne répond pas : ' + e.message);
+  r.post('/api/admin/courses/:id/rapprocher', async (req, c) => {
+    await exigerAdmin(req, c);
+    try {
+      const res = await rapprocher(c, Number(c.params.id));
+      return json({ ...res, course: await lireCourse(c, Number(c.params.id)) });
+    } catch (e) { throw e instanceof HttpErreur ? e : erreurPaiement(e); }
+  });
+  r.post('/api/admin/courses/:id/valider-paiement', async (req, c) => {
+    const u = await exigerAdmin(req, c);
+    const { reference } = await lireCorps(req);
+    try {
+      return json(await validerManuellement(c, Number(c.params.id), { adminId: u.id, reference }));
+    } catch (e) { throw e instanceof HttpErreur ? e : erreurPaiement(e); }
   });
 
   r.delete('/api/admin/courses/:id', async (req, c) => {
