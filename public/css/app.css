@@ -700,3 +700,24 @@ body.guidage .carte-course .leaflet-control-zoom { display: none !important; }
 .attente-paiement { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 14px 0 6px; font-weight: 600; color: var(--ink-2); }
 .bandeau-test { background: #fff1e6; color: #b54708; border-radius: 10px; padding: 8px 10px; font-size: .82rem; font-weight: 600; margin-bottom: 10px; }
 .paiement-ok { color: var(--ok); }
+
+/* ---------- Bouton Plan / Satellite (vignette façon Google Maps) ---------- */
+.bouton-fond {
+  width: 64px; height: 64px; min-height: 64px; padding: 0; margin: 0 0 6px 0 !important;
+  border-radius: 12px; border: 2px solid #fff; overflow: hidden;
+  display: flex; align-items: flex-end; justify-content: center;
+  background-size: cover; background-position: center; background-color: #ccc;
+  box-shadow: var(--shadow-md); cursor: pointer;
+}
+.bouton-fond span {
+  width: 100%; padding: 4px 0 3px; text-align: center;
+  font: 700 11px/1.2 var(--font); color: #fff;
+  background: linear-gradient(transparent, rgba(0, 0, 0, .65));
+}
+.bouton-fond.vers-satellite { background-image: url('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/14/7518/7410'); }
+.bouton-fond.vers-plan { background-image: url('https://tile.openstreetmap.org/14/7410/7518.png'); }
+.bouton-fond.vers-plan span { color: #1d2939; background: linear-gradient(transparent, rgba(255, 255, 255, .85)); }
+/* sur le plan, nos étiquettes de lieux restent discrètes */
+.leaflet-container:not(.mode-satellite) .etiquette-lieu { box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
+.leaflet-container { background: #f2efe9; }
+.leaflet-container.mode-satellite { background: #1b2a24; }

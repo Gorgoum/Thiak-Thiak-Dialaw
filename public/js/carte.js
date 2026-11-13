@@ -47,9 +47,28 @@ async function chargerLieux(forcer = false) {
   return lieuxCache;
 }
 
-// Fond unique : vue satellite. Imagerie gratuite (sans clé) mais non libre, propriété d'Esri.
-// À Yène l'image est nette jusqu'au zoom 17 ; au-delà elle est agrandie (maxNativeZoom)
-// pour éviter les tuiles « Map data not yet available ».
+// Deux fonds, comme Google Maps :
+//  - Plan (par défaut) : carte vectorielle OpenFreeMap, style « Liberty » (libre, gratuite, sans clé),
+//    dessinée par MapLibre ; repli sur les tuiles OpenStreetMap si le téléphone ne gère pas WebGL.
+//  - Satellite : imagerie Esri, gratuite mais non libre ; nette jusqu'au zoom 17 à Yène, agrandie au-delà.
+const STYLE_PLAN = 'https://tiles.openfreemap.org/styles/liberty';
+const ATTRIBUTION_PLAN = '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+const CLE_FOND = 'tt_fond';
+
+function webglDisponible() {
+  try {
+    const c = document.createElement('canvas');
+    return !!(c.getContext('webgl2') || c.getContext('webgl'));
+  } catch { return false; }
+}
+
+function creerFondPlan() {
+  if (L.maplibreGL && webglDisponible()) {
+    return L.maplibreGL({ style: STYLE_PLAN, attribution: ATTRIBUTION_PLAN, maxZoom: 20 });
+  }
+  return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: ATTRIBUTION_PLAN });
+}
+
 const URL_SATELLITE = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 const OPTIONS_SATELLITE = {
   maxZoom: 19,
@@ -79,32 +98,74 @@ function nomAvecVillage(l) {
 
 /** Crée la carte dans #idDiv avec les noms de villages et les lieux. Renvoie { carte, rafraichir }. */
 function creerCarte(idDiv) {
-  const carte = L.map(idDiv, { zoomControl: true, tap: true }).setView(CENTRE_YENE, ZOOM_DEPART);
+  const carte = L.map(idDiv, { zoomControl: true, tap: true, maxZoom: 19 }).setView(CENTRE_YENE, ZOOM_DEPART);
   carte.attributionControl.setPrefix(false); // retire « Leaflet » et son drapeau (non obligatoire)
-  L.tileLayer(URL_SATELLITE, OPTIONS_SATELLITE).addTo(carte);
-  carte.getContainer().classList.add('mode-satellite');
 
   const coucheLimite = L.layerGroup().addTo(carte);
-  const coucheVillages = L.layerGroup().addTo(carte);
-  const coucheLieux = L.layerGroup();
+  const coucheVillages = L.layerGroup();
+  const coucheLieux = L.layerGroup();      // lieux absents du plan (Overture, admin, appris des livraisons)
+  const coucheLieuxOsm = L.layerGroup();   // lieux OpenStreetMap : déjà écrits sur le plan, utiles en satellite
   tracerLimite(coucheLimite);
-  // On peut masquer les noms pour mieux voir les maisons
-  L.control.layers(null, {
-    'Limite de la commune': coucheLimite,
-    'Noms des villages et quartiers': coucheVillages,
-  }, { position: 'bottomleft' }).addTo(carte);
+
+  // ---------- Plan / Satellite ----------
+  const fonds = { plan: null, satellite: null };
+  let fondActif = Stock.get(CLE_FOND) === 'satellite' ? 'satellite' : 'plan';
+  function afficherFond(nom) {
+    if (fonds[fondActif] && carte.hasLayer(fonds[fondActif])) carte.removeLayer(fonds[fondActif]);
+    if (!fonds[nom]) fonds[nom] = nom === 'plan' ? creerFondPlan() : L.tileLayer(URL_SATELLITE, OPTIONS_SATELLITE);
+    fonds[nom].addTo(carte);
+    if (fonds[nom].bringToBack) fonds[nom].bringToBack();
+    fondActif = nom;
+    Stock.set(CLE_FOND, nom);
+    const sat = nom === 'satellite';
+    carte.getContainer().classList.toggle('mode-satellite', sat);
+    // le plan écrit déjà les noms des villages : nos étiquettes ne servent qu'en satellite
+    if (sat) coucheVillages.addTo(carte); else coucheVillages.remove();
+    if (boutonFond) boutonFond.majVignette();
+    majCouches();
+  }
+
+  // Bouton façon Google Maps : vignette en bas à gauche qui montre l'autre fond
+  const BoutonFond = L.Control.extend({
+    options: { position: 'bottomleft' },
+    onAdd() {
+      const b = L.DomUtil.create('button', 'bouton-fond');
+      b.type = 'button';
+      L.DomEvent.disableClickPropagation(b);
+      L.DomEvent.on(b, 'click', () => afficherFond(fondActif === 'plan' ? 'satellite' : 'plan'));
+      this._b = b;
+      return b;
+    },
+    majVignette() {
+      const versSat = fondActif === 'plan';
+      this._b.className = 'bouton-fond ' + (versSat ? 'vers-satellite' : 'vers-plan');
+      this._b.innerHTML = `<span>${versSat ? 'Satellite' : 'Plan'}</span>`;
+      this._b.setAttribute('aria-label', versSat ? 'Afficher la vue satellite' : 'Afficher le plan');
+    },
+  });
+  // Lieux visibles en zoomant ; ceux d'OpenStreetMap seulement en satellite (le plan les écrit déjà)
+  function majCouches() {
+    const proche = carte.getZoom() >= ZOOM_LIEUX_VISIBLES;
+    if (proche) coucheLieux.addTo(carte); else coucheLieux.remove();
+    if (proche && fondActif === 'satellite') coucheLieuxOsm.addTo(carte); else coucheLieuxOsm.remove();
+  }
+  const boutonFond = new BoutonFond().addTo(carte);
+  afficherFond(fondActif);
 
   async function rafraichir(forcer = false) {
     const lieux = await chargerLieux(forcer);
     coucheVillages.clearLayers();
     coucheLieux.clearLayers();
+    coucheLieuxOsm.clearLayers();
     for (const l of lieux) {
+      const osm = l.source === 'osm';
       if (l.categorie === 'village' || l.categorie === 'quartier') {
+        // villages OSM : écrits par le plan ; ceux ajoutés par l'admin (ex. Yène Kao) : toujours affichés
         L.marker([l.lat, l.lng], {
           interactive: false,
           keyboard: false,
           icon: L.divIcon({ className: 'etiquette-village' + (l.categorie === 'quartier' ? ' quartier' : ''), html: esc(l.nom), iconSize: null }),
-        }).addTo(coucheVillages);
+        }).addTo(osm ? coucheVillages : coucheLieux);
       } else {
         L.marker([l.lat, l.lng], {
           interactive: false,
@@ -114,13 +175,10 @@ function creerCarte(idDiv) {
             html: `${ico(ICONES[l.categorie] || 'map-pin')}${esc(l.nom)}`,
             iconSize: null,
           }),
-        }).addTo(coucheLieux);
+        }).addTo(osm ? coucheLieuxOsm : coucheLieux);
       }
     }
   }
-  const majCouches = () => {
-    if (carte.getZoom() >= ZOOM_LIEUX_VISIBLES) coucheLieux.addTo(carte); else coucheLieux.remove();
-  };
   carte.on('zoomend', majCouches);
   rafraichir().then(majCouches).catch(() => {});
   return { carte, rafraichir };

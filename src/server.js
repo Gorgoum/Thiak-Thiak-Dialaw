@@ -38,6 +38,9 @@ app.get('/api/config', (req, res) => {
 app.use(express.static(path.join(__dirname, '..', 'public')));
 // Leaflet (carte, BSD-2) servi par notre serveur : aucune dépendance à un CDN externe
 app.use('/vendor/leaflet', express.static(path.join(__dirname, '..', 'node_modules', 'leaflet', 'dist')));
+// Carte vectorielle (MapLibre, BSD-3) et son extension Leaflet (ISC)
+app.use('/vendor/maplibre', express.static(path.join(__dirname, '..', 'node_modules', 'maplibre-gl', 'dist')));
+app.get('/vendor/maplibre/leaflet-maplibre-gl.js', (req, res) => res.sendFile(path.join(__dirname, '..', 'node_modules', '@maplibre', 'maplibre-gl-leaflet', 'leaflet-maplibre-gl.js')));
 // Police Inter (licence OFL) servie localement
 app.use('/vendor/inter', express.static(path.join(__dirname, '..', 'node_modules', '@fontsource-variable', 'inter', 'files'), { maxAge: '30d' }));
 

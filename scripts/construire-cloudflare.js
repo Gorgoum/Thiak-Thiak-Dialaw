@@ -20,6 +20,13 @@ function copier(src, dst, filtre = () => true) {
 fs.rmSync(sortie, { recursive: true, force: true });
 copier(path.join(racine, 'public'), sortie, (f) => !f.startsWith('_')); // _*.html : pages d'essai, jamais publiées
 copier(path.join(racine, 'node_modules', 'leaflet', 'dist'), path.join(sortie, 'vendor', 'leaflet'), (f) => !f.endsWith('.map') && !f.includes('-src'));
+// carte vectorielle « Plan » (MapLibre) et son extension Leaflet
+const dossierMaplibre = path.join(sortie, 'vendor', 'maplibre');
+fs.mkdirSync(dossierMaplibre, { recursive: true });
+for (const f of ['maplibre-gl.js', 'maplibre-gl.css']) {
+  fs.copyFileSync(path.join(racine, 'node_modules', 'maplibre-gl', 'dist', f), path.join(dossierMaplibre, f));
+}
+fs.copyFileSync(path.join(racine, 'node_modules', '@maplibre', 'maplibre-gl-leaflet', 'leaflet-maplibre-gl.js'), path.join(dossierMaplibre, 'leaflet-maplibre-gl.js'));
 const inter = path.join(racine, 'node_modules', '@fontsource-variable', 'inter', 'files');
 fs.mkdirSync(path.join(sortie, 'vendor', 'inter'), { recursive: true });
 fs.copyFileSync(path.join(inter, 'inter-latin-wght-normal.woff2'), path.join(sortie, 'vendor', 'inter', 'inter-latin-wght-normal.woff2'));
