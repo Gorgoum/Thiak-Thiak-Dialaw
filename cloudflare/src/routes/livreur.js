@@ -5,6 +5,7 @@ import { exiger } from '../securite.js';
 import { distanceKm, pointValide, parametres } from '../tarifs.js';
 import { SELECT_COURSE, notifierNouvelleCourse, diffuserMaj } from '../courses-service.js';
 import { apprendreDeLaCourse } from '../lieux.js';
+import * as argent from '../argent.js';
 
 /** Livreur connecté ET validé par l'admin. */
 async function livreur(req, c) {
@@ -72,8 +73,18 @@ export function enregistrer(r) {
     return json({ nb: Number(g.nb), total, commission, net: total - commission, commission_pct: p.commission_pct });
   });
 
+  // Mon argent : solde, journée, historique
+  r.get('/api/livreur/argent', async (req, c) => {
+    await livreur(req, c);
+    return json(await argent.argentLivreur(c, c.user.id));
+  });
+
   r.post('/api/livreur/courses/:id/accepter', async (req, c) => {
     await livreur(req, c);
+    const b = await argent.bloque(c, c.user.id);
+    if (b) {
+      throw new HttpErreur(403, `Vous devez ${Math.abs(b.solde).toLocaleString('fr-FR')} FCFA à la plateforme (plafond ${b.plafond.toLocaleString('fr-FR')} FCFA). Reversez-les pour accepter de nouvelles courses.`);
+    }
     try {
       const res = await c.db.query(
         `UPDATE courses SET statut = 'acceptee', livreur_id = $2, acceptee_le = ${MAINTENANT}
@@ -103,6 +114,7 @@ export function enregistrer(r) {
       if (!res.rows.length) throw new HttpErreur(409, 'Action impossible à ce stade de la course');
       const course = await diffuserMaj(c, id);
       if (statut === 'livree') {
+        await argent.inscrireCoursesLivrees(c, id); // part du livreur ou commission, au registre
         c.attendre(apprendreDeLaCourse(c, course)
           .then(() => c.io.to('admins').emit('lieux:proposes'))
           .catch((err) => console.error('Apprentissage des lieux :', err.message)));

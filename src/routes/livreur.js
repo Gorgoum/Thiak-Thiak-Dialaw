@@ -5,6 +5,7 @@ const { exiger, a } = require('../auth');
 const { distanceKm, pointValide, parametres } = require('../tarifs');
 const { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj } = require('../courses-service');
 const { apprendreDeLaCourse } = require('../lieux');
+const argent = require('../argent');
 
 // Tout livreur doit être connecté ET validé par l'admin
 router.use(exiger('livreur'), a(async (req, res, next) => {
@@ -68,7 +69,16 @@ router.get('/gains', a(async (req, res) => {
   res.json({ nb, total, commission, net: total - commission, commission_pct: p.commission_pct });
 }));
 
+// Mon argent : solde, journée, historique
+router.get('/argent', a(async (req, res) => res.json(await argent.argentLivreur(req.user.id))));
+
 router.post('/courses/:id/accepter', a(async (req, res) => {
+  const b = await argent.bloque(req.user.id);
+  if (b) {
+    return res.status(403).json({
+      erreur: `Vous devez ${Math.abs(b.solde).toLocaleString('fr-FR')} FCFA à la plateforme (plafond ${b.plafond.toLocaleString('fr-FR')} FCFA). Reversez-les pour accepter de nouvelles courses.`,
+    });
+  }
   try {
     const r = await query(
       `UPDATE courses SET statut = 'acceptee', livreur_id = $2, acceptee_le = now()
@@ -98,6 +108,7 @@ for (const [statut, e] of Object.entries(ETAPES)) {
     if (!r.rows.length) return res.status(409).json({ erreur: 'Action impossible à ce stade de la course' });
     const course = await diffuserMaj(req.app.get('io'), req.params.id);
     if (statut === 'livree') {
+      await argent.inscrireCoursesLivrees(course.id); // part du livreur ou commission, au registre
       // livraison réussie : ses repères deviennent des lieux proposés à l'admin
       apprendreDeLaCourse(course)
         .then(() => req.app.get('io').to('admins').emit('lieux:proposes'))

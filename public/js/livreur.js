@@ -226,12 +226,37 @@ function carteActive(c) {
     </div>`;
 }
 
+/** « Mon argent » : une phrase claire pour le solde, la journée, puis l'historique. */
+function htmlArgent(a) {
+  const s = a.solde;
+  const solde = s > 0
+    ? `<div class="solde solde-plus"><small>La plateforme vous doit</small><b>${fcfa(s)}</b><span>Versé lors du prochain règlement.</span></div>`
+    : s < 0
+      ? `<div class="solde solde-moins ${a.bloque ? 'bloque' : ''}"><small>Vous devez reverser à la plateforme</small><b>${fcfa(-s)}</b>
+          <span>${a.bloque
+            ? `Plafond de ${fcfa(a.plafond)} dépassé : vous ne pouvez plus accepter de course. Envoyez ce montant par Wave à la plateforme.`
+            : `Commissions des courses payées en espèces${a.plafond ? ` (plafond ${fcfa(a.plafond)})` : ''}.`}</span></div>`
+      : `<div class="solde"><small>Votre solde</small><b>0 FCFA</b><span>Rien à recevoir, rien à reverser.</span></div>`;
+  const lignes = a.mouvements.map((m) => `
+    <li><span>${esc(m.libelle)}<small>${dateCourte(m.cree_le)}${m.reference ? ` · réf. ${esc(m.reference)}` : ''}</small></span>
+      <b class="${m.montant >= 0 ? 'plus' : 'moins'}">${m.montant >= 0 ? '+' : '−'}${fcfa(Math.abs(m.montant))}</b></li>`).join('');
+  return `${solde}
+    <div class="stats" style="margin:12px 0 0">
+      <div class="stat"><div class="v">${a.aujourdhui.nb}</div><div class="l">courses livrées aujourd'hui</div></div>
+      <div class="stat"><div class="v">${fcfa(a.aujourdhui.part)}</div><div class="l">votre part aujourd'hui (après ${a.commission_pct} %)</div></div>
+      <div class="stat"><div class="v">${fcfa(a.aujourdhui.especes)}</div><div class="l">encaissé en espèces aujourd'hui</div></div>
+    </div>
+    ${lignes ? `<details class="replier" style="margin-top:14px"><summary>${ico('chevron-down', 'ic-sm')} Détail de mes comptes</summary>
+      <ul class="mouvements">${lignes}</ul>
+      <p class="aide">« + » : la plateforme vous le doit. « − » : vous le devez à la plateforme.</p></details>` : ''}`;
+}
+
 async function chargerTout() {
   try {
-    const [dispos, mes, gains] = await Promise.all([
+    const [dispos, mes, argent] = await Promise.all([
       api('GET', '/api/livreur/courses-disponibles'),
       api('GET', '/api/livreur/mes-courses'),
-      api('GET', '/api/livreur/gains'),
+      api('GET', '/api/livreur/argent'),
     ]);
     const active = mes.find((c) => ['acceptee', 'recuperee'].includes(c.statut));
     document.getElementById('bloc-active').innerHTML = active ? carteActive(active) : '';
@@ -246,18 +271,14 @@ async function chargerTout() {
           ${trajet(c)}
           <div class="actions">
             <a class="bouton" data-nav="${c.depart_lat},${c.depart_lng}" ${lienItineraire(c.depart_lat, c.depart_lng, maPosition)}>${ico('map', 'ic-sm')} Voir le départ</a>
-            <button class="jaune" data-accepter="${c.id}" ${active ? 'disabled' : ''}>${ico('check', 'ic-sm')} Accepter</button>
+            <button class="jaune" data-accepter="${c.id}" ${active || argent.bloque ? 'disabled' : ''}>${ico('check', 'ic-sm')} Accepter</button>
           </div>
-          ${active ? `<p class="meta bloque">${ico('info', 'ic-sm')} Terminez d'abord votre course en cours pour accepter celle-ci.</p>` : ''}
+          ${active ? `<p class="meta bloque">${ico('info', 'ic-sm')} Terminez d'abord votre course en cours pour accepter celle-ci.</p>`
+            : argent.bloque ? `<p class="meta bloque">${ico('info', 'ic-sm')} Reversez d'abord ce que vous devez à la plateforme (voir « Mon argent »).</p>` : ''}
         </div>`).join('')
       : '<p class="vide">Aucune course en attente. Restez disponible, vous serez notifié.</p>';
 
-    document.getElementById('gains').innerHTML = `
-      <div class="stats" style="margin:0">
-        <div class="stat"><div class="v">${gains.nb}</div><div class="l">courses livrées</div></div>
-        <div class="stat"><div class="v">${fcfa(gains.total)}</div><div class="l">encaissé (courses)</div></div>
-        <div class="stat"><div class="v">${fcfa(gains.net)}</div><div class="l">pour vous après commission ${gains.commission_pct} %</div></div>
-      </div>`;
+    document.getElementById('gains').innerHTML = htmlArgent(argent);
 
     const hist = mes.filter((c) => ['livree', 'annulee'].includes(c.statut));
     document.getElementById('historique').innerHTML = hist.length
@@ -337,6 +358,10 @@ function afficherApp(u) {
     nbAvant = n;
   });
   socket.on('course:maj', chargerTout);
+  socket.on('argent:maj', (r) => {
+    toast(r.sens === 'paye_au_livreur' ? 'La plateforme vous a versé votre argent. Merci !' : 'Votre versement à la plateforme est bien enregistré. Merci !');
+    chargerTout();
+  });
   setTimeout(() => { nbAvant = document.querySelectorAll('[data-accepter]').length; }, 1500);
 }
 

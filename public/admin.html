@@ -28,6 +28,17 @@
       </div>
 
       <div class="card">
+        <h2>Argent des livreurs</h2>
+        <p class="aide">Courses payées en espèces : le livreur garde l'argent et doit la commission. Courses payées par Wave ou Orange Money : la plateforme reçoit l'argent et doit au livreur sa part. Les deux se compensent dans un seul solde.</p>
+        <div class="resume-argent" id="resume-argent"></div>
+        <div class="defile"><table class="tableau" id="soldes"></table></div>
+        <div class="export-ligne">
+          <label>Mois<input type="month" id="mois-export"></label>
+          <button type="button" id="btn-export"><svg class="ic ic-sm"><use href="/icons.svg#file-text"></use></svg> Exporter pour Excel</button>
+        </div>
+      </div>
+
+      <div class="card">
         <h2>Courses</h2>
         <div class="onglets" id="filtres">
           <button data-statut="" class="actif">Toutes</button>
@@ -99,6 +110,7 @@
             <label>Commission plateforme (%)<input name="commission_pct" type="number" min="0" max="100" step="1"></label>
             <label>Rayon de notification (km)<input name="rayon_km" type="number" min="1" step="1"></label>
             <label>Zone de service autour de Yène (km)<input name="zone_km" type="number" min="1" step="1"></label>
+            <label>Plafond de dette d'un livreur (FCFA, 0 = aucun)<input name="plafond_dette" type="number" min="0" step="500"></label>
           </div>
           <button class="primaire">Enregistrer</button>
         </form>

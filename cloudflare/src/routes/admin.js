@@ -6,9 +6,10 @@ import { parametres, pointValide } from '../tarifs.js';
 import { SELECT_COURSE, diffuserMaj, notifierNouvelleCourse, lireCourse } from '../courses-service.js';
 import { rapprocher, validerManuellement } from '../paiements.js';
 import { envoyer } from '../push.js';
+import * as argent from '../argent.js';
 import { CATEGORIES } from '../lieux.js';
 
-const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km'];
+const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette'];
 
 export function enregistrer(r) {
   enregistrerGestion(r);
@@ -187,6 +188,28 @@ async function lireStatut(c) {
 }
 
 export function enregistrerGestion(r) {
+  // ---------- Argent des livreurs : soldes, historique, règlements, export ----------
+  r.get('/api/admin/soldes', async (req, c) => { await exigerAdmin(req, c); return json(await argent.soldes(c)); });
+  r.get('/api/admin/livreurs/:id/mouvements', async (req, c) => { await exigerAdmin(req, c); return json(await argent.mouvementsLivreur(c, c.params.id)); });
+  r.post('/api/admin/livreurs/:id/reglements', async (req, c) => {
+    const u = await exigerAdmin(req, c);
+    const b = await lireCorps(req);
+    const res = await argent.enregistrerReglement(c, c.params.id, { montant: b.montant, reference: b.reference, adminId: u.id });
+    c.io.to('user:' + Number(c.params.id)).emit('argent:maj', res);
+    return json(res, 201);
+  });
+  r.get('/api/admin/mouvements.csv', async (req, c) => {
+    await exigerAdmin(req, c);
+    const q = c.url.searchParams.get('mois') || '';
+    const m = /^\d{4}-\d{2}$/.test(q) ? q : new Date().toISOString().slice(0, 7);
+    const [an, mo] = m.split('-').map(Number);
+    const du = new Date(Date.UTC(an, mo - 1, 1)).toISOString();
+    const au = new Date(Date.UTC(an, mo, 1)).toISOString();
+    return new Response(await argent.exportCsv(c, { du, au }), {
+      headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="thiak-thiak-argent-${m}.csv"` },
+    });
+  });
+
   r.post('/api/admin/livreurs', async (req, c) => { await exigerAdmin(req, c); return creerCompte(req, c, 'livreur'); });
   r.put('/api/admin/livreurs/:id', async (req, c) => { await exigerAdmin(req, c); return modifierCompte(req, c, 'livreur'); });
   r.delete('/api/admin/livreurs/:id', async (req, c) => {
@@ -194,6 +217,8 @@ export function enregistrerGestion(r) {
     const id = Number(c.params.id);
     const enCours = await c.db.query(`SELECT 1 FROM courses WHERE livreur_id = $1 AND statut IN ('acceptee', 'recuperee')`, [id]);
     if (enCours.rows.length) throw new HttpErreur(409, 'Ce livreur a une course en cours : remettez-la en attente avant de le supprimer');
+    const s = await argent.solde(c, id);
+    if (s) throw new HttpErreur(409, `Réglez d'abord son solde (${Math.abs(s).toLocaleString('fr-FR')} FCFA ${s > 0 ? 'à lui verser' : 'à reverser par lui'}) avant de le supprimer`);
     await c.db.query('UPDATE courses SET livreur_id = NULL WHERE livreur_id = $1', [id]);
     const res = await c.db.query(`DELETE FROM utilisateurs WHERE id = $1 AND role = 'livreur' RETURNING id`, [id]);
     if (!res.rows.length) throw new HttpErreur(404, 'Livreur introuvable');
@@ -299,6 +324,7 @@ export function enregistrerGestion(r) {
     const course = await lireStatut(c);
     if (!['acceptee', 'recuperee'].includes(course.statut)) throw new HttpErreur(400, 'Seule une course en cours peut être marquée livrée');
     await c.db.query(`UPDATE courses SET statut = 'livree', livree_le = ${MAINTENANT}, recuperee_le = coalesce(recuperee_le, ${MAINTENANT}) WHERE id = $1`, [course.id]);
+    await argent.inscrireCoursesLivrees(c, course.id);
     return json(await diffuserMaj(c, course.id));
   });
 

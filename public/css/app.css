@@ -909,3 +909,37 @@ header.entete { padding-left: max(16px, env(safe-area-inset-left)); padding-righ
 .bloc-paiement small { color: var(--ink-3); }
 .bloc-paiement.paye { background: var(--brand-50); border-color: var(--brand-100); }
 @media (prefers-color-scheme: dark) { .bloc-paiement { background: #2b1d07; border-color: #5c3d0c; } }
+
+/* =========================================================================
+   Argent : solde du livreur, registre des mouvements
+   ========================================================================= */
+.solde { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); }
+.solde small { font-size: .82rem; font-weight: 600; color: var(--ink-3); }
+.solde b { font-size: 1.7rem; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.solde span { font-size: .86rem; color: var(--ink-2); }
+.solde-plus { background: var(--brand-50); border-color: var(--brand-100); }
+.solde-plus b { color: var(--brand); }
+.solde-moins { background: #fff6e6; border-color: #fcd9a1; }
+.solde-moins b { color: #b54708; }
+.solde-moins.bloque { background: var(--danger-50); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+.solde-moins.bloque b { color: var(--danger); }
+@media (prefers-color-scheme: dark) {
+  .solde-plus b { color: #5fd3a8; }
+  .solde-moins { background: #2b1d07; border-color: #5c3d0c; }
+  .solde-moins b { color: #fdb022; }
+}
+.mouvements { list-style: none; margin: 10px 0 0; padding: 0; }
+.mouvements li { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mouvements li:last-child { border-bottom: 0; }
+.mouvements li span { font-size: .9rem; }
+.mouvements li small { display: block; color: var(--ink-3); font-size: .78rem; margin-top: 2px; }
+.mouvements b, .montant { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 700; }
+.mouvements b.plus, .montant.plus { color: var(--ok); }
+.mouvements b.moins, .montant.moins { color: #b54708; }
+@media (prefers-color-scheme: dark) { .mouvements b.moins, .montant.moins { color: #fdb022; } }
+.resume-argent { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.export-ligne { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.export-ligne label { margin: 0; }
+.export-ligne input { margin-top: 4px; min-height: 42px; }
+#gains .stat .v { font-size: 1.3rem; white-space: nowrap; }
+#soldes .montant { white-space: normal; }

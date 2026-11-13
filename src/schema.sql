@@ -117,3 +117,27 @@ CREATE TABLE IF NOT EXISTS demandes_position (
   cree_le    TIMESTAMPTZ NOT NULL DEFAULT now(),
   recue_le   TIMESTAMPTZ
 );
+
+-- Argent entre livreurs et plateforme : registre de mouvements, un solde par livreur.
+-- montant > 0 : la plateforme doit cet argent au livreur (sa part d'une course payée en ligne)
+-- montant < 0 : le livreur doit cet argent à la plateforme (commission d'une course en espèces)
+CREATE TABLE IF NOT EXISTS mouvements (
+  id          SERIAL PRIMARY KEY,
+  livreur_id  INT NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,
+  course_id   INT REFERENCES courses(id) ON DELETE SET NULL,
+  type        TEXT NOT NULL CHECK (type IN ('course', 'reglement', 'ajustement')),
+  montant     INT NOT NULL,
+  prix        INT,
+  commission  INT,
+  paiement    TEXT,
+  libelle     TEXT NOT NULL,
+  reference   TEXT,               -- référence Wave / Orange Money d'un règlement
+  admin_id    INT,                -- admin qui a enregistré le règlement
+  cree_le     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_mouvements_livreur ON mouvements(livreur_id);
+-- une course n'est inscrite qu'une fois au registre
+CREATE UNIQUE INDEX IF NOT EXISTS un_mouvement_course ON mouvements(course_id) WHERE type = 'course';
+
+-- Au-delà de ce montant dû à la plateforme, le livreur ne peut plus accepter de course (0 = pas de plafond)
+INSERT INTO parametres (cle, valeur) VALUES ('plafond_dette', '5000') ON CONFLICT (cle) DO NOTHING;

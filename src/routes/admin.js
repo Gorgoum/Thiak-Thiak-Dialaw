@@ -132,7 +132,7 @@ router.delete('/lieux/:id', a(async (req, res) => {
   res.json({ ok: true });
 }));
 
-const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km'];
+const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette'];
 
 router.get('/parametres', a(async (req, res) => res.json(await parametres())));
 
@@ -155,6 +155,34 @@ router.put('/parametres', a(async (req, res) => {
 // =========================================================================
 const bcrypt = require('bcryptjs');
 const { normaliserTel } = require('../auth');
+const argent = require('../argent');
+
+// =========================================================================
+// Argent des livreurs : soldes, historique, règlements, export
+// =========================================================================
+router.get('/soldes', a(async (req, res) => res.json(await argent.soldes())));
+router.get('/livreurs/:id/mouvements', a(async (req, res) => res.json(await argent.mouvementsLivreur(req.params.id))));
+router.post('/livreurs/:id/reglements', a(async (req, res) => {
+  try {
+    const b = req.body || {};
+    const r = await argent.enregistrerReglement(req.params.id, { montant: b.montant, reference: b.reference, adminId: req.user.id });
+    req.app.get('io').to('user:' + req.params.id).emit('argent:maj', r);
+    res.status(201).json(r);
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ erreur: e.message });
+    throw e;
+  }
+}));
+// Export Excel (CSV) : ?mois=2026-11 (mois en cours par défaut)
+router.get('/mouvements.csv', a(async (req, res) => {
+  const m = /^\d{4}-\d{2}$/.test(String(req.query.mois || '')) ? req.query.mois : new Date().toISOString().slice(0, 7);
+  const [an, mo] = m.split('-').map(Number);
+  const du = new Date(Date.UTC(an, mo - 1, 1)).toISOString();
+  const au = new Date(Date.UTC(an, mo, 1)).toISOString();
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="thiak-thiak-argent-${m}.csv"`);
+  res.send(await argent.exportCsv({ du, au }));
+}));
 const { diffuserMaj, notifierNouvelleCourse } = require('../courses-service');
 const push = require('../push');
 
@@ -203,6 +231,8 @@ router.put('/livreurs/:id', a((req, res) => modifierCompte(req, res, 'livreur'))
 router.delete('/livreurs/:id', a(async (req, res) => {
   const enCours = await query(`SELECT 1 FROM courses WHERE livreur_id = $1 AND statut IN ('acceptee', 'recuperee')`, [req.params.id]);
   if (enCours.rows.length) return res.status(409).json({ erreur: 'Ce livreur a une course en cours : remettez-la en attente avant de le supprimer' });
+  const s = await argent.solde(req.params.id);
+  if (s) return res.status(409).json({ erreur: `Réglez d'abord son solde (${Math.abs(s).toLocaleString('fr-FR')} FCFA ${s > 0 ? 'à lui verser' : 'à reverser par lui'}) avant de le supprimer` });
   await query('UPDATE courses SET livreur_id = NULL WHERE livreur_id = $1', [req.params.id]);
   const r = await query(`DELETE FROM utilisateurs WHERE id = $1 AND role = 'livreur' RETURNING id`, [req.params.id]);
   if (!r.rows.length) return res.status(404).json({ erreur: 'Livreur introuvable' });
@@ -302,6 +332,7 @@ router.post('/courses/:id/terminer', a(async (req, res) => {
   if (!c) return res.status(404).json({ erreur: 'Course introuvable' });
   if (!['acceptee', 'recuperee'].includes(c.statut)) return res.status(400).json({ erreur: 'Seule une course en cours peut être marquée livrée' });
   await query(`UPDATE courses SET statut = 'livree', livree_le = now(), recuperee_le = coalesce(recuperee_le, now()) WHERE id = $1`, [req.params.id]);
+  await argent.inscrireCoursesLivrees(Number(req.params.id));
   res.json(await diffuserMaj(req.app.get('io'), req.params.id));
 }));
 

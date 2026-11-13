@@ -54,6 +54,81 @@ async function chargerCourses() {
     </tr>`).join('') || '<tr><td colspan="8" class="vide">Aucune course.</td></tr>'}`;
 }
 
+// =========================================================================
+// Argent des livreurs
+// =========================================================================
+let soldes = [];
+const phraseSolde = (s) => (s > 0 ? `<span class="montant plus">À lui verser : ${fcfa(s)}</span>`
+  : s < 0 ? `<span class="montant moins">Il doit reverser : ${fcfa(-s)}</span>` : '<span class="meta">Soldé</span>');
+
+async function chargerSoldes() {
+  soldes = await api('GET', '/api/admin/soldes');
+  const aVerser = soldes.filter((l) => l.solde > 0).reduce((t, l) => t + l.solde, 0);
+  const aRecevoir = soldes.filter((l) => l.solde < 0).reduce((t, l) => t - l.solde, 0);
+  document.getElementById('resume-argent').innerHTML = `
+    <div class="stat"><div class="v">${fcfa(aVerser)}</div><div class="l">à verser aux livreurs</div></div>
+    <div class="stat"><div class="v">${fcfa(aRecevoir)}</div><div class="l">à recevoir des livreurs</div></div>`;
+  const visibles = soldes.filter((l) => l.solde || l.nb_mouvements);
+  document.getElementById('soldes').innerHTML = `
+    <tr><th>Livreur</th><th>Solde et actions</th><th>Dernier règlement</th></tr>
+    ${visibles.map((l) => `<tr>
+      <td><b>${esc(l.nom)}</b><br>${lienTel(l.telephone)}</td>
+      <td>${phraseSolde(l.solde)}
+        <div class="actions-ligne" style="margin-top:8px">
+          ${l.solde ? `<button class="${l.solde > 0 ? 'jaune' : 'ok'}" data-regler="${l.id}">${ico('banknote', 'ic-sm')} Régler</button>` : ''}
+          <button data-historique="${l.id}">${ico('history', 'ic-sm')} Historique</button></div></td>
+      <td>${l.dernier_reglement ? dateCourte(l.dernier_reglement) : '–'}</td>
+    </tr>`).join('') || '<tr><td colspan="3" class="vide">Aucune course livrée pour l\'instant.</td></tr>'}`;
+}
+
+function fenetreReglement(l) {
+  const paie = l.solde > 0;
+  ouvrirFenetre(`Régler avec ${l.nom}`, `
+    <div class="solde ${paie ? 'solde-plus' : 'solde-moins'}" style="margin-bottom:14px">
+      <small>${paie ? 'La plateforme lui doit' : 'Il doit à la plateforme'}</small><b>${fcfa(Math.abs(l.solde))}</b>
+      <span>${paie ? 'Envoyez-lui ce montant par Wave, puis enregistrez le règlement ici.' : 'Quand il vous a envoyé ce montant par Wave, enregistrez le règlement ici.'}</span></div>
+    ${champ(paie ? 'Montant versé (FCFA)' : 'Montant reçu (FCFA)', 'montant', Math.abs(l.solde), `required type="number" min="1" max="${Math.abs(l.solde)}" step="1"`)}
+    ${champ('Référence de la transaction Wave (facultatif)', 'reference', '', 'maxlength="80" autocomplete="off"')}`,
+  async (d) => {
+    const r = await api('POST', `/api/admin/livreurs/${l.id}/reglements`, d);
+    toast(`Règlement enregistré. Nouveau solde : ${r.solde ? fcfa(Math.abs(r.solde)) : '0 FCFA'}`);
+    chargerSoldes();
+  }, 'Enregistrer le règlement');
+}
+
+async function fenetreHistorique(l) {
+  const m = await api('GET', `/api/admin/livreurs/${l.id}/mouvements`);
+  ouvrirFenetre(`Comptes de ${l.nom}`, `
+    <p style="margin:0 0 12px">${phraseSolde(l.solde)}</p>
+    ${m.length ? `<ul class="mouvements">${m.map((x) => `
+      <li><span>${esc(x.libelle)}<small>${dateCourte(x.cree_le)}${x.reference ? ` · réf. ${esc(x.reference)}` : ''}${x.admin_nom ? ` · par ${esc(x.admin_nom)}` : ''}</small></span>
+        <b class="${x.montant >= 0 ? 'plus' : 'moins'}">${x.montant >= 0 ? '+' : '−'}${fcfa(Math.abs(x.montant))}</b></li>`).join('')}</ul>
+      <p class="aide">« + » : la plateforme le doit au livreur. « − » : le livreur le doit à la plateforme.</p>` : '<p class="vide">Aucun mouvement.</p>'}`, null);
+}
+
+document.getElementById('soldes').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const l = soldes.find((x) => x.id === Number(b.dataset.regler || b.dataset.historique));
+  if (!l) return;
+  if (b.dataset.regler) fenetreReglement(l);
+  else fenetreHistorique(l).catch((err) => toast(err.message, true));
+});
+
+document.getElementById('mois-export').value = new Date().toISOString().slice(0, 7);
+document.getElementById('btn-export').onclick = async () => {
+  const mois = document.getElementById('mois-export').value;
+  try {
+    const r = await fetch(`/api/admin/mouvements.csv?mois=${encodeURIComponent(mois)}`, { headers: { Authorization: 'Bearer ' + Stock.get(CLE_TOKEN()) } });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erreur || 'Export impossible');
+    const lien = document.createElement('a');
+    lien.href = URL.createObjectURL(await r.blob());
+    lien.download = `thiak-thiak-argent-${mois}.csv`;
+    lien.click();
+    setTimeout(() => URL.revokeObjectURL(lien.href), 2000);
+  } catch (err) { toast(err.message, true); }
+};
+
 async function chargerAdmins() {
   const l = await api('GET', '/api/admin/admins');
   document.getElementById('admins').innerHTML = `
@@ -221,7 +296,7 @@ async function chargerParams() {
   for (const [k, v] of Object.entries(p)) if (f[k]) f[k].value = v;
 }
 
-const toutCharger = () => Promise.all([chargerStats(), chargerLivreurs(), chargerCourses(), chargerAdmins()]).catch((e) => toast(e.message, true));
+const toutCharger = () => Promise.all([chargerStats(), chargerLivreurs(), chargerCourses(), chargerAdmins(), chargerSoldes()]).catch((e) => toast(e.message, true));
 
 document.getElementById('livreurs').addEventListener('click', async (e) => {
   const b = e.target.closest('button');
