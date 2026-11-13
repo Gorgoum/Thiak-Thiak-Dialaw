@@ -735,3 +735,111 @@ body.guidage .carte-course .leaflet-control-zoom { display: none !important; }
 body.guidage .carte-course .bouton-fond,
 body.guidage .carte-course .leaflet-control-attribution { display: none !important; }
 .nav-carte .maplibregl-ctrl-attrib { font-size: 9px; background: rgba(255, 255, 255, .6); }
+
+/* =========================================================================
+   Assistant client : une question par écran, gros boutons, texte lisible
+   ========================================================================= */
+body.page-client { font-size: 16.5px; }
+.volet-carte .leaflet-top.leaflet-left { top: 12px; }
+.volet-carte .leaflet-bottom.leaflet-left { bottom: 60px; }
+/* Carte : grande pour choisir les lieux (étapes 1-2), en aperçu ensuite (3-4) */
+.volet-carte #map { height: clamp(220px, 38vh, 420px); transition: height 280ms cubic-bezier(.2, .8, .2, 1); }
+body[data-etape="3"] .volet-carte #map, body[data-etape="4"] .volet-carte #map { height: 150px; }
+body[data-etape="3"] .carte-aide, body[data-etape="4"] .carte-aide,
+body[data-etape="3"] .carte-outils, body[data-etape="4"] .carte-outils { display: none; }
+.carte-cadre.signale { animation: signale 1.2s ease 2; }
+@keyframes signale { 50% { box-shadow: 0 0 0 5px var(--accent), var(--shadow-md); } }
+
+/* Progression 1 · 2 · 3 · 4 */
+.progression { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 2px 0 18px; padding: 0; counter-reset: none; }
+.progression li {
+  display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer;
+  font-size: .76rem; font-weight: 600; color: var(--ink-3); position: relative; text-align: center;
+}
+.progression li::before { content: ''; position: absolute; top: 15px; left: calc(-50% + 18px); right: calc(50% + 18px); height: 2px; background: var(--line-2); }
+.progression li:first-child::before { display: none; }
+.progression li span {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  border: 2px solid var(--line-2); background: var(--surface); font-weight: 800; font-size: .86rem;
+  transition: all var(--transition);
+}
+.progression li.fait { color: var(--brand); }
+.progression li.fait span { background: var(--brand-50); border-color: var(--brand); color: var(--brand); }
+.progression li.fait::before, .progression li.actif::before { background: var(--brand); }
+.progression li.actif { color: var(--ink); }
+.progression li.actif span { background: var(--brand); border-color: var(--brand); color: #fff; box-shadow: 0 0 0 4px var(--brand-50); }
+
+/* Un écran = une question */
+.ecran { animation: entre 260ms cubic-bezier(.2, .8, .2, 1); }
+@keyframes entre { from { opacity: 0; transform: translateY(8px); } }
+.etape-trajet { display: block; padding: 0; border: 0; cursor: default; background: none !important; }
+.question { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; font-size: 1.4rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; }
+.question .puce { width: 32px; height: 32px; font-size: .95rem; box-shadow: none; margin: 0; }
+.consigne { color: var(--ink-3); margin: -8px 0 16px; }
+
+.gros-choix { display: grid; gap: 10px; }
+.gros-bouton {
+  justify-content: flex-start; gap: 14px; text-align: left; white-space: normal;
+  min-height: 68px; padding: 10px 14px; border-radius: 16px;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+.gros-bouton:hover { border-color: var(--brand-100); background: var(--brand-50); }
+.gros-bouton:first-child { border-color: var(--brand); }
+.gros-bouton b { display: block; font-size: 1.05rem; font-weight: 700; }
+.gros-bouton small { display: block; font-size: .85rem; font-weight: 400; color: var(--ink-3); margin-top: 2px; }
+.pic-rond { width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--brand-50); color: var(--brand); }
+.pic-rond .ic { width: 22px; height: 22px; }
+.gros-bouton:first-child .pic-rond { background: var(--brand); color: #fff; }
+@media (prefers-color-scheme: dark) { .pic-rond { color: #5fd3a8; } .gros-bouton:first-child .pic-rond { color: #fff; } }
+
+.champ-question { margin: 18px 0 8px; font-size: .95rem; }
+.champ-question input { min-height: 52px; padding-left: 44px; }
+.etat-lieu { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 22px; }
+.etat-lieu .etape-coord { margin: 0; }
+.etape-etat { font-size: .88rem; }
+.attente-pos { margin-top: 12px; }
+.recents { border-top: 0; margin-top: 16px; padding-top: 0; }
+
+/* Que faut-il livrer : grosses vignettes */
+.segment.grand span { min-height: 56px; font-size: 1rem; }
+.vignettes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+.vignette {
+  flex-direction: column; gap: 8px; white-space: normal; text-align: center; line-height: 1.2;
+  min-height: 96px; padding: 12px 6px; border-radius: 16px; font-size: .9rem;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); position: relative;
+}
+.vignette .ic { width: 30px; height: 30px; color: var(--brand); }
+.vignette.choisi { border-color: var(--brand); background: var(--brand-50); box-shadow: inset 0 0 0 1px var(--brand); }
+.vignette.choisi::after {
+  content: '✓'; position: absolute; top: 6px; right: 8px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--brand); color: #fff; font-size: .72rem; font-weight: 800; display: grid; place-items: center;
+}
+@media (prefers-color-scheme: dark) { .vignette .ic { color: #5fd3a8; } }
+.ecran textarea { min-height: 64px; }
+.ecran .champ input, .ecran textarea { min-height: 52px; }
+
+/* Barre du bas : retour, prix, gros bouton */
+.barre-commande .btn-retour { width: 52px; min-height: 52px; flex: none; box-shadow: none; border: 1.5px solid var(--line-2); border-radius: 14px; }
+.barre-commande .btn-primaire { min-height: 56px; font-size: 1.05rem; max-width: 60%; }
+.resume-prix { font-size: 1.3rem; }
+
+@media (max-width: 380px) {
+  .question { font-size: 1.22rem; }
+  .vignettes { grid-template-columns: repeat(2, 1fr); }
+  .barre-commande { gap: 8px; padding-left: 10px; padding-right: 10px; }
+  .barre-commande .btn-primaire { padding: 0 14px; font-size: .98rem; }
+}
+@media (min-width: 960px) {
+  .volet-carte #map, body[data-etape="3"] .volet-carte #map, body[data-etape="4"] .volet-carte #map { height: 100%; }
+  body[data-etape="3"] .carte-outils, body[data-etape="4"] .carte-outils { display: flex; }
+  .volet-form { padding-top: 24px; }
+  .question { font-size: 1.55rem; }
+}
+.resume-prix { white-space: nowrap; }
+@media (max-width: 959px) {
+  body[data-etape="3"] .volet-carte .leaflet-control-zoom, body[data-etape="4"] .volet-carte .leaflet-control-zoom,
+  body[data-etape="3"] .volet-carte .bouton-fond, body[data-etape="4"] .volet-carte .bouton-fond { display: none; }
+}
+.champ-lieu { display: block; }
+.champ-lieu .ic-recherche { position: absolute; left: 15px; top: 22px; color: var(--ink-3); pointer-events: none; z-index: 1; }

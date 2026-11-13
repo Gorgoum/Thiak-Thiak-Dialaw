@@ -12,6 +12,7 @@ const ICONES = [
   'arrow-right', 'power', 'banknote', 'circle-x', 'users', 'shield-check', 'signpost', 'milestone', 'undo-2',
   'corner-up-left', 'corner-up-right', 'arrow-up', 'arrow-up-left', 'arrow-up-right', 'rotate-cw', 'flag',
   'volume-2', 'volume-x', 'locate',
+  'file-text', 'utensils', 'flame', 'pill', 'shirt', 'ellipsis', 'hand', 'chevron-left', 'pointer', 'croissant', 'droplet',
 ];
 
 const dossier = path.join(__dirname, '..', 'node_modules', 'lucide-static', 'icons');

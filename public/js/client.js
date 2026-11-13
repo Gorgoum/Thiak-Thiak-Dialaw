@@ -13,6 +13,7 @@ const $ = (id) => document.getElementById(id);
 let carte;
 let socket;
 let mode = 'depart';
+let etape = 1; // assistant : 1 départ · 2 arrivée · 3 quoi · 4 vous
 let dernierDevis = null;
 const points = { depart: null, arrivee: null };
 const attentes = {}; // demandes de position en cours, par type : { code, minuterie }
@@ -102,8 +103,6 @@ function placer(type, latlng) {
   majCoord(type);
   verifierMemeEndroit(type, { remplacer: true });
   proposerRepere(type);
-  const autre = type === 'depart' ? 'arrivee' : 'depart';
-  if (!points[autre]) choisirMode(autre); // le prochain toucher sur la carte place l'autre point
   majAide();
   majDevis(true); // les deux points placés : trajet tracé et zoom sur l'itinéraire
 }
@@ -267,14 +266,14 @@ function memoriserAdresse(pt, repere) {
 }
 function afficherAdresses() {
   const liste = lireAdresses();
-  $('recents').hidden = !liste.length;
+  $('recents').hidden = !liste.length || etape > 2;
   $('recents-liste').innerHTML = liste.map((x, i) => `
     <button type="button" class="chip" data-i="${i}" title="${esc(x.repere)}">${ico('map-pin', 'ic-sm')}${esc(x.repere.length > 30 ? x.repere.slice(0, 29) + '…' : x.repere)}</button>`).join('');
 }
 $('recents-liste').onclick = (e) => {
   const b = e.target.closest('button[data-i]');
   const x = b && lireAdresses()[Number(b.dataset.i)];
-  if (x) placerAvecRepere(mode, x.lat, x.lng, x.repere, true);
+  if (x) { placerAvecRepere(mode, x.lat, x.lng, x.repere, true); avancer(mode); }
 };
 
 // =========================================================================
@@ -294,7 +293,8 @@ function positionRecue(d) {
   arreterAttente(type);
   placerAvecRepere(type, d.lat, d.lng, null);
   if (!memeEndroit()) majEtat(type, `${ico('check', 'ic-sm')} Position reçue${d.precision_m ? ` · ±${d.precision_m} m` : ''}`, 'place');
-  toast(`Position ${type === 'depart' ? 'du départ' : 'du destinataire'} reçue. Ajoutez un repère pour le livreur.`);
+  toast(`Position ${type === 'depart' ? 'du départ' : 'du destinataire'} reçue.`);
+  avancer(type);
 }
 
 async function demanderPosition(type) {
@@ -346,9 +346,11 @@ let jetonDevis = 0;
 let erreurDevis = null; // message bloquant du dernier calcul de prix (ex. hors zone)
 // Tracé du trajet A → B sur la carte (route réelle, ou ligne pointillée si l'itinéraire est indisponible)
 let traceRoute = null;
+let ptsTrace = null; // points du trajet affiché (pour recadrer quand la carte change de taille)
 function effacerTrace() {
   if (traceRoute) traceRoute.forEach((l) => l.remove());
   traceRoute = null;
+  ptsTrace = null;
 }
 function dessinerTrace(d) {
   effacerTrace();
@@ -357,6 +359,7 @@ function dessinerTrace(d) {
     L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.9, interactive: false }),
     L.polyline(pts, { color: '#2e90fa', weight: 5, opacity: 1, dashArray: d.trace ? null : '8 10', interactive: false }),
   ].map((l) => l.addTo(carte));
+  ptsTrace = pts;
   return pts;
 }
 /** Zoom automatique sur tout l'itinéraire, comme un GPS (en laissant la place à la recherche et aux boutons). */
@@ -566,7 +569,7 @@ document.querySelectorAll('[data-gps]').forEach((b) => {
         }
         if (p.coords.accuracy > 150) {
           toast(`Position approximative (±${Math.round(p.coords.accuracy)} m). Faites glisser le point ${LETTRE[type]} sur l'endroit exact.`, true);
-        }
+        } else avancer(type);
       } catch (err) { toast(err.message, true); }
     });
   };
@@ -574,67 +577,149 @@ document.querySelectorAll('[data-gps]').forEach((b) => {
 document.querySelectorAll('[data-demander]').forEach((b) => {
   b.onclick = (e) => { e.stopPropagation(); demanderPosition(b.dataset.demander); };
 });
+// « Toucher la carte » : on montre la carte et on explique quoi faire
+document.querySelectorAll('[data-sur-carte]').forEach((b) => {
+  b.onclick = (e) => {
+    e.stopPropagation();
+    choisirMode(b.dataset.surCarte);
+    $('bloc-carte').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const cadre = $('bloc-carte').querySelector('.carte-cadre');
+    cadre.classList.remove('signale'); void cadre.offsetWidth; cadre.classList.add('signale');
+    toast(`Touchez la carte à l'endroit ${b.dataset.surCarte === 'depart' ? 'où le livreur prend le colis' : 'où il faut livrer'}.`);
+  };
+});
 
 // =========================================================================
 // Parcours guidé : le bouton du bas indique toujours la prochaine action
 // =========================================================================
 const telValide = () => /^7\d{8}$/.test(form.client_tel.value.replace(/\D/g, '').slice(-9));
 
-/** Amène l'utilisateur au champ à compléter et met son bloc en évidence. */
+/** Amène l'utilisateur au champ à compléter et le met en évidence. */
 function allerA(el) {
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   setTimeout(() => el.focus({ preventScroll: true }), 350);
-  const bloc = el.closest('.bloc');
-  if (bloc) { bloc.classList.add('a-completer'); setTimeout(() => bloc.classList.remove('a-completer'), 1800); }
-}
-function allerALaCarte(type, message, erreur = false) {
-  choisirMode(type);
-  $('bloc-carte').scrollIntoView({ behavior: 'smooth' });
-  if (message) toast(message, erreur);
+  el.classList.add('erreur');
 }
 
-/** Prochaine chose à faire, ou null si la commande est prête. */
-function prochaineAction() {
-  if (!points.depart) return { label: 'Placer le départ', faire: () => allerALaCarte('depart', 'Touchez la carte, cherchez un lieu ou utilisez « Ma position ».') };
-  if (!points.arrivee) return { label: 'Placer l\'arrivée', faire: () => allerALaCarte('arrivee', 'Touchez la carte ou cherchez le lieu de livraison.') };
-  if (memeEndroit()) return { label: 'Séparer A et B', faire: () => allerALaCarte('depart', 'Le départ et l\'arrivée sont au même endroit.', true) };
-  if (erreurDevis) return { label: 'Hors zone', faire: () => toast(erreurDevis, true) };
-  if (!dernierDevis) return { label: 'Calcul du prix…', faire: () => {} };
-  if (!form.description.value.trim()) return { label: 'Décrire le colis', faire: () => allerA(form.description) };
-  if (!form.client_nom.value.trim()) return { label: 'Votre nom', faire: () => { ouvrirCoordonnees(); allerA(form.client_nom); } };
-  if (!telValide()) {
-    return {
-      label: 'Votre téléphone',
-      faire: () => {
-        ouvrirCoordonnees();
-        allerA(form.client_tel);
-        if (form.client_tel.value.trim()) toast('Numéro invalide (ex : 77 123 45 67)', true);
-      },
-    };
+// =========================================================================
+// Assistant : une question par écran, un seul gros bouton en bas
+// =========================================================================
+const grandEcran = () => window.matchMedia('(min-width: 960px)').matches;
+
+function allerEtape(n) {
+  etape = n;
+  document.querySelectorAll('.ecran').forEach((e) => { e.hidden = Number(e.dataset.etape) !== n; });
+  document.body.dataset.etape = n;
+  document.querySelectorAll('#progression li').forEach((li) => {
+    const i = Number(li.dataset.aller);
+    li.classList.toggle('actif', i === n);
+    li.classList.toggle('fait', i < n);
+  });
+  $('btn-retour').hidden = n === 1;
+  afficherAdresses();
+  if (n <= 2) choisirMode(n === 1 ? 'depart' : 'arrivee');
+  if (n === 4) afficherCoordonnees();
+  majBouton();
+  // haut de l'écran : on voit la carte et la question
+  if (grandEcran()) document.querySelector('.volet-form').scrollTo({ top: 0, behavior: 'smooth' });
+  else window.scrollTo({ top: 0, behavior: 'smooth' });
+  // la carte change de taille selon l'étape : on la redimensionne, puis on recadre le trajet
+  setTimeout(() => {
+    carte.invalidateSize();
+    if (ptsTrace) recadrerItineraire(ptsTrace);
+    else if (points[mode]) carte.panTo(points[mode].getLatLng());
+  }, 320);
+}
+
+/** Après un choix sûr (position, recherche, adresse récente) : on passe tout seul à la question suivante. */
+let minuterieAvance = null;
+function avancer(type) {
+  clearTimeout(minuterieAvance);
+  if (type !== 'depart' || etape !== 1) return;
+  minuterieAvance = setTimeout(() => {
+    if (etape === 1 && points.depart && !memeEndroit()) {
+      toast('Départ choisi. Maintenant : où faut-il livrer ?');
+      allerEtape(2);
+    }
+  }, 900);
+}
+
+/** Ce qui manque à l'étape n, ou null si elle est complète. */
+function manque(n) {
+  if (n === 1 && !points.depart) {
+    return { label: 'Choisissez le départ', faire: () => toast('Touchez « Je suis ici », touchez la carte ou écrivez le nom du lieu.') };
   }
+  if (n === 2) {
+    if (!points.arrivee) return { label: 'Choisissez l\'arrivée', faire: () => toast('Touchez « Chez moi, ici », touchez la carte ou écrivez le nom du lieu.') };
+    if (memeEndroit()) return { label: 'Départ = arrivée', faire: () => toast('Le départ et l\'arrivée sont au même endroit. Touchez la carte là où il faut livrer.', true) };
+    if (erreurDevis) return { label: 'Hors zone', faire: () => toast(erreurDevis, true) };
+    if (!dernierDevis) return { label: 'Calcul du prix…', faire: () => {} };
+  }
+  if (n === 3 && !form.description.value.trim()) {
+    return { label: 'Choisissez ci-dessus', faire: () => toast('Touchez ce qu\'il faut livrer, par exemple « Colis ».') };
+  }
+  if (n === 4) {
+    if (!telValide()) {
+      return {
+        label: 'Votre numéro',
+        faire: () => {
+          ouvrirCoordonnees();
+          allerA(form.client_tel);
+          toast(form.client_tel.value.trim() ? 'Numéro incorrect. Exemple : 77 123 45 67' : 'Écrivez votre numéro de téléphone.', true);
+        },
+      };
+    }
+    if (!form.client_nom.value.trim()) return { label: 'Votre nom', faire: () => { ouvrirCoordonnees(); allerA(form.client_nom); toast('Écrivez votre nom.'); } };
+  }
+  return null;
+}
+
+/** Prochaine chose à faire, ou null si la commande est prête à être vérifiée. */
+function prochaineAction() {
+  for (let n = 1; n < etape; n++) {
+    const m = manque(n);
+    if (m) return { ...m, faire: () => { allerEtape(n); m.faire(); } };
+  }
+  const m = manque(etape);
+  if (m) return m;
+  if (etape < 4) return { label: 'Continuer', suivant: true, faire: () => allerEtape(etape + 1) };
   return null;
 }
 
 function majBouton() {
   const b = $('btn-commander');
   const a = prochaineAction();
-  b.classList.toggle('a-faire', !!a);
+  b.classList.toggle('a-faire', !!a && !a.suivant);
   b.innerHTML = a ? `${esc(a.label)} ${ico('arrow-right')}` : `Commander ${ico('arrow-right')}`;
 }
+
+$('btn-retour').onclick = () => { if (etape > 1) allerEtape(etape - 1); };
+// Points de progression : on peut revenir en arrière, ou avancer si tout est rempli
+$('progression').addEventListener('click', (e) => {
+  const li = e.target.closest('li[data-aller]');
+  if (!li) return;
+  const n = Number(li.dataset.aller);
+  for (let i = 1; i < n; i++) { const m = manque(i); if (m) { allerEtape(i); m.faire(); return; } }
+  allerEtape(n);
+});
 
 // =========================================================================
 // Choix rapides pour la description
 // =========================================================================
 const CHOIX_RAPIDES = {
-  colis: ['Colis', 'Documents', 'Repas', 'Vêtements', 'Médicaments', 'Bouteille de gaz'],
-  achat: ['Pain', 'Courses du marché', 'Médicaments', 'Eau', 'Crédit téléphone', 'Gaz'],
+  colis: [['Colis', 'package'], ['Documents', 'file-text'], ['Repas', 'utensils'], ['Vêtements', 'shirt'], ['Médicaments', 'pill'], ['Bouteille de gaz', 'flame']],
+  achat: [['Pain', 'croissant'], ['Courses du marché', 'shopping-bag'], ['Médicaments', 'pill'], ['Eau', 'droplet'], ['Crédit téléphone', 'phone'], ['Gaz', 'flame']],
 };
 function afficherChoixRapides() {
   const texte = form.description.value.toLowerCase();
-  $('choix-rapides').innerHTML = CHOIX_RAPIDES[form.type.value].map((c) => `
-    <button type="button" class="chip ${texte.includes(c.toLowerCase()) ? 'choisi' : ''}" data-choix="${esc(c)}">${esc(c)}</button>`).join('');
+  $('choix-rapides').innerHTML = CHOIX_RAPIDES[form.type.value].map(([c, icone]) => {
+    const choisi = texte.includes(c.toLowerCase());
+    return `<button type="button" class="vignette ${choisi ? 'choisi' : ''}" data-choix="${esc(c)}" aria-pressed="${choisi}">
+      ${ico(icone)}<span>${esc(c)}</span></button>`;
+  }).join('') + `<button type="button" class="vignette" data-autre>${ico('ellipsis')}<span>Autre chose</span></button>`;
 }
 $('choix-rapides').addEventListener('click', (e) => {
+  if (e.target.closest('[data-autre]')) { allerA(form.description); form.description.classList.remove('erreur'); return; }
   const b = e.target.closest('[data-choix]');
   if (!b) return;
   const champ = form.description;
@@ -865,10 +950,8 @@ async function envoyerCommande() {
     coordEnEdition = false;
     afficherCoordonnees();
     afficherChoixRapides();
-    choisirMode('depart');
     majDevis();
-    afficherAdresses();
-    window.scrollTo({ top: 0 });
+    allerEtape(1);
 
     if (course.paiement_infos) {
       // paiement en ligne : on reste dans la fenêtre, qui devient l'écran de paiement
@@ -904,6 +987,7 @@ function initCarte() {
   carte = outilsCarte.carte;
   // Toucher la carte : sur un nom de lieu, on choisit ce lieu (comme Google Maps) ; ailleurs, on pose le point
   carte.on('click', (e) => {
+    if (etape > 2) return; // aux étapes « quoi » et « vous », la carte sert seulement d'aperçu
     const lieu = outilsCarte.lieuSousLeDoigt(e.latlng);
     if (!lieu) return placer(mode, e.latlng);
     const type = mode;
@@ -912,19 +996,6 @@ function initCarte() {
     toast(`${type === 'depart' ? 'Départ' : 'Arrivée'} : « ${lieu.nom} »`);
   });
 
-  brancherRecherche($('recherche'), $('suggestions'), (lieu) => {
-    $('recherche').value = '';
-    if (lieu.colle) {
-      placerAvecRepere(mode, lieu.lat, lieu.lng, null);
-      if (!memeEndroit()) majEtat(mode, `${ico('check', 'ic-sm')} Position collée`, 'place');
-      return;
-    }
-    const type = mode;
-    form[type + '_repere'].dataset.ancre = JSON.stringify({ nom: nomAvecVillage(lieu), lat: lieu.lat, lng: lieu.lng });
-    placerAvecRepere(type, lieu.lat, lieu.lng,
-      nomAvecVillage(lieu));
-    toast(`${type === 'depart' ? 'Départ' : 'Arrivée'} placé près de « ${lieu.nom} ». Ajustez le point si besoin.`);
-  });
   // Suggestions directement dans les champs Départ / Arrivée : choisir un lieu place le point
   ['depart', 'arrivee'].forEach((type) => {
     const champ = form[type + '_repere'];
@@ -934,18 +1005,18 @@ function initCarte() {
         champ.value = '';
         placerAvecRepere(type, lieu.lat, lieu.lng, null);
         if (!memeEndroit()) majEtat(type, `${ico('check', 'ic-sm')} Position collée`, 'place');
+        avancer(type);
         return;
       }
       const texte = nomAvecVillage(lieu);
       champ.dataset.ancre = JSON.stringify({ nom: texte, lat: lieu.lat, lng: lieu.lng });
       placerAvecRepere(type, lieu.lat, lieu.lng, texte, true);
-      if (window.matchMedia('(max-width: 959px)').matches) {
-        $('bloc-carte').scrollIntoView({ behavior: 'smooth', block: 'start' }); // montrer le point placé
-      }
+      champ.blur(); // fermer le clavier pour voir le point sur la carte
+      if (!grandEcran()) window.scrollTo({ top: 0, behavior: 'smooth' });
+      avancer(type);
     }, { discret: true });
   });
 
-  brancherRaccourcis($('raccourcis'), carte);
   brancherPleinEcran($('plein-ecran'), $('bloc-carte'), carte);
 
   $('me-localiser').onclick = () => boutonChargement($('me-localiser'), async () => {
@@ -957,11 +1028,9 @@ function initCarte() {
 }
 
 initCarte();
-choisirMode('depart');
-afficherAdresses();
 afficherCoordonnees();
 afficherChoixRapides();
-majBouton();
+allerEtape(1);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('confirmation').hidden) fermerConfirmation(); });
 brancherBoutonNotif($('btn-notif'));
 chargerListe().then(() => { if (suiviPartage) ouvrirTiroir(); });
