@@ -58,6 +58,7 @@
         <!-- 1. Départ -->
         <div class="ecran etape-trajet" data-etape="1" data-type="depart">
           <h2 class="question"><span class="puce puce-a">A</span>D'où part le colis ?</h2>
+          <p class="note-gps" id="note-depart" hidden></p>
           <div class="gros-choix">
             <button type="button" class="gros-bouton" data-gps="depart">
               <span class="pic-rond"><svg class="ic"><use href="/icons.svg#locate-fixed"></use></svg></span>
@@ -87,6 +88,7 @@
         <!-- 2. Arrivée -->
         <div class="ecran etape-trajet" data-etape="2" data-type="arrivee" hidden>
           <h2 class="question"><span class="puce puce-b">B</span>Où faut-il livrer ?</h2>
+          <p class="note-gps" id="note-arrivee" hidden></p>
           <div class="gros-choix">
             <button type="button" class="gros-bouton" data-gps="arrivee">
               <span class="pic-rond"><svg class="ic"><use href="/icons.svg#house"></use></svg></span>

@@ -785,13 +785,13 @@ body[data-etape="3"] .carte-outils, body[data-etape="4"] .carte-outils { display
   box-shadow: var(--shadow-sm);
 }
 .gros-bouton:hover { border-color: var(--brand-100); background: var(--brand-50); }
-.gros-bouton:first-child { border-color: var(--brand); }
+.gros-bouton.principal { border-color: var(--brand); }
 .gros-bouton b { display: block; font-size: 1.05rem; font-weight: 700; }
 .gros-bouton small { display: block; font-size: .85rem; font-weight: 400; color: var(--ink-3); margin-top: 2px; }
 .pic-rond { width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--brand-50); color: var(--brand); }
 .pic-rond .ic { width: 22px; height: 22px; }
-.gros-bouton:first-child .pic-rond { background: var(--brand); color: #fff; }
-@media (prefers-color-scheme: dark) { .pic-rond { color: #5fd3a8; } .gros-bouton:first-child .pic-rond { color: #fff; } }
+.gros-bouton.principal .pic-rond { background: var(--brand); color: #fff; }
+@media (prefers-color-scheme: dark) { .pic-rond { color: #5fd3a8; } .gros-bouton.principal .pic-rond { color: #fff; } }
 
 .champ-question { margin: 18px 0 8px; font-size: .95rem; }
 .champ-question input { min-height: 52px; padding-left: 44px; }
@@ -852,3 +852,5 @@ body.page-livreur { font-size: 16.5px; }
 .page-livreur .course .prix-course { font-size: 1.15rem; }
 .page-livreur .bloque { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; }
 .page-livreur .course .actions button:disabled { opacity: .55; }
+.note-gps { display: flex; align-items: flex-start; gap: 8px; margin: -4px 0 14px; padding: 10px 12px; border-radius: 12px; background: var(--brand-50); color: var(--ink-2); font-size: .92rem; line-height: 1.35; }
+.note-gps .ic { flex: none; margin-top: 2px; color: var(--brand); }

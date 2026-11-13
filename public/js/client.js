@@ -16,6 +16,7 @@ let mode = 'depart';
 let etape = 1; // assistant : 1 départ · 2 arrivée · 3 quoi · 4 vous
 let dernierDevis = null;
 const points = { depart: null, arrivee: null };
+const parGPS = { depart: false, arrivee: false }; // point placé avec « Je suis ici » / « Chez moi, ici »
 const attentes = {}; // demandes de position en cours, par type : { code, minuterie }
 
 // =========================================================================
@@ -75,6 +76,7 @@ function majEtat(type, texte, classe = '') {
 }
 
 function placer(type, latlng) {
+  parGPS[type] = false; // remis à true par le bouton de position, juste après
   if (points[type]) {
     points[type].setLatLng(latlng);
   } else {
@@ -104,6 +106,7 @@ function placer(type, latlng) {
   verifierMemeEndroit(type, { remplacer: true });
   proposerRepere(type);
   majAide();
+  majChoixGPS();
   majDevis(true); // les deux points placés : trajet tracé et zoom sur l'itinéraire
 }
 
@@ -124,8 +127,34 @@ function majCoord(type) {
 function retirerPoint(type) {
   arreterAttente(type);
   if (points[type]) { points[type].remove(); points[type] = null; }
+  parGPS[type] = false;
   majCoord(type);
   majEtat(type, 'À placer sur la carte'); // le repère écrit est conservé
+  majChoixGPS();
+}
+
+/**
+ * Si un point est déjà « ma position », l'autre ne peut pas l'être aussi :
+ * on retire le bouton de position de l'autre étape et on explique pourquoi.
+ */
+function majChoixGPS() {
+  ['depart', 'arrivee'].forEach((type) => {
+    const autre = type === 'depart' ? 'arrivee' : 'depart';
+    const bloque = parGPS[autre] && !!points[autre];
+    const ecran = document.querySelector(`.ecran[data-type="${type}"]`);
+    ecran.querySelector('[data-gps]').hidden = bloque;
+    const note = $('note-' + type);
+    note.hidden = !bloque;
+    note.innerHTML = bloque
+      ? (type === 'arrivee'
+        ? `${ico('info', 'ic-sm')} Le départ est votre position actuelle. Montrez maintenant où il faut livrer.`
+        : `${ico('info', 'ic-sm')} L'arrivée est votre position actuelle. Montrez d'où part le colis.`)
+      : '';
+    // le premier bouton visible est mis en avant
+    ecran.querySelectorAll('.gros-bouton').forEach((b) => b.classList.remove('principal'));
+    const premier = [...ecran.querySelectorAll('.gros-bouton')].find((b) => !b.hidden);
+    if (premier) premier.classList.add('principal');
+  });
 }
 
 /**
@@ -557,6 +586,8 @@ document.querySelectorAll('[data-gps]').forEach((b) => {
       try {
         const p = await positionGPS();
         placerAvecRepere(type, p.coords.latitude, p.coords.longitude, null);
+        parGPS[type] = true;
+        majChoixGPS();
         proposerRepere(type, 'Ma position');
         if (memeEndroit()) return; // l'alerte « même endroit » est déjà affichée
         if (type === 'arrivee') {
@@ -616,6 +647,7 @@ function allerEtape(n) {
     li.classList.toggle('fait', i < n);
   });
   $('btn-retour').hidden = n === 1;
+  majChoixGPS();
   afficherAdresses();
   if (n <= 2) choisirMode(n === 1 ? 'depart' : 'arrivee');
   if (n === 4) afficherCoordonnees();
@@ -628,6 +660,8 @@ function allerEtape(n) {
     carte.invalidateSize();
     if (ptsTrace) recadrerItineraire(ptsTrace);
     else if (points[mode]) carte.panTo(points[mode].getLatLng());
+    // arrivée encore à choisir : on recule un peu pour voir les alentours du départ
+    else if (n === 2 && points.depart) carte.flyTo(points.depart.getLatLng(), Math.min(carte.getZoom(), 15), { duration: 0.6 });
   }, 320);
 }
 
