@@ -843,3 +843,12 @@ body[data-etape="3"] .carte-outils, body[data-etape="4"] .carte-outils { display
 }
 .champ-lieu { display: block; }
 .champ-lieu .ic-recherche { position: absolute; left: 15px; top: 22px; color: var(--ink-3); pointer-events: none; z-index: 1; }
+
+/* Page livreur : lisible dehors, au soleil, d'une main */
+body.page-livreur { font-size: 16.5px; }
+.page-livreur .course-active .actions button, .page-livreur .course-active .actions .btn-primaire,
+.page-livreur .course .actions > * { min-height: 52px; font-size: 1rem; border-radius: 14px; }
+.page-livreur button.jaune.grand { min-height: 60px; font-size: 1.1rem; flex-basis: 100%; }
+.page-livreur .course .prix-course { font-size: 1.15rem; }
+.page-livreur .bloque { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; }
+.page-livreur .course .actions button:disabled { opacity: .55; }

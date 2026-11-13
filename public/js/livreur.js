@@ -214,9 +214,9 @@ function carteActive(c) {
       <a class="lien-secondaire" data-nav="${cible[0]},${cible[1]}" ${lienItineraire(cible[0], cible[1], maPosition)}>Ouvrir dans une autre application GPS</a>
       <div class="actions">
         ${versDepart
-          ? `<button class="jaune" data-etape="recuperee" data-id="${c.id}">J'ai récupéré le colis</button>
+          ? `<button class="jaune grand" data-etape="recuperee" data-id="${c.id}">${ico('package')} J'ai récupéré le colis</button>
              <button class="danger" data-etape="liberer" data-id="${c.id}">Me désister</button>`
-          : `<button class="jaune" data-etape="livree" data-id="${c.id}">Livraison terminée</button>`}
+          : `<button class="jaune grand" data-etape="livree" data-id="${c.id}">${ico('circle-check')} Livraison terminée</button>`}
       </div>
     </div>`;
 }
@@ -241,8 +241,9 @@ async function chargerTout() {
           ${trajet(c)}
           <div class="actions">
             <a class="bouton" data-nav="${c.depart_lat},${c.depart_lng}" ${lienItineraire(c.depart_lat, c.depart_lng, maPosition)}>${ico('map', 'ic-sm')} Voir le départ</a>
-            <button class="jaune" data-accepter="${c.id}" ${active ? 'disabled title="Terminez votre course en cours"' : ''}>Accepter</button>
+            <button class="jaune" data-accepter="${c.id}" ${active ? 'disabled' : ''}>${ico('check', 'ic-sm')} Accepter</button>
           </div>
+          ${active ? `<p class="meta bloque">${ico('info', 'ic-sm')} Terminez d'abord votre course en cours pour accepter celle-ci.</p>` : ''}
         </div>`).join('')
       : '<p class="vide">Aucune course en attente. Restez disponible, vous serez notifié.</p>';
 
