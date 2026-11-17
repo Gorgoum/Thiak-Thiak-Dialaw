@@ -686,13 +686,35 @@ function allerEtape(n) {
 let minuterieAvance = null;
 function avancer(type) {
   clearTimeout(minuterieAvance);
-  if (type !== 'depart' || etape !== 1) return;
-  minuterieAvance = setTimeout(() => {
-    if (etape === 1 && points.depart && !memeEndroit()) {
-      toast('Départ choisi. Maintenant : où faut-il livrer ?');
-      allerEtape(2);
-    }
-  }, 900);
+  if (type === 'depart' && etape === 1) {
+    minuterieAvance = setTimeout(() => {
+      if (etape === 1 && points.depart && !memeEndroit()) {
+        toast('Départ choisi. Maintenant : où faut-il livrer ?');
+        allerEtape(2);
+      }
+    }, 900);
+    return;
+  }
+  // Arrivée choisie : on attend le prix (au plus ~5 s), puis on passe tout seul à « Que faut-il livrer ? »
+  if (type === 'arrivee' && etape === 2) {
+    let essais = 0;
+    const attendrePrix = () => {
+      if (etape !== 2 || !points.arrivee) return;
+      if (dernierDevis && !memeEndroit() && !erreurDevis) { allerEtape(3); return; }
+      if (erreurDevis || memeEndroit() || ++essais > 10) return; // problème (hors zone…) : on reste, le message s'affiche
+      minuterieAvance = setTimeout(attendrePrix, 500);
+    };
+    minuterieAvance = setTimeout(attendrePrix, 1200); // le client voit le trajet s'afficher un instant
+  }
+}
+
+/**
+ * Fin de « Que faut-il livrer ? » : si le client est déjà connu (nom et numéro sur ce téléphone),
+ * on saute l'écran « Vous » et on ouvre directement la vérification de la commande.
+ */
+function apresChoixLivraison() {
+  allerEtape(4);
+  if (!manque(4) && !coordEnEdition) form.requestSubmit();
 }
 
 /** Ce qui manque à l'étape n, ou null si elle est complète. */
@@ -733,7 +755,7 @@ function prochaineAction() {
   }
   const m = manque(etape);
   if (m) return m;
-  if (etape < 4) return { label: 'Continuer', suivant: true, faire: () => allerEtape(etape + 1) };
+  if (etape < 4) return { label: 'Continuer', suivant: true, faire: () => (etape === 3 ? apresChoixLivraison() : allerEtape(etape + 1)) };
   return null;
 }
 
@@ -775,16 +797,16 @@ $('choix-rapides').addEventListener('click', (e) => {
   if (!b) return;
   const champ = form.description;
   const mot = b.dataset.choix;
-  const actuel = champ.value.trim();
-  if (actuel.toLowerCase().includes(mot.toLowerCase())) {
-    // second toucher : on retire ce choix
-    champ.value = actuel.split(/\s*,\s*/).filter((x) => x.toLowerCase() !== mot.toLowerCase()).join(', ');
-  } else {
-    champ.value = actuel ? `${actuel}, ${mot}` : mot;
-  }
+  // un seul toucher : ce choix remplace le précédent (le client peut préciser dans la case juste en dessous)
+  champ.value = mot;
   champ.classList.remove('erreur');
   afficherChoixRapides();
   majBouton();
+  // livraison d'un colis : on avance tout seul ; « Acheter pour moi » reste pour indiquer le budget
+  if (form.type.value === 'colis' && etape === 3) {
+    clearTimeout(minuterieAvance);
+    minuterieAvance = setTimeout(() => { if (etape === 3 && form.description.value.trim()) apresChoixLivraison(); }, 450);
+  }
 });
 
 // =========================================================================
