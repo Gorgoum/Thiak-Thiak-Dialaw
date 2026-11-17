@@ -1142,6 +1142,34 @@ afficherChoixRapides();
 allerEtape(1);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('confirmation').hidden) fermerConfirmation(); });
 brancherBoutonNotif($('btn-notif'));
+proposerNotifications();
+
+/**
+ * Comme une application de téléphone : à l'ouverture, on propose une fois d'activer les notifications.
+ * Le téléphone n'affiche sa question qu'après un toucher (règle des navigateurs), d'où le bouton « Activer ».
+ * « Plus tard » : on ne redemande pas avant 7 jours (la question revient aussi au moment de payer).
+ */
+function proposerNotifications() {
+  const CLE_PLUS_TARD = 'tt_alertes_plus_tard';
+  const possible = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window && window.isSecureContext;
+  const repousse = Number(Stock.get(CLE_PLUS_TARD) || 0) > Date.now() - 7 * 24 * 3600 * 1000;
+  if (!possible || Notification.permission !== 'default' || repousse) return;
+  const bandeau = $('bandeau-alertes');
+  bandeau.hidden = false;
+  $('alertes-plus-tard').onclick = () => { Stock.set(CLE_PLUS_TARD, String(Date.now())); bandeau.hidden = true; };
+  $('alertes-activer').onclick = () => boutonChargement($('alertes-activer'), async () => {
+    try {
+      await activerNotifications(); // question du téléphone, puis abonnement de ce téléphone à ses livraisons
+      bandeau.hidden = true;
+      toast('Notifications activées. Vous serez prévenu à chaque étape de vos livraisons.');
+      brancherBoutonNotif($('btn-notif'));
+    } catch (e) {
+      bandeau.hidden = true;
+      if (Notification.permission === 'denied') toast('Notifications refusées. Vous pourrez les activer plus tard dans les réglages du site.', true);
+      else toast(e.message, true);
+    }
+  });
+}
 chargerListe().then(() => {
   if (suiviPartage) ouvrirTiroir();
   if (retourPaiement) confirmerRetourPaiement(suiviPartage);

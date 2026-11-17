@@ -56,6 +56,19 @@
 
     <!-- Assistant : une question par écran -->
     <section class="volet-form">
+      <!-- Première ouverture : activer les notifications de l'application (une seule fois) -->
+      <div class="bandeau-alertes" id="bandeau-alertes" hidden>
+        <span class="pic-rond"><svg class="ic" aria-hidden="true"><use href="/icons.svg#bell"></use></svg></span>
+        <div class="bandeau-alertes-texte">
+          <b>Activez les notifications</b>
+          <small>Vous saurez quand votre paiement est reçu, quand le livreur arrive et quand le colis est livré.</small>
+          <div class="bandeau-alertes-actions">
+            <button type="button" class="btn btn-primaire" id="alertes-activer">Activer</button>
+            <button type="button" class="btn btn-ghost" id="alertes-plus-tard">Plus tard</button>
+          </div>
+        </div>
+      </div>
+
       <ol class="progression" id="progression" aria-label="Étapes de la commande">
         <li data-aller="1"><span>1</span>Départ</li>
         <li data-aller="2"><span>2</span>Arrivée</li>
