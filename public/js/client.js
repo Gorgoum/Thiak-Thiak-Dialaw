@@ -893,22 +893,23 @@ function arreterSuiviPaiement() {
 function afficherEcranPaiement(code, infos, prix) {
   const wave = infos.fournisseur !== 'orange_money';
   const montant = fcfa(infos.montant_du || prix);
+  // L'appli Wave s'ouvre PAR-DESSUS cette page, qui reste ouverte derrière et surveille le paiement :
+  // en revenant dans le navigateur, le client voit tout de suite « Paiement reçu ».
+  // (L'appli Wave, elle, ne ramène jamais toute seule vers le navigateur.)
   const lien = wave ? (estAndroid && infos.android_intent_url) || infos.pay_url : infos.maxit_url;
-  // Page de paiement Nangu, dans le même onglet : une fois le paiement confirmé, elle ramène le client ici tout seul
-  const pageNangu = infos.checkout_url;
-  const retourAuto = pageNangu ? '<p class="meta">Après le paiement, vous revenez ici automatiquement.</p>' : '';
+  const pageNangu = infos.checkout_url; // secours : page Nangu, qui ramène ici après confirmation (return_url)
+  const consigneRetour = `<p class="consigne-retour">${ico('info', 'ic-sm')} Après avoir payé dans ${wave ? 'Wave' : 'Max it'}, <b>revenez sur cette page</b> : la confirmation s'affiche toute seule.</p>`;
   let corps;
   if (wave) {
-    corps = pageNangu
-      ? `<a class="btn btn-payer wave" href="${esc(pageNangu)}">${ico('wallet')} Payer avec Wave</a>${retourAuto}
-        ${lien && estMobile ? `<p class="meta"><a href="${esc(lien)}">Ou ouvrir directement l'appli Wave</a></p>` : ''}`
-      : `${lien ? `<a class="btn btn-payer wave" href="${esc(lien)}" ${estAndroid ? '' : 'target="_blank" rel="noopener"'}>${ico('wallet')} Ouvrir Wave et payer</a>` : ''}`;
+    corps = lien
+      ? `<a class="btn btn-payer wave" href="${esc(lien)}">${ico('wallet')} Payer avec Wave</a>${estMobile ? consigneRetour : ''}`
+      : (pageNangu ? `<a class="btn btn-payer wave" href="${esc(pageNangu)}">${ico('wallet')} Payer avec Wave</a>` : '');
     corps += infos.qr_code_url && !estMobile ? `<p class="meta">Ou scannez ce code avec l'appli Wave de votre téléphone :</p><div class="qr"><img src="${esc(infos.qr_code_url)}" alt="QR code de paiement Wave"></div>` : '';
   } else {
     corps = `
-      ${pageNangu ? `<a class="btn btn-payer orange" href="${esc(pageNangu)}">${ico('wallet')} Payer avec Orange Money</a>${retourAuto}` : ''}
-      ${lien ? `<a class="${pageNangu ? 'lien-secondaire' : 'btn btn-payer orange'}" href="${esc(lien)}" target="_blank" rel="noopener">${pageNangu ? 'Ou ouvrir Max it' : `${ico('wallet')} Ouvrir Max it`}</a>
-        <p class="meta">Dans Max it, tapez exactement <b>${montant}</b>.</p>` : ''}
+      ${lien ? `<a class="btn btn-payer orange" href="${esc(lien)}">${ico('wallet')} Ouvrir Max it</a>
+        <p class="meta">Dans Max it, tapez exactement <b>${montant}</b>.</p>${estMobile ? consigneRetour : ''}`
+        : (pageNangu ? `<a class="btn btn-payer orange" href="${esc(pageNangu)}">${ico('wallet')} Payer avec Orange Money</a>` : '')}
       <ol class="etapes-om">
         <li>Composez <b>${esc(infos.ussd_code || '#144#')}</b>${estMobile ? ` (<a href="tel:${encodeURIComponent(infos.ussd_code || '#144#')}">appeler</a>)` : ''}</li>
         <li>Choisissez <b>Paiement marchand</b></li>
@@ -938,6 +939,15 @@ function afficherEcranPaiement(code, infos, prix) {
   suiviPaiement = { code, minuterie: setInterval(() => verifierPaiement(code), 4000) };
   verifierPaiement(code);
 }
+
+// Retour dans le navigateur après Wave / Max it : on vérifie tout de suite, sans attendre le prochain tour
+// (les téléphones ralentissent les minuteries des pages restées en arrière-plan).
+const verifierAuRetour = () => {
+  if (document.visibilityState === 'visible' && suiviPaiement) verifierPaiement(suiviPaiement.code);
+};
+document.addEventListener('visibilitychange', verifierAuRetour);
+window.addEventListener('focus', verifierAuRetour);
+window.addEventListener('pageshow', verifierAuRetour);
 
 async function verifierPaiement(code) {
   if (!suiviPaiement || suiviPaiement.code !== code) return;
