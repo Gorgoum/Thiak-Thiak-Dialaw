@@ -1164,6 +1164,8 @@ allerEtape(1);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('confirmation').hidden) fermerConfirmation(); });
 brancherBoutonNotif($('btn-notif'));
 proposerNotifications();
+// nouvelle version en ligne : rechargement seulement si le client n'est pas en train de commander ou de payer
+surveillerMiseAJour(() => $('confirmation').hidden && !suiviPaiement && etape === 1 && !points.depart && !points.arrivee);
 
 /**
  * Comme une application de téléphone : à l'ouverture, on propose une fois d'activer les notifications.

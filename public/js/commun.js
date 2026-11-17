@@ -190,3 +190,27 @@ function brancherBoutonNotif(bouton) {
 }
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+// =========================================================================
+// Mise à jour automatique : une page restée ouverte sur un téléphone garde l'ancien code.
+// La version publiée est écrite dans /version.json à chaque déploiement ; si elle change,
+// la page se recharge d'elle-même, mais seulement à un moment calme (peutRecharger).
+// =========================================================================
+const VERSION_APP = '__VERSION_APP__'; // remplacée au déploiement (scripts/construire-cloudflare.js)
+function surveillerMiseAJour(peutRecharger) {
+  if (VERSION_APP.startsWith('__')) return; // version locale de développement : rien à surveiller
+  let nouvelle = false;
+  const verifier = async () => {
+    if (!nouvelle) {
+      try {
+        const r = await fetch('/version.json', { cache: 'no-store' });
+        const { version } = await r.json();
+        nouvelle = !!version && version !== VERSION_APP;
+      } catch { return; }
+    }
+    if (nouvelle && peutRecharger()) location.reload();
+  };
+  setTimeout(verifier, 5000);
+  setInterval(verifier, 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') verifier(); });
+}

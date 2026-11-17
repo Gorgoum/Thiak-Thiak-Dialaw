@@ -501,6 +501,9 @@ function demarrer() {
   socket.on('lieux:proposes', () => chargerLieuxProposes().catch(() => {}));
 }
 
+// nouvelle version en ligne : rechargement seulement si aucune fenêtre de modification n'est ouverte
+surveillerMiseAJour(() => !document.getElementById('fenetre').open);
+
 (async () => {
   const u = await sessionExistante();
   if (u) demarrer();

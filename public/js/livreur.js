@@ -379,6 +379,9 @@ function afficherApp(u) {
   setTimeout(() => { nbAvant = document.querySelectorAll('[data-accepter]').length; }, 1500);
 }
 
+// nouvelle version en ligne : rechargement seulement hors guidage
+surveillerMiseAJour(() => !Guidage.actif);
+
 (async () => {
   const u = await sessionExistante();
   if (u) afficherApp(u);

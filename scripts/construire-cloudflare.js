@@ -32,6 +32,11 @@ fs.mkdirSync(path.join(sortie, 'vendor', 'inter'), { recursive: true });
 fs.copyFileSync(path.join(inter, 'inter-latin-wght-normal.woff2'), path.join(sortie, 'vendor', 'inter', 'inter-latin-wght-normal.woff2'));
 fs.mkdirSync(path.join(sortie, 'socket.io'), { recursive: true });
 fs.copyFileSync(path.join(racine, 'cloudflare', 'statique', 'socket.io.js'), path.join(sortie, 'socket.io', 'socket.io.js'));
+// numéro de version publié : les pages ouvertes se rechargent d'elles-mêmes quand il change
+const versionApp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
+fs.writeFileSync(path.join(sortie, 'version.json'), JSON.stringify({ version: versionApp }) + '\n');
+const communJs = path.join(sortie, 'js', 'commun.js');
+fs.writeFileSync(communJs, fs.readFileSync(communJs, 'utf8').replace("'__VERSION_APP__'", `'${versionApp}'`));
 // en-têtes de sécurité et de cache des fichiers statiques
 fs.writeFileSync(path.join(sortie, '_headers'), `/*
   X-Content-Type-Options: nosniff
@@ -40,6 +45,12 @@ fs.writeFileSync(path.join(sortie, '_headers'), `/*
 /vendor/*
   Cache-Control: public, max-age=2592000, immutable
 /sw.js
+  Cache-Control: no-cache
+/version.json
+  Cache-Control: no-store
+/js/*
+  Cache-Control: no-cache
+/css/*
   Cache-Control: no-cache
 `);
 
