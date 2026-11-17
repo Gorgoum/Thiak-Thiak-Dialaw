@@ -21,7 +21,7 @@ async function confirmer(io, nanguId, montant) {
     [c.id, montant || null]
   );
   if (!r.rows.length) return false;
-  const course = await diffuserMaj(io, c.id, { message: 'Paiement reçu. Nous cherchons un livreur pour vous.' });
+  const course = await diffuserMaj(io, c.id, { message: 'Paiement reçu. Nous cherchons un livreur pour vous.', paiementRecu: true });
   notifierNouvelleCourse(io, course).catch((e) => console.error('Notification :', e.message));
   return true;
 }
@@ -110,7 +110,7 @@ async function validerManuellement(io, courseId, { adminId, reference = '' }) {
   const ref = String(reference || '').trim().slice(0, 80);
   await query('INSERT INTO evenements_nangu (id, type) VALUES ($1, $2)',
     [`manuel-${c.id}-${Date.now()}`, `admin:${adminId}:valide:course-${c.id}${ref ? ':' + ref : ''}`]);
-  const course = await diffuserMaj(io, c.id, { message: 'Paiement reçu. Nous cherchons un livreur pour vous.' });
+  const course = await diffuserMaj(io, c.id, { message: 'Paiement reçu. Nous cherchons un livreur pour vous.', paiementRecu: true });
   if (rouvrir) notifierNouvelleCourse(io, course).catch((e) => console.error('Notification :', e.message));
   return course;
 }

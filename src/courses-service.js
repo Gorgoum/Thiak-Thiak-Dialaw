@@ -47,7 +47,7 @@ const MESSAGES_CLIENT = {
 };
 
 /** Diffuse un changement de statut au client (salle de suivi), au livreur, aux autres livreurs et aux admins. */
-async function diffuserMaj(io, id, { notifierClient = true, message = null } = {}) {
+async function diffuserMaj(io, id, { notifierClient = true, message = null, paiementRecu = false } = {}) {
   const c = await lireCourse(id);
   if (!c) return;
   const prive = (await query('SELECT suivi_token, abonnement_push FROM courses WHERE id = $1', [id])).rows[0];
@@ -58,7 +58,14 @@ async function diffuserMaj(io, id, { notifierClient = true, message = null } = {
 
   const msg = message ? () => message : MESSAGES_CLIENT[c.statut];
   if (notifierClient && msg && prive.abonnement_push) {
-    const valide = await push.envoyerA(prive.abonnement_push, {
+    // Paiement reçu : l'alerte sert de retour (même adresse que le return_url de Nangu) et reste affichée jusqu'au toucher
+    const valide = await push.envoyerA(prive.abonnement_push, paiementRecu ? {
+      titre: 'Paiement reçu ✓',
+      corps: 'Touchez pour revenir à votre livraison. Nous cherchons un livreur.',
+      url: '/retour-paiement/' + prive.suivi_token,
+      tag: 'suivi-' + c.id,
+      urgent: true,
+    } : {
       titre: 'Thiak Thiak Dialaw',
       corps: msg(c),
       url: '/?suivi=' + prive.suivi_token,

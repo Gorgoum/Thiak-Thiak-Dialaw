@@ -25,12 +25,14 @@ self.addEventListener('notificationclick', (e) => {
   const url = (e.notification.data && e.notification.data.url) || '/';
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((fenetres) => {
-      // un onglet de la même page est déjà ouvert (ex. l'écran de paiement resté derrière Wave) : on le ramène
+      // Un onglet Thiak Thiak est déjà ouvert (ex. l'écran de paiement resté derrière Wave) :
+      // on le ramène au premier plan et on l'amène sur l'adresse de l'alerte (ex. le retour de paiement).
       const cible = new URL(url, self.location.origin);
-      for (const f of fenetres) {
-        if (new URL(f.url).pathname === cible.pathname && 'focus' in f) return f.focus();
-      }
-      return self.clients.openWindow(cible.href);
+      const onglet = fenetres.find((f) => new URL(f.url).origin === cible.origin && new URL(f.url).pathname === '/' && 'focus' in f)
+        || fenetres.find((f) => new URL(f.url).pathname === cible.pathname && 'focus' in f);
+      if (!onglet) return self.clients.openWindow(cible.href);
+      return onglet.focus().then((o) => (o && 'navigate' in o ? o.navigate(cible.href).catch(() => o) : o))
+        .catch(() => self.clients.openWindow(cible.href));
     })
   );
 });
