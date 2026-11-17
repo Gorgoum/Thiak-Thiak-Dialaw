@@ -71,7 +71,9 @@ export function enregistrer(r) {
 
     // Paiement en ligne : la course reste invisible des livreurs jusqu'à la confirmation
     try {
-      const p = await nangu.creerPaiement(c.env, { id, suivi: code, prix: d.prix, client_tel: clientTel, depart_repere: departRepere, arrivee_repere: arriveeRepere }, paiement);
+      // après le paiement, Nangu ramène le client ici (https uniquement)
+      const retour = c.url.protocol === 'https:' ? `${c.url.origin}/retour-paiement/${code}` : null;
+      const p = await nangu.creerPaiement(c.env, { id, suivi: code, prix: d.prix, client_tel: clientTel, depart_repere: departRepere, arrivee_repere: arriveeRepere, retour }, paiement);
       const infos = nangu.infosPaiement(c.env, p);
       await c.db.query('UPDATE courses SET nangu_id = $2, montant_du = $3, paiement_infos = $4 WHERE id = $1', [id, p.id, p.amount_due, infos]);
       const course = await lireCourse(c, id);

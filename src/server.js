@@ -35,6 +35,13 @@ app.get('/api/config', (req, res) => {
   const nangu = require('./nangu');
   res.json({ paiement_en_ligne: nangu.fournisseurs(), paiement_test: nangu.actif() && nangu.modeTest() });
 });
+// Retour après paiement : Nangu ajoute ?payment_id=…&status=… ; on ramène le client sur le suivi de sa course
+// (le paiement lui-même est toujours vérifié côté serveur, jamais d'après ce retour).
+app.get('/retour-paiement/:code', (req, res) => {
+  const code = String(req.params.code);
+  if (!/^[A-Za-z0-9_-]{8,80}$/.test(code)) return res.redirect(302, '/');
+  res.redirect(302, `/?suivi=${encodeURIComponent(code)}&paiement=retour`);
+});
 app.use(express.static(path.join(__dirname, '..', 'public')));
 // Leaflet (carte, BSD-2) servi par notre serveur : aucune dépendance à un CDN externe
 app.use('/vendor/leaflet', express.static(path.join(__dirname, '..', 'node_modules', 'leaflet', 'dist')));

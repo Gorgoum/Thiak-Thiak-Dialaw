@@ -92,7 +92,10 @@ router.post('/', a(async (req, res) => {
 
   // Paiement en ligne : la course reste invisible des livreurs jusqu'à la confirmation du paiement
   try {
-    const p = await nangu.creerPaiement({ id, suivi: code, prix: d.prix, client_tel: clientTel, depart_repere: departRepere, arrivee_repere: arriveeRepere }, paiement);
+    // adresse publique du site (PUBLIC_URL, sinon celle de la requête) : Nangu n'accepte qu'un retour en https
+    const origine = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+    const retour = origine.startsWith('https://') ? `${origine}/retour-paiement/${code}` : null;
+    const p = await nangu.creerPaiement({ id, suivi: code, prix: d.prix, client_tel: clientTel, depart_repere: departRepere, arrivee_repere: arriveeRepere, retour }, paiement);
     const infos = nangu.infosPaiement(p);
     await query('UPDATE courses SET nangu_id = $2, montant_du = $3, paiement_infos = $4 WHERE id = $1', [id, p.id, p.amount_due, infos]);
     const course = await lireCourse(id);

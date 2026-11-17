@@ -76,6 +76,13 @@ export default {
         const rep = await routeur.traiter(req, c);
         return rep || json({ erreur: 'Route inconnue' }, 404);
       }
+      // Retour après paiement (Nangu ajoute ?payment_id=…&status=…) : vers le suivi de la course.
+      // Le paiement est toujours vérifié côté serveur, jamais d'après ce retour.
+      if (url.pathname.startsWith('/retour-paiement/')) {
+        const code = decodeURIComponent(url.pathname.slice('/retour-paiement/'.length));
+        const cible = /^[A-Za-z0-9_-]{8,80}$/.test(code) ? `/?suivi=${encodeURIComponent(code)}&paiement=retour` : '/';
+        return Response.redirect(new URL(cible, url).toString(), 302);
+      }
       // pages, scripts, icônes, carte ; « / » et « /dossier/ » servent leur index.html
       if (url.pathname.endsWith('/')) {
         const index = new URL(url.pathname + 'index.html' + url.search, url);

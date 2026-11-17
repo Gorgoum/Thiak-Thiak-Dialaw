@@ -34,6 +34,8 @@ const lienSuivi = (code) => `${location.origin}/?suivi=${encodeURIComponent(code
 // Lien partagé « /?suivi=CODE » : la course s'ajoute à ce téléphone
 const params = new URLSearchParams(location.search);
 const suiviPartage = params.get('suivi');
+// Retour depuis la page de paiement Nangu : on vérifie le paiement auprès du serveur
+const retourPaiement = suiviPartage && params.get('paiement') === 'retour';
 if (suiviPartage) {
   ajouterCode(suiviPartage);
   history.replaceState(null, '', '/');
@@ -892,14 +894,20 @@ function afficherEcranPaiement(code, infos, prix) {
   const wave = infos.fournisseur !== 'orange_money';
   const montant = fcfa(infos.montant_du || prix);
   const lien = wave ? (estAndroid && infos.android_intent_url) || infos.pay_url : infos.maxit_url;
+  // Page de paiement Nangu, dans le même onglet : une fois le paiement confirmé, elle ramène le client ici tout seul
+  const pageNangu = infos.checkout_url;
+  const retourAuto = pageNangu ? '<p class="meta">Après le paiement, vous revenez ici automatiquement.</p>' : '';
   let corps;
   if (wave) {
-    corps = `
-      ${lien ? `<a class="btn btn-payer wave" href="${esc(lien)}" ${estAndroid ? '' : 'target="_blank" rel="noopener"'}>${ico('wallet')} Ouvrir Wave et payer</a>` : ''}
-      ${infos.qr_code_url && !estMobile ? `<p class="meta">Ou scannez ce code avec l'appli Wave de votre téléphone :</p><div class="qr"><img src="${esc(infos.qr_code_url)}" alt="QR code de paiement Wave"></div>` : ''}`;
+    corps = pageNangu
+      ? `<a class="btn btn-payer wave" href="${esc(pageNangu)}">${ico('wallet')} Payer avec Wave</a>${retourAuto}
+        ${lien && estMobile ? `<p class="meta"><a href="${esc(lien)}">Ou ouvrir directement l'appli Wave</a></p>` : ''}`
+      : `${lien ? `<a class="btn btn-payer wave" href="${esc(lien)}" ${estAndroid ? '' : 'target="_blank" rel="noopener"'}>${ico('wallet')} Ouvrir Wave et payer</a>` : ''}`;
+    corps += infos.qr_code_url && !estMobile ? `<p class="meta">Ou scannez ce code avec l'appli Wave de votre téléphone :</p><div class="qr"><img src="${esc(infos.qr_code_url)}" alt="QR code de paiement Wave"></div>` : '';
   } else {
     corps = `
-      ${lien ? `<a class="btn btn-payer orange" href="${esc(lien)}" target="_blank" rel="noopener">${ico('wallet')} Ouvrir Max it</a>
+      ${pageNangu ? `<a class="btn btn-payer orange" href="${esc(pageNangu)}">${ico('wallet')} Payer avec Orange Money</a>${retourAuto}` : ''}
+      ${lien ? `<a class="${pageNangu ? 'lien-secondaire' : 'btn btn-payer orange'}" href="${esc(lien)}" target="_blank" rel="noopener">${pageNangu ? 'Ou ouvrir Max it' : `${ico('wallet')} Ouvrir Max it`}</a>
         <p class="meta">Dans Max it, tapez exactement <b>${montant}</b>.</p>` : ''}
       <ol class="etapes-om">
         <li>Composez <b>${esc(infos.ussd_code || '#144#')}</b>${estMobile ? ` (<a href="tel:${encodeURIComponent(infos.ussd_code || '#144#')}">appeler</a>)` : ''}</li>
@@ -917,7 +925,6 @@ function afficherEcranPaiement(code, infos, prix) {
       <div class="montant">${montant}</div>
       ${infos.montant_du && infos.montant_du !== prix ? `<p class="meta">Payez bien ${montant} (et non ${fcfa(prix)}) : ces quelques francs permettent de reconnaître votre paiement.</p>` : ''}
       ${corps}
-      ${infos.checkout_url ? `<p class="meta"><a href="${esc(infos.checkout_url)}" target="_blank" rel="noopener">Ouvrir la page de paiement sécurisée</a></p>` : ''}
       <div class="attente-paiement" id="etat-paiement">${ico('loader-circle', 'tourne')} En attente de votre paiement…</div>
       <p class="meta">La confirmation est automatique. Les livreurs sont prévenus dès le paiement reçu.</p>
     </div>`;
@@ -948,6 +955,29 @@ async function verifierPaiement(code) {
     etat.innerHTML = `${ico('triangle-alert')} ${p.paiement_statut === 'expire' ? 'Délai de paiement dépassé : commande annulée.' : 'Paiement annulé.'}`;
     chargerListe();
   }
+}
+
+/**
+ * Le client revient de la page de paiement : on demande au serveur l'état réel du paiement
+ * (le serveur le relit chez Nangu), pendant au plus une minute.
+ */
+async function confirmerRetourPaiement(code) {
+  toast('Vérification de votre paiement…');
+  for (let essai = 0; essai < 15; essai++) {
+    let p = null;
+    try { p = await api('GET', `/api/courses/suivi/${encodeURIComponent(code)}/paiement`); } catch { /* nouvel essai */ }
+    if (p && p.paiement_statut === 'paye') {
+      toast('Paiement reçu. Les livreurs disponibles sont prévenus.');
+      return chargerListe();
+    }
+    if (p && (p.paiement_statut === 'expire' || p.paiement_statut === 'annule')) {
+      toast(p.paiement_statut === 'expire' ? 'Délai de paiement dépassé : la commande est annulée.' : 'Paiement annulé.', true);
+      return chargerListe();
+    }
+    await new Promise((r) => setTimeout(r, 4000));
+  }
+  toast('Paiement pas encore confirmé. Vous serez prévenu ici dès sa réception.', true);
+  chargerListe();
 }
 
 /** Depuis « Mes livraisons » : reprendre le paiement d'une course en attente. */
@@ -1076,7 +1106,10 @@ afficherChoixRapides();
 allerEtape(1);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('confirmation').hidden) fermerConfirmation(); });
 brancherBoutonNotif($('btn-notif'));
-chargerListe().then(() => { if (suiviPartage) ouvrirTiroir(); });
+chargerListe().then(() => {
+  if (suiviPartage) ouvrirTiroir();
+  if (retourPaiement) confirmerRetourPaiement(suiviPartage);
+});
 
 socket = io({ auth: { suivi: lireCodes() } });
 socket.on('position:recue', positionRecue);

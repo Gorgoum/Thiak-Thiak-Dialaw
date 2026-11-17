@@ -52,6 +52,8 @@ function creerPaiement(course, fournisseur) {
     description: `Livraison Thiak Thiak : ${course.depart_repere} → ${course.arrivee_repere}`.slice(0, 200),
     expires_in: 30 * 60, // 30 minutes pour payer
     metadata: { course_id: String(course.id) },
+    // après le paiement, la page de paiement Nangu ramène le client sur son suivi (https uniquement)
+    ...(course.retour ? { return_url: course.retour } : {}),
   }, { 'Idempotency-Key': `thiak-${course.suivi}-${fournisseur}` }); // code secret aléatoire : unique même si la numérotation repart à 1
 }
 
