@@ -316,11 +316,25 @@ function brancherRecherche(champ, liste, onChoix, { discret = false } = {}) {
     else if (e.key === 'Enter') { e.preventDefault(); choisir(actif >= 0 ? actif : 0); }
     else if (e.key === 'Escape') fermer();
   });
-  liste.addEventListener('mousedown', (e) => e.preventDefault()); // garde le focus pendant le clic
-  liste.addEventListener('click', (e) => {
+  // Choix d'une suggestion au doigt ou à la souris.
+  // Sur téléphone, attendre le « clic » ne suffit pas : en touchant la liste, le clavier se ferme,
+  // l'écran change de taille et le clic tombe à côté. On choisit donc dès que le doigt se pose
+  // puis se relève sur la suggestion (sans faire perdre le focus au champ), sauf si le doigt a glissé.
+  let appui = null;
+  liste.addEventListener('pointerdown', (e) => {
     const li = e.target.closest('li[data-i]');
-    if (li) choisir(Number(li.dataset.i));
+    if (!li) return;
+    e.preventDefault(); // garde le champ actif : le clavier ne se ferme pas, la liste ne bouge pas
+    appui = { x: e.clientX, y: e.clientY, i: Number(li.dataset.i) };
   });
+  liste.addEventListener('pointerup', (e) => {
+    if (!appui) return;
+    const { x, y, i } = appui;
+    appui = null;
+    if (Math.hypot(e.clientX - x, e.clientY - y) < 14) choisir(i); // un vrai glissement ne choisit rien
+  });
+  liste.addEventListener('pointercancel', () => { appui = null; });
+  liste.addEventListener('mousedown', (e) => e.preventDefault()); // garde le focus pendant le clic
   champ.addEventListener('blur', () => setTimeout(fermer, 150));
 }
 
