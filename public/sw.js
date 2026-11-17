@@ -25,10 +25,12 @@ self.addEventListener('notificationclick', (e) => {
   const url = (e.notification.data && e.notification.data.url) || '/';
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((fenetres) => {
+      // un onglet de la même page est déjà ouvert (ex. l'écran de paiement resté derrière Wave) : on le ramène
+      const cible = new URL(url, self.location.origin);
       for (const f of fenetres) {
-        if (new URL(f.url).pathname === url && 'focus' in f) return f.focus();
+        if (new URL(f.url).pathname === cible.pathname && 'focus' in f) return f.focus();
       }
-      return self.clients.openWindow(url);
+      return self.clients.openWindow(cible.href);
     })
   );
 });

@@ -950,3 +950,7 @@ header.entete { padding-left: max(16px, env(safe-area-inset-left)); padding-righ
 @media (prefers-color-scheme: dark) { .logo-complet { padding: 6px; } }
 .consigne-retour { display: flex; gap: 8px; align-items: flex-start; text-align: left; margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--brand-50); color: var(--ink-2); font-size: .9rem; line-height: 1.35; }
 .consigne-retour .ic { flex: none; margin-top: 2px; color: var(--brand-600); }
+.alerte-paiement { display: grid; gap: 6px; margin: 4px 0 14px; padding: 12px; border-radius: 12px; border: 1.5px dashed var(--brand-100); background: var(--surface); text-align: center; }
+.alerte-paiement .btn { width: 100%; min-height: 46px; border-color: var(--brand-600); color: var(--brand); font-weight: 700; }
+.alerte-paiement small { color: var(--ink-3); font-size: .82rem; }
+p.alerte-paiement.ok { display: flex; gap: 8px; align-items: flex-start; text-align: left; border-style: solid; border-color: var(--brand-100); background: var(--brand-50); color: var(--ink-2); font-size: .9rem; }

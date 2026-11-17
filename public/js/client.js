@@ -899,6 +899,17 @@ function afficherEcranPaiement(code, infos, prix) {
   const lien = wave ? (estAndroid && infos.android_intent_url) || infos.pay_url : infos.maxit_url;
   const pageNangu = infos.checkout_url; // secours : page Nangu, qui ramène ici après confirmation (return_url)
   const consigneRetour = `<p class="consigne-retour">${ico('info', 'ic-sm')} Après avoir payé dans ${wave ? 'Wave' : 'Max it'}, <b>revenez sur cette page</b> : la confirmation s'affiche toute seule.</p>`;
+  // L'appli Wave ne ramène pas au navigateur, mais une alerte du téléphone s'affiche par-dessus :
+  // en la touchant, le client revient directement sur le suivi de sa livraison.
+  const alertesPossibles = estMobile && 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window && window.isSecureContext;
+  const blocAlerte = !alertesPossibles ? ''
+    : Notification.permission === 'granted'
+      ? `<p class="alerte-paiement ok">${ico('bell', 'ic-sm')} Une alerte s'affichera sur votre téléphone dès le paiement reçu : touchez-la pour revenir ici.</p>`
+      : Notification.permission === 'default'
+        ? `<div class="alerte-paiement" id="bloc-alerte-paiement">
+            <button type="button" class="btn" id="activer-alerte-paiement">${ico('bell', 'ic-sm')} M'avertir quand le paiement est reçu</button>
+            <small>Conseillé : une alerte apparaîtra même dans l'appli Wave. Touchez-la pour revenir ici.</small></div>`
+        : '';
   let corps;
   if (wave) {
     corps = lien
@@ -925,10 +936,20 @@ function afficherEcranPaiement(code, infos, prix) {
       <p class="meta" style="margin:0">Montant exact à payer</p>
       <div class="montant">${montant}</div>
       ${infos.montant_du && infos.montant_du !== prix ? `<p class="meta">Payez bien ${montant} (et non ${fcfa(prix)}) : ces quelques francs permettent de reconnaître votre paiement.</p>` : ''}
+      ${blocAlerte}
       ${corps}
       <div class="attente-paiement" id="etat-paiement">${ico('loader-circle', 'tourne')} En attente de votre paiement…</div>
       <p class="meta">La confirmation est automatique. Les livreurs sont prévenus dès le paiement reçu.</p>
     </div>`;
+  const boutonAlerte = $('activer-alerte-paiement');
+  if (boutonAlerte) {
+    boutonAlerte.onclick = () => boutonChargement(boutonAlerte, async () => {
+      try {
+        await activerNotifications(); // abonne ce téléphone à toutes ses livraisons, dont celle-ci
+        $('bloc-alerte-paiement').outerHTML = `<p class="alerte-paiement ok">${ico('bell', 'ic-sm')} C'est noté : une alerte s'affichera dès le paiement reçu.</p>`;
+      } catch (e) { toast(e.message, true); }
+    });
+  }
   $('conf-envoyer').hidden = true;
   const bas = $('confirmation').querySelector('.conf-pied [data-fermer-conf]');
   bas.textContent = 'Fermer (je paierai depuis Mes livraisons)';
