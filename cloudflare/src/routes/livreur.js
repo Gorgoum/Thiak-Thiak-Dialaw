@@ -3,7 +3,8 @@ import { HttpErreur, json, lireCorps } from '../outils.js';
 import { MAINTENANT, DEBUT_JOUR } from '../db.js';
 import { exiger } from '../securite.js';
 import { distanceKm, pointValide, parametres } from '../tarifs.js';
-import { SELECT_COURSE, notifierNouvelleCourse, diffuserMaj } from '../courses-service.js';
+import { SELECT_COURSE, notifierNouvelleCourse, diffuserMaj, lireCourse } from '../courses-service.js';
+import * as paiements from '../paiements.js';
 import { apprendreDeLaCourse } from '../lieux.js';
 import * as argent from '../argent.js';
 
@@ -97,7 +98,22 @@ export function enregistrer(r) {
       if (/UNIQUE/i.test(e.message)) throw new HttpErreur(409, 'Terminez d\'abord votre course en cours');
       throw e;
     }
-    return json(await diffuserMaj(c, Number(c.params.id)));
+    const id = Number(c.params.id);
+    const x = (await c.db.query('SELECT paiement, paiement_statut FROM courses WHERE id = $1', [id])).rows[0];
+    if (x.paiement !== 'especes' && x.paiement_statut !== 'paye') {
+      // course à payer en ligne : le client paie maintenant qu'un livreur est trouvé
+      try {
+        await paiements.demanderPaiement(c, id);
+      } catch (e) {
+        // Nangu indisponible : on rend la course aux autres livreurs plutôt que de faire attendre celui-ci
+        console.error('Demande de paiement :', e.message);
+        await c.db.query(`UPDATE courses SET statut = 'en_attente', livreur_id = NULL, acceptee_le = NULL WHERE id = $1 AND statut = 'acceptee'`, [id]);
+        await diffuserMaj(c, id, { notifierClient: false });
+        throw new HttpErreur(502, 'Le paiement du client ne peut pas être lancé pour le moment. Réessayez dans un instant.');
+      }
+      return json(await lireCourse(c, id));
+    }
+    return json(await diffuserMaj(c, id));
   });
 
   // Transitions autorisées : acceptee → recuperee → livree
@@ -106,6 +122,13 @@ export function enregistrer(r) {
     r.post(`/api/livreur/courses/:id/${statut}`, async (req, c) => {
       await livreur(req, c);
       const id = Number(c.params.id);
+      if (statut === 'recuperee') {
+        // course à payer en ligne : on ne prend pas le colis avant que le client ait payé
+        const x = (await c.db.query('SELECT paiement, paiement_statut FROM courses WHERE id = $1 AND livreur_id = $2', [id, c.user.id])).rows[0];
+        if (x && x.paiement !== 'especes' && x.paiement_statut !== 'paye') {
+          throw new HttpErreur(409, 'Le client n\'a pas encore payé. Attendez le paiement avant de récupérer le colis.');
+        }
+      }
       const res = await c.db.query(
         `UPDATE courses SET statut = $3, ${e.colonne} = ${MAINTENANT}
          WHERE id = $1 AND livreur_id = $2 AND statut = $4 RETURNING id`,

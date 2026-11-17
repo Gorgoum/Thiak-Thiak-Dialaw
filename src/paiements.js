@@ -1,44 +1,107 @@
 // Cycle de vie du paiement en ligne d'une course (Nangu : Wave / Orange Money).
+//
+// Le client ne paie qu'APRÈS l'acceptation d'un livreur (jamais d'argent bloqué sans livreur) :
+//   commande (en attente, rien à payer) → un livreur accepte → paiement créé, client prévenu
+//   → paiement reçu : le livreur peut récupérer le colis
+//   → pas de paiement en 10 minutes : course annulée, livreur libéré, rien à rembourser.
 const { query } = require('./db');
 const nangu = require('./nangu');
+const push = require('./push');
 const { notifierNouvelleCourse, diffuserMaj } = require('./courses-service');
 
+const DELAI_PAIEMENT = 10 * 60; // secondes laissées au client pour payer, une fois le livreur trouvé
+const NOMS = { wave: 'Wave', orange_money: 'Orange Money' };
+const fcfa = (n) => Number(n).toLocaleString('fr-FR') + ' FCFA';
+
 async function courseParNangu(nanguId) {
-  return (await query('SELECT id, statut, paiement_statut FROM courses WHERE nangu_id = $1', [nanguId])).rows[0];
+  return (await query('SELECT id, statut, paiement_statut, livreur_id FROM courses WHERE nangu_id = $1', [nanguId])).rows[0];
+}
+
+const alerterLivreur = (livreurId, titre, corps) => livreurId && push.envoyer([livreurId], { titre, corps, url: '/livreur.html', urgent: true })
+  .catch((e) => console.error('Notification livreur :', e.message));
+
+/**
+ * Un livreur a accepté une course payée en ligne : on crée (ou reprend) le paiement et on prévient le client.
+ * origine : adresse publique du site, pour le retour automatique après paiement (https uniquement).
+ * Lève une erreur si Nangu ne répond pas (l'acceptation est alors annulée par l'appelant).
+ */
+async function demanderPaiement(io, courseId, origine) {
+  const c = (await query(
+    `SELECT id, suivi_token, prix, client_tel, depart_repere, arrivee_repere, paiement, paiement_statut, nangu_id
+     FROM courses WHERE id = $1`, [courseId]
+  )).rows[0];
+  if (!c || c.paiement === 'especes' || c.paiement_statut === 'paye') return null;
+  let p = null;
+  // un paiement encore valable (plus de 2 minutes devant lui) est réutilisé
+  if (c.nangu_id) {
+    try {
+      const actuel = await nangu.lirePaiement(c.nangu_id);
+      if (actuel.status === 'succeeded') { await confirmer(io, actuel.id, actuel.amount_due); return actuel; }
+      if (actuel.status === 'pending' && new Date(actuel.expires_at) - Date.now() > 120000) p = actuel;
+    } catch { /* on en crée un nouveau */ }
+  }
+  if (!p) {
+    const retour = origine && origine.startsWith('https://') ? `${origine}/retour-paiement/${c.suivi_token}` : null;
+    p = await nangu.creerPaiement({
+      id: c.id, suivi: c.suivi_token, essai: Date.now().toString(36), prix: c.prix, client_tel: c.client_tel,
+      depart_repere: c.depart_repere, arrivee_repere: c.arrivee_repere, retour, expireDans: DELAI_PAIEMENT,
+    }, c.paiement);
+    const infos = nangu.infosPaiement(p);
+    await query(`UPDATE courses SET nangu_id = $2, montant_du = $3, paiement_infos = $4, paiement_statut = 'en_attente' WHERE id = $1`,
+      [c.id, p.id, p.amount_due, infos]);
+  }
+  await diffuserMaj(io, c.id, {
+    titre: 'Un livreur a accepté !',
+    message: `Payez maintenant ${fcfa(p.amount_due || c.prix)} avec ${NOMS[c.paiement]} pour qu'il vienne chercher le colis (10 minutes).`,
+    suffixe: '&payer=1',
+    urgent: true,
+  });
+  return p;
 }
 
 /**
- * Paiement confirmé : la course devient visible des livreurs.
- * Aussi valable après une expiration (notification Wave arrivée en retard alors que le client avait payé à temps).
+ * Paiement confirmé.
+ * - Livreur déjà là (cas normal) : il est prévenu qu'il peut récupérer le colis.
+ * - Pas encore de livreur (ancien fonctionnement, livreur désisté, ou paiement arrivé en retard
+ *   sur une course annulée) : la course redevient visible des livreurs.
  */
 async function confirmer(io, nanguId, montant) {
   const c = await courseParNangu(nanguId);
   if (!c || c.paiement_statut === 'paye') return false;
   const r = await query(
     `UPDATE courses SET paiement_statut = 'paye', paye_le = now(), montant_du = COALESCE($2, montant_du),
-       statut = 'en_attente', annulee_le = NULL
-     WHERE id = $1 AND statut IN ('attente_paiement', 'annulee') RETURNING id`,
+       statut = CASE WHEN statut IN ('attente_paiement', 'annulee') THEN 'en_attente' ELSE statut END,
+       annulee_le = CASE WHEN statut IN ('attente_paiement', 'annulee') THEN NULL ELSE annulee_le END
+     WHERE id = $1 AND statut IN ('attente_paiement', 'annulee', 'en_attente', 'acceptee', 'recuperee') RETURNING id`,
     [c.id, montant || null]
   );
   if (!r.rows.length) return false;
-  // Pas d'alerte de notre part : la page de paiement Nangu envoie elle-même « Paiement reçu » et ramène le client
+  // Pas d'alerte au client : la page de paiement Nangu envoie elle-même « Paiement reçu » et le ramène
   const course = await diffuserMaj(io, c.id, { notifierClient: false });
-  notifierNouvelleCourse(io, course).catch((e) => console.error('Notification :', e.message));
+  if (course.statut === 'acceptee' && course.livreur_id) {
+    alerterLivreur(course.livreur_id, 'Paiement reçu ✓', `Le client a payé. Vous pouvez récupérer le colis : ${course.depart_repere}`);
+  } else if (course.statut === 'en_attente') {
+    notifierNouvelleCourse(io, course).catch((e) => console.error('Notification :', e.message));
+  }
   return true;
 }
 
-/** Paiement expiré ou annulé : la commande est annulée (si elle n'a pas été payée entre-temps). */
+/**
+ * Paiement expiré ou annulé sans avoir été payé : la course est annulée.
+ * Le livreur qui attendait est libéré et prévenu ; le client n'a rien payé, il n'y a rien à rembourser.
+ */
 async function terminer(io, nanguId, etat) {
   const c = await courseParNangu(nanguId);
-  if (!c || c.statut !== 'attente_paiement') return false;
+  if (!c || c.paiement_statut === 'paye' || !['attente_paiement', 'en_attente', 'acceptee'].includes(c.statut)) return false;
   await query(
     `UPDATE courses SET paiement_statut = $2, statut = 'annulee', annulee_le = now()
-     WHERE id = $1 AND statut = 'attente_paiement'`,
+     WHERE id = $1 AND paiement_statut <> 'paye' AND statut IN ('attente_paiement', 'en_attente', 'acceptee')`,
     [c.id, etat === 'expired' ? 'expire' : 'annule']
   );
   await diffuserMaj(io, c.id, {
-    message: etat === 'expired' ? 'Le délai de paiement est dépassé : la commande est annulée.' : 'Paiement annulé.',
+    message: etat === 'expired' ? 'Le délai de paiement est dépassé : la commande est annulée. Vous n\'avez rien payé.' : 'Paiement annulé : la commande est annulée.',
   });
+  if (c.statut === 'acceptee') alerterLivreur(c.livreur_id, 'Course annulée', 'Le client n\'a pas payé à temps. Vous êtes libre pour une autre course.');
   return true;
 }
 
@@ -113,7 +176,10 @@ async function validerManuellement(io, courseId, { adminId, reference = '' }) {
     [`manuel-${c.id}-${Date.now()}`, `admin:${adminId}:valide:course-${c.id}${ref ? ':' + ref : ''}`]);
   const course = await diffuserMaj(io, c.id, { message: 'Paiement reçu. Nous cherchons un livreur pour vous.', paiementRecu: true });
   if (rouvrir) notifierNouvelleCourse(io, course).catch((e) => console.error('Notification :', e.message));
+  if (course.statut === 'acceptee') alerterLivreur(course.livreur_id, 'Paiement reçu ✓', 'Le client a payé. Vous pouvez récupérer le colis.');
   return course;
 }
 
-module.exports = { confirmer, terminer, appliquer, synchroniser, traiterEvenement, rapprocher, validerManuellement };
+module.exports = {
+  confirmer, terminer, appliquer, synchroniser, traiterEvenement, rapprocher, validerManuellement, demanderPaiement,
+};

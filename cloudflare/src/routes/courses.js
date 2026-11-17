@@ -6,6 +6,7 @@ import { devis, pointValide, distanceKm } from '../tarifs.js';
 import { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj } from '../courses-service.js';
 import * as nangu from '../nangu.js';
 import * as paiements from '../paiements.js';
+import { envoyer } from '../push.js';
 
 const MAX_PAR_HEURE = 10;          // demandes par adresse IP
 const MAX_EN_ATTENTE_PAR_TEL = 3;  // commandes en attente par numéro
@@ -59,30 +60,13 @@ export function enregistrer(r) {
       [clientNom, clientTel, code, type, description, montantAchat,
         Number(b.depart.lat), Number(b.depart.lng), departRepere, Number(b.arrivee.lat), Number(b.arrivee.lng), arriveeRepere,
         texte(b.destinataire_nom, 100) || null, destTel, d.distance_km, d.prix,
-        paiement, enLigne ? 'en_attente' : 'a_la_livraison', enLigne ? 'attente_paiement' : 'en_attente']
+        // paiement en ligne : rien à payer tant qu'aucun livreur n'a accepté (le paiement est créé à l'acceptation)
+        paiement, enLigne ? 'en_attente' : 'a_la_livraison', 'en_attente']
     );
     const id = ins.rows[0].id;
-
-    if (!enLigne) {
-      const course = await lireCourse(c, id);
-      c.attendre(notifierNouvelleCourse(c, course).catch((e) => console.error('Notification :', e.message)));
-      return json({ ...course, suivi_token: code }, 201);
-    }
-
-    // Paiement en ligne : la course reste invisible des livreurs jusqu'à la confirmation
-    try {
-      // après le paiement, Nangu ramène le client ici (https uniquement)
-      const retour = c.url.protocol === 'https:' ? `${c.url.origin}/retour-paiement/${code}` : null;
-      const p = await nangu.creerPaiement(c.env, { id, suivi: code, prix: d.prix, client_tel: clientTel, depart_repere: departRepere, arrivee_repere: arriveeRepere, retour }, paiement);
-      const infos = nangu.infosPaiement(c.env, p);
-      await c.db.query('UPDATE courses SET nangu_id = $2, montant_du = $3, paiement_infos = $4 WHERE id = $1', [id, p.id, p.amount_due, infos]);
-      const course = await lireCourse(c, id);
-      return json({ ...course, suivi_token: code, paiement_infos: infos }, 201);
-    } catch (e) {
-      await c.db.query(`UPDATE courses SET statut = 'annulee', paiement_statut = 'annule', annulee_le = ${MAINTENANT} WHERE id = $1`, [id]);
-      console.error('Création du paiement Nangu :', e.message);
-      throw new HttpErreur(502, `Paiement ${paiement === 'wave' ? 'Wave' : 'Orange Money'} indisponible pour le moment (${e.message}). Réessayez ou choisissez les espèces.`);
-    }
+    const course = await lireCourse(c, id);
+    c.attendre(notifierNouvelleCourse(c, course).catch((e) => console.error('Notification :', e.message)));
+    return json({ ...course, suivi_token: code }, 201);
   });
 
   r.get('/api/courses/suivi/:code/paiement', async (req, c) => {
@@ -110,18 +94,32 @@ export function enregistrer(r) {
     return json(res.rows);
   });
 
+  // Annulation par le client : possible tant qu'il n'a rien payé (y compris quand un livreur attend son paiement).
+  // Une course déjà payée ne s'annule plus ici : c'est l'admin qui rembourse.
   r.post('/api/courses/suivi/:code/annuler', async (req, c) => {
+    const avant = (await c.db.query('SELECT id, statut, paiement, paiement_statut, livreur_id FROM courses WHERE suivi_token = $1', [c.params.code])).rows[0];
+    if (!avant) throw new HttpErreur(404, 'Course introuvable');
+    if (avant.paiement_statut === 'paye' && !['livree', 'annulee'].includes(avant.statut)) {
+      throw new HttpErreur(409, 'Cette commande est déjà payée : pour l\'annuler et être remboursé, appelez Thiak Thiak Dialaw.');
+    }
     const res = await c.db.query(
       `UPDATE courses SET statut = 'annulee', annulee_le = ${MAINTENANT},
          paiement_statut = CASE WHEN paiement_statut = 'en_attente' THEN 'annule' ELSE paiement_statut END
-       WHERE suivi_token = $1 AND statut IN ('en_attente', 'attente_paiement')
+       WHERE suivi_token = $1 AND paiement_statut <> 'paye'
+         AND (statut IN ('en_attente', 'attente_paiement') OR (statut = 'acceptee' AND paiement <> 'especes'))
        RETURNING id, nangu_id, paiement_statut`,
       [c.params.code]
     );
     if (!res.rows.length) throw new HttpErreur(409, 'Cette course ne peut plus être annulée (déjà prise par un livreur)');
     const { id, nangu_id: nanguId, paiement_statut: etat } = res.rows[0];
     if (nanguId && etat === 'annule') c.attendre(nangu.annulerPaiement(c.env, nanguId).catch((e) => console.error('Annulation Nangu :', e.message)));
-    return json(await diffuserMaj(c, id, { notifierClient: false }));
+    const course = await diffuserMaj(c, id, { notifierClient: false });
+    // le livreur qui attendait le paiement est libéré et prévenu
+    if (avant.statut === 'acceptee' && avant.livreur_id) {
+      c.io.to('user:' + avant.livreur_id).emit('course:maj', course);
+      c.attendre(envoyer(c, [avant.livreur_id], { titre: 'Course annulée', corps: 'Le client a annulé avant de payer. Vous êtes libre pour une autre course.', url: '/livreur.html' }).catch(() => {}));
+    }
+    return json(course);
   });
 
   r.post('/api/courses/suivi/:code/noter', async (req, c) => {

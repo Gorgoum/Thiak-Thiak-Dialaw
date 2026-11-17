@@ -36,6 +36,8 @@ const params = new URLSearchParams(location.search);
 const suiviPartage = params.get('suivi');
 // Retour depuis la page de paiement Nangu : on vérifie le paiement auprès du serveur
 const retourPaiement = suiviPartage && params.get('paiement') === 'retour';
+// Alerte « Un livreur a accepté, payez maintenant » : on ouvre directement l'écran de paiement
+const ouvrirPaiement = suiviPartage && params.get('payer') === '1';
 if (suiviPartage) {
   ajouterCode(suiviPartage);
   history.replaceState(null, '', '/');
@@ -468,9 +470,16 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('tiro
 function carteCourse(c) {
   const code = esc(c.suivi_token);
   const enCours = ['attente_paiement', 'en_attente', 'acceptee', 'recuperee'].includes(c.statut);
+  const enLigne = c.paiement !== 'especes';
+  const paye = c.paiement_statut === 'paye';
+  // un livreur a accepté et attend le paiement (ou ancien fonctionnement « attente_paiement »)
+  const aPayer = enLigne && !paye && (c.statut === 'attente_paiement' || (c.statut === 'acceptee' && c.paiement_statut === 'en_attente'));
   const actions = [];
-  if (c.statut === 'attente_paiement') actions.push(`<button class="btn-primaire" data-payer="${code}">${ico('wallet', 'ic-sm')} Payer ${fcfa(c.montant_du || c.prix)}</button>`);
-  if (['en_attente', 'attente_paiement'].includes(c.statut)) actions.push(`<button class="danger" data-annuler="${code}">${ico('circle-x', 'ic-sm')} Annuler</button>`);
+  if (aPayer) actions.push(`<button class="btn-primaire" data-payer="${code}">${ico('wallet', 'ic-sm')} Payer ${fcfa(c.montant_du || c.prix)}</button>`);
+  // annulation possible tant que rien n'est payé (une course payée se règle avec Thiak Thiak, qui rembourse)
+  if (!paye && (['en_attente', 'attente_paiement'].includes(c.statut) || (c.statut === 'acceptee' && enLigne))) {
+    actions.push(`<button class="danger" data-annuler="${code}">${ico('circle-x', 'ic-sm')} Annuler</button>`);
+  }
   if (enCours) actions.push(`<button data-partager="${code}">${ico('share-2', 'ic-sm')} Partager le suivi</button>`);
   if (!enCours) actions.push(`<button class="btn-ghost" data-retirer="${code}">${ico('trash-2', 'ic-sm')} Retirer</button>`);
   let notation = '';
@@ -482,7 +491,12 @@ function carteCourse(c) {
   const moyen = c.paiement === 'orange_money' ? 'Orange Money' : c.paiement === 'wave' ? 'Wave' : 'Espèces';
   let attente = '';
   if (c.statut === 'attente_paiement') attente = `<div class="ligne-info">${ico('wallet', 'ic-sm')} Paiement ${moyen} en attente : les livreurs seront prévenus dès réception.</div>`;
-  else if (c.statut === 'en_attente') attente = `<div class="ligne-info">${ico('loader-circle', 'ic-sm tourne')} Recherche d'un livreur disponible…</div>`;
+  else if (c.statut === 'en_attente') {
+    attente = `<div class="ligne-info">${ico('loader-circle', 'ic-sm tourne')} Recherche d'un livreur disponible…</div>`;
+    if (enLigne && !paye) attente += `<div class="ligne-info">${ico('wallet', 'ic-sm')} Vous paierez avec ${moyen} dès qu'un livreur aura accepté. Rien à payer pour l'instant.</div>`;
+  } else if (aPayer) {
+    attente = `<div class="ligne-info alerte-payer">${ico('bell', 'ic-sm')} <b>Un livreur a accepté !</b> Payez maintenant pour qu'il vienne chercher le colis (10 minutes).</div>`;
+  }
   if (c.paiement_statut === 'paye') attente += `<div class="ligne-info paiement-ok">${ico('circle-check', 'ic-sm')} Payé par ${moyen}</div>`;
   return `
     <article class="course">
@@ -502,12 +516,17 @@ function carteCourse(c) {
     </article>`;
 }
 
+let derniereListe = [];
+/** Code de suivi d'une course de ce téléphone, à partir de son numéro (les mises à jour en direct n'envoient que le numéro). */
+const codeDeCourse = (id) => (derniereListe.find((x) => x.id === id) || {}).suivi_token;
+
 async function chargerListe() {
   const codes = lireCodes();
   const bouton = $('ouvrir-suivi');
   if (!codes.length) { bouton.hidden = true; $('liste').innerHTML = '<p class="vide">Aucune livraison pour le moment.</p>'; return; }
   try {
     const liste = await api('GET', '/api/courses/suivi?codes=' + codes.map(encodeURIComponent).join(','));
+    derniereListe = liste;
     const connus = new Set(liste.map((c) => c.suivi_token));
     if (connus.size !== codes.length) ecrireCodes(codes.filter((c) => connus.has(c)));
     const actives = liste.filter((c) => ['attente_paiement', 'en_attente', 'acceptee', 'recuperee'].includes(c.statut)).length;
@@ -848,8 +867,8 @@ function chargerConfig() {
 }
 const CLE_PAIEMENT = 'tt_paiement';
 const MOYENS = {
-  wave: { nom: 'Wave', logo: 'W', classe: 'wave', aide: 'Payez maintenant, confirmé automatiquement' },
-  orange_money: { nom: 'Orange Money', logo: 'OM', classe: 'orange', aide: 'Max it ou #144#, confirmé automatiquement' },
+  wave: { nom: 'Wave', logo: 'W', classe: 'wave', aide: 'Vous payez dès qu\'un livreur accepte' },
+  orange_money: { nom: 'Orange Money', logo: 'OM', classe: 'orange', aide: 'Vous payez dès qu\'un livreur accepte' },
   especes: { nom: 'Espèces', logo: ico('banknote'), classe: 'especes', aide: 'Au livreur, à la livraison' },
 };
 
@@ -876,7 +895,8 @@ function htmlChoixPaiement() {
 function majBoutonConfirmation() {
   const m = moyenChoisi();
   const prix = fcfa(dernierDevis.prix);
-  $('conf-envoyer').innerHTML = m === 'especes' ? `Confirmer · ${prix}` : `Payer avec ${MOYENS[m].nom} · ${prix}`;
+  // paiement en ligne : rien n'est débité maintenant, le client paie quand un livreur a accepté
+  $('conf-envoyer').innerHTML = m === 'especes' ? `Confirmer · ${prix}` : `Commander · ${prix}`;
 }
 
 // ---------- Écran de paiement ----------
@@ -966,8 +986,9 @@ async function verifierPaiement(code) {
   if (!etat) return arreterSuiviPaiement();
   if (p.paiement_statut === 'paye') {
     arreterSuiviPaiement();
-    etat.innerHTML = `<span class="paiement-ok">${ico('circle-check')} Paiement reçu. Nous cherchons un livreur.</span>`;
-    toast('Paiement reçu. Les livreurs disponibles sont prévenus.');
+    const suite = p.statut === 'acceptee' ? 'Le livreur vient chercher votre colis.' : 'Nous cherchons un livreur.';
+    etat.innerHTML = `<span class="paiement-ok">${ico('circle-check')} Paiement reçu. ${suite}</span>`;
+    toast(`Paiement reçu. ${suite}`);
     setTimeout(() => { fermerConfirmation(); chargerListe().then(ouvrirTiroir); }, 1800);
   } else if (p.paiement_statut === 'expire' || p.paiement_statut === 'annule') {
     arreterSuiviPaiement();
@@ -986,7 +1007,7 @@ async function confirmerRetourPaiement(code) {
     let p = null;
     try { p = await api('GET', `/api/courses/suivi/${encodeURIComponent(code)}/paiement`); } catch { /* nouvel essai */ }
     if (p && p.paiement_statut === 'paye') {
-      toast('Paiement reçu. Les livreurs disponibles sont prévenus.');
+      toast(p.statut === 'acceptee' ? 'Paiement reçu. Le livreur vient chercher votre colis.' : 'Paiement reçu. Les livreurs disponibles sont prévenus.');
       return chargerListe();
     }
     if (p && (p.paiement_statut === 'expire' || p.paiement_statut === 'annule')) {
@@ -1003,6 +1024,10 @@ async function confirmerRetourPaiement(code) {
 async function reprendrePaiement(code) {
   try {
     const p = await api('GET', `/api/courses/suivi/${encodeURIComponent(code)}/paiement`);
+    if (p.paiement_statut === 'en_attente' && !p.infos) {
+      chargerListe().then(ouvrirTiroir);
+      return toast('Rien à payer pour l\'instant : vous paierez dès qu\'un livreur aura accepté.');
+    }
     if (p.paiement_statut !== 'en_attente' || !p.infos) { chargerListe(); return toast('Ce paiement n\'est plus en attente.'); }
     fermerTiroir();
     afficherEcranPaiement(code, p.infos, p.montant_du);
@@ -1061,7 +1086,9 @@ async function envoyerCommande() {
       return;
     }
     fermerConfirmation();
-    toast('Commande envoyée. Les livreurs disponibles sont prévenus.');
+    toast(course.paiement !== 'especes'
+      ? `Commande envoyée. Dès qu'un livreur accepte, vous paierez avec ${MOYENS[course.paiement].nom}. Gardez cette page ouverte.`
+      : 'Commande envoyée. Les livreurs disponibles sont prévenus.');
     await chargerListe();
     ouvrirTiroir();
   } catch (err) {
@@ -1165,6 +1192,7 @@ function proposerNotifications() {
   });
 }
 chargerListe().then(() => {
+  if (ouvrirPaiement) return reprendrePaiement(suiviPartage);
   if (suiviPartage) ouvrirTiroir();
   if (retourPaiement) confirmerRetourPaiement(suiviPartage);
 });
@@ -1180,8 +1208,18 @@ socket.on('course:maj', (c) => {
     en_attente: 'Le livreur s\'est désisté, recherche d\'un autre livreur…',
   };
   // paiement tout juste confirmé : ce n'est pas un désistement
-  const vientDEtrePaye = c.statut === 'en_attente' && c.paye_le && Date.now() - new Date(c.paye_le).getTime() < 60000;
-  if (vientDEtrePaye) { if (!suiviPaiement) toast('Paiement reçu. Nous cherchons un livreur.'); }
+  const vientDEtrePaye = c.paye_le && Date.now() - new Date(c.paye_le).getTime() < 60000 && c.paiement_statut === 'paye';
+  // un livreur vient d'accepter une course à payer en ligne : on ouvre tout de suite l'écran de paiement
+  const aPayer = c.statut === 'acceptee' && c.paiement !== 'especes' && c.paiement_statut === 'en_attente';
+  if (aPayer) {
+    toast(`${c.livreur_nom || 'Un livreur'} a accepté ! Payez maintenant pour qu'il vienne chercher le colis.`);
+    chargerListe().then(() => {
+      const code = codeDeCourse(c.id);
+      if (code && !suiviPaiement) reprendrePaiement(code);
+    });
+    return;
+  }
+  if (vientDEtrePaye) { if (!suiviPaiement) toast(c.statut === 'acceptee' ? 'Paiement reçu. Le livreur vient chercher le colis.' : 'Paiement reçu. Nous cherchons un livreur.'); }
   else if (messages[c.statut]) toast(messages[c.statut]);
   chargerListe();
 });

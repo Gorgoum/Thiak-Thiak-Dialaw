@@ -47,7 +47,7 @@ const MESSAGES_CLIENT = {
 };
 
 /** Diffuse un changement de statut au client (salle de suivi), au livreur, aux autres livreurs et aux admins. */
-async function diffuserMaj(io, id, { notifierClient = true, message = null, paiementRecu = false } = {}) {
+async function diffuserMaj(io, id, { notifierClient = true, message = null, paiementRecu = false, titre = null, suffixe = '', urgent = false } = {}) {
   const c = await lireCourse(id);
   if (!c) return;
   const prive = (await query('SELECT suivi_token, abonnement_push FROM courses WHERE id = $1', [id])).rows[0];
@@ -66,10 +66,11 @@ async function diffuserMaj(io, id, { notifierClient = true, message = null, paie
       tag: 'suivi-' + c.id,
       urgent: true,
     } : {
-      titre: 'Thiak Thiak Dialaw',
+      titre: titre || 'Thiak Thiak Dialaw',
       corps: msg(c),
-      url: '/?suivi=' + prive.suivi_token,
+      url: '/?suivi=' + prive.suivi_token + suffixe, // suffixe : « &payer=1 » ouvre l'écran de paiement
       tag: 'suivi-' + c.id,
+      urgent,
     });
     if (!valide) await query('UPDATE courses SET abonnement_push = NULL WHERE id = $1', [id]);
   }

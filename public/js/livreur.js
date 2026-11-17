@@ -202,9 +202,14 @@ function carteActive(c) {
   let detailEncaisser = '';
   if (payeEnLigne && achats) detailEncaisser = `<br><small>Course déjà payée par ${moyen} · seulement les achats (montant réel du ticket)</small>`;
   else if (c.type === 'achat') detailEncaisser = `<br><small>course ${fcfa(c.prix)} + achats (montant réel du ticket)</small>`;
-  const blocEncaisser = payeEnLigne && !achats
-    ? `<div class="devis paye-en-ligne" style="margin-top:10px">${ico('circle-check')} Course déjà payée par ${moyen} : <b>rien à encaisser</b></div>`
-    : `<div class="devis" style="margin-top:10px">À encaisser : <span class="prix">${fcfa(aEncaisser)}</span>${detailEncaisser}</div>`;
+  // course à payer en ligne, pas encore payée : le client paie maintenant (10 minutes au plus)
+  const attendPaiement = c.paiement !== 'especes' && !payeEnLigne;
+  const blocEncaisser = attendPaiement
+    ? `<div class="attente-client">${ico('loader-circle', 'tourne')} <div><b>En attente du paiement ${moyen} du client</b>
+        <small>Vous serez prévenu dès qu'il a payé. Ne récupérez pas le colis avant. Sans paiement dans les 10 minutes, la course est annulée et vous êtes libéré.</small></div></div>`
+    : payeEnLigne && !achats
+      ? `<div class="devis paye-en-ligne" style="margin-top:10px">${ico('circle-check')} Course déjà payée par ${moyen} : <b>rien à encaisser</b></div>`
+      : `<div class="devis" style="margin-top:10px">À encaisser : <span class="prix">${fcfa(aEncaisser)}</span>${detailEncaisser}</div>`;
   return `
     <div class="card course-active">
       <h2>Course en cours ${badge(c.statut)}</h2>
@@ -219,7 +224,7 @@ function carteActive(c) {
       <a class="lien-secondaire" data-nav="${cible[0]},${cible[1]}" ${lienItineraire(cible[0], cible[1], maPosition)}>Ouvrir dans une autre application GPS</a>
       <div class="actions">
         ${versDepart
-          ? `<button class="jaune grand" data-etape="recuperee" data-id="${c.id}">${ico('package')} J'ai récupéré le colis</button>
+          ? `<button class="jaune grand" data-etape="recuperee" data-id="${c.id}" ${attendPaiement ? 'disabled' : ''}>${ico('package')} J'ai récupéré le colis</button>
              <button class="danger" data-etape="liberer" data-id="${c.id}">Me désister</button>`
           : `<button class="jaune grand" data-etape="livree" data-id="${c.id}">${ico('circle-check')} Livraison terminée</button>`}
       </div>
@@ -267,7 +272,7 @@ async function chargerTout() {
         <div class="course">
           <div class="haut"><span class="meta">${dateCourte(c.cree_le)} · ${Number(c.distance_km).toLocaleString('fr-FR')} km
             ${c.distance_moi_km != null ? ` · à ${c.distance_moi_km.toLocaleString('fr-FR')} km de vous` : ''}</span>
-            <span class="prix-course">${fcfa(c.prix)}${c.paiement_statut === 'paye' ? `<br><span class="badge b-livree">Payé en ligne</span>` : ''}</span></div>
+            <span class="prix-course">${fcfa(c.prix)}${c.paiement_statut === 'paye' ? `<br><span class="badge b-livree">Payé en ligne</span>` : c.paiement !== 'especes' ? `<br><span class="badge b-acceptee">${c.paiement === 'wave' ? 'Wave' : 'Orange Money'} à l'acceptation</span>` : ''}</span></div>
           ${trajet(c)}
           <div class="actions">
             <a class="bouton" data-nav="${c.depart_lat},${c.depart_lng}" ${lienItineraire(c.depart_lat, c.depart_lng, maPosition)}>${ico('map', 'ic-sm')} Voir le départ</a>
@@ -357,7 +362,16 @@ function afficherApp(u) {
     if (dispo.checked && nbAvant !== null && n > nbAvant) { bip(); toast('Nouvelle course disponible'); }
     nbAvant = n;
   });
-  socket.on('course:maj', chargerTout);
+  socket.on('course:maj', (c) => {
+    // course à payer en ligne : le livreur sait tout de suite si le client a payé, ou s'il a renoncé
+    if (c && c.statut === 'acceptee' && c.paiement_statut === 'paye' && c.paye_le && Date.now() - new Date(c.paye_le).getTime() < 60000) {
+      bip();
+      toast('Paiement reçu ✓ Vous pouvez récupérer le colis.');
+    } else if (c && c.statut === 'annulee' && c.livreur_id) {
+      toast('Course annulée : le client n\'a pas payé. Vous êtes libre pour une autre course.', true);
+    }
+    chargerTout();
+  });
   socket.on('argent:maj', (r) => {
     toast(r.sens === 'paye_au_livreur' ? 'La plateforme vous a versé votre argent. Merci !' : 'Votre versement à la plateforme est bien enregistré. Merci !');
     chargerTout();

@@ -67,9 +67,13 @@ router.post('/livreurs/:id/activer', a(async (req, res) => {
 
 router.get('/courses', a(async (req, res) => {
   const statut = req.query.statut;
-  const r = statut
-    ? await query(SELECT_COURSE + ' WHERE c.statut = $1 ORDER BY c.cree_le DESC LIMIT 100', [statut])
-    : await query(SELECT_COURSE + ' ORDER BY c.cree_le DESC LIMIT 100');
+  // « Paiement en attente » : ancien statut, ou course en ligne pas encore payée (avant ou après l'acceptation)
+  const ATTENTE_PAIEMENT = ` WHERE (c.statut = 'attente_paiement' OR (c.paiement <> 'especes' AND c.paiement_statut = 'en_attente' AND c.statut IN ('en_attente', 'acceptee')))`;
+  const r = statut === 'attente_paiement'
+    ? await query(SELECT_COURSE + ATTENTE_PAIEMENT + ' ORDER BY c.cree_le DESC LIMIT 100')
+    : statut
+      ? await query(SELECT_COURSE + ' WHERE c.statut = $1 ORDER BY c.cree_le DESC LIMIT 100', [statut])
+      : await query(SELECT_COURSE + ' ORDER BY c.cree_le DESC LIMIT 100');
   res.json(r.rows);
 }));
 
@@ -183,7 +187,7 @@ router.get('/mouvements.csv', a(async (req, res) => {
   res.set('Content-Disposition', `attachment; filename="thiak-thiak-argent-${m}.csv"`);
   res.send(await argent.exportCsv({ du, au }));
 }));
-const { diffuserMaj, notifierNouvelleCourse } = require('../courses-service');
+const { diffuserMaj, notifierNouvelleCourse, lireCourse } = require('../courses-service');
 const push = require('../push');
 
 /** Vérifie nom, téléphone et PIN (PIN facultatif en modification). Renvoie les valeurs propres. */
@@ -317,7 +321,22 @@ router.post('/courses/:id/attribuer', a(async (req, res) => {
   if (occupe.rows.length) return res.status(409).json({ erreur: 'Ce livreur a déjà une course en cours' });
   await query(`UPDATE courses SET statut = 'acceptee', livreur_id = $2, acceptee_le = now() WHERE id = $1`, [req.params.id, livreurId]);
   const io = req.app.get('io');
-  const course = await diffuserMaj(io, req.params.id);
+  let course;
+  const enLigne = (await query('SELECT paiement, paiement_statut FROM courses WHERE id = $1', [req.params.id])).rows[0];
+  if (enLigne.paiement !== 'especes' && enLigne.paiement_statut !== 'paye') {
+    // course à payer en ligne : le client paie maintenant qu'un livreur est trouvé
+    try {
+      const origine = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+      await paiements.demanderPaiement(io, req.params.id, origine);
+    } catch (e) {
+      await query(`UPDATE courses SET statut = $2, livreur_id = $3, acceptee_le = CASE WHEN $3 IS NULL THEN NULL ELSE acceptee_le END WHERE id = $1`,
+        [req.params.id, c.statut, c.livreur_id]);
+      return res.status(502).json({ erreur: 'Le paiement du client ne peut pas être lancé pour le moment (Nangu). Réessayez.' });
+    }
+    course = await lireCourse(req.params.id);
+  } else {
+    course = await diffuserMaj(io, req.params.id);
+  }
   if (c.livreur_id && c.livreur_id !== livreurId) io.to('user:' + c.livreur_id).emit('course:maj', course);
   await push.envoyer([livreurId], {
     titre: 'Course attribuée par l\'administrateur', corps: `${course.depart_repere} → ${course.arrivee_repere}`,
@@ -343,7 +362,7 @@ const erreurPaiement = (res, e) => res.status(e.status || 502).json({ erreur: e.
 router.post('/courses/:id/rapprocher', a(async (req, res) => {
   try {
     const r = await paiements.rapprocher(req.app.get('io'), req.params.id);
-    const { lireCourse } = require('../courses-service');
+
     res.json({ ...r, course: await lireCourse(req.params.id) });
   } catch (e) { erreurPaiement(res, e); }
 }));

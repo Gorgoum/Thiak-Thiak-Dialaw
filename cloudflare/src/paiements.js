@@ -1,36 +1,91 @@
 // Cycle de vie du paiement en ligne d'une course.
+//
+// Le client ne paie qu'APRÈS l'acceptation d'un livreur (jamais d'argent bloqué sans livreur) :
+//   commande (en attente, rien à payer) → un livreur accepte → paiement créé, client prévenu
+//   → paiement reçu : le livreur peut récupérer le colis
+//   → pas de paiement en 10 minutes : course annulée, livreur libéré, rien à rembourser.
 import { MAINTENANT } from './db.js';
 import * as nangu from './nangu.js';
 import { notifierNouvelleCourse, diffuserMaj } from './courses-service.js';
+import { envoyer } from './push.js';
+
+const DELAI_PAIEMENT = 10 * 60;
+const NOMS = { wave: 'Wave', orange_money: 'Orange Money' };
+const fcfa = (n) => Number(n).toLocaleString('fr-FR') + ' FCFA';
 
 const courseParNangu = async (c, id) =>
-  (await c.db.query('SELECT id, statut, paiement_statut FROM courses WHERE nangu_id = $1', [id])).rows[0];
+  (await c.db.query('SELECT id, statut, paiement_statut, livreur_id FROM courses WHERE nangu_id = $1', [id])).rows[0];
+
+const alerterLivreur = (c, livreurId, titre, corps) => {
+  if (livreurId) c.attendre(envoyer(c, [livreurId], { titre, corps, url: '/livreur.html', urgent: true }).catch((e) => console.error('Notification livreur :', e.message)));
+};
+
+/** Un livreur a accepté une course payée en ligne : on crée (ou reprend) le paiement et on prévient le client. */
+export async function demanderPaiement(c, courseId) {
+  const x = (await c.db.query(
+    `SELECT id, suivi_token, prix, client_tel, depart_repere, arrivee_repere, paiement, paiement_statut, nangu_id
+     FROM courses WHERE id = $1`, [courseId]
+  )).rows[0];
+  if (!x || x.paiement === 'especes' || x.paiement_statut === 'paye') return null;
+  let p = null;
+  if (x.nangu_id) {
+    try {
+      const actuel = await nangu.lirePaiement(c.env, x.nangu_id);
+      if (actuel.status === 'succeeded') { await confirmer(c, actuel.id, actuel.amount_due); return actuel; }
+      if (actuel.status === 'pending' && new Date(actuel.expires_at) - Date.now() > 120000) p = actuel;
+    } catch { /* on en crée un nouveau */ }
+  }
+  if (!p) {
+    const retour = c.url.protocol === 'https:' ? `${c.url.origin}/retour-paiement/${x.suivi_token}` : null;
+    p = await nangu.creerPaiement(c.env, {
+      id: x.id, suivi: x.suivi_token, essai: Date.now().toString(36), prix: x.prix, client_tel: x.client_tel,
+      depart_repere: x.depart_repere, arrivee_repere: x.arrivee_repere, retour, expireDans: DELAI_PAIEMENT,
+    }, x.paiement);
+    const infos = nangu.infosPaiement(c.env, p);
+    await c.db.query(`UPDATE courses SET nangu_id = $2, montant_du = $3, paiement_infos = $4, paiement_statut = 'en_attente' WHERE id = $1`,
+      [x.id, p.id, p.amount_due, infos]);
+  }
+  await diffuserMaj(c, x.id, {
+    titre: 'Un livreur a accepté !',
+    message: `Payez maintenant ${fcfa(p.amount_due || x.prix)} avec ${NOMS[x.paiement]} pour qu'il vienne chercher le colis (10 minutes).`,
+    suffixe: '&payer=1',
+    urgent: true,
+  });
+  return p;
+}
 
 export async function confirmer(c, nanguId, montant) {
   const x = await courseParNangu(c, nanguId);
   if (!x || x.paiement_statut === 'paye') return false;
   const r = await c.db.query(
     `UPDATE courses SET paiement_statut = 'paye', paye_le = ${MAINTENANT}, montant_du = COALESCE($2, montant_du),
-       statut = 'en_attente', annulee_le = NULL
-     WHERE id = $1 AND statut IN ('attente_paiement', 'annulee') RETURNING id`,
+       statut = CASE WHEN statut IN ('attente_paiement', 'annulee') THEN 'en_attente' ELSE statut END,
+       annulee_le = CASE WHEN statut IN ('attente_paiement', 'annulee') THEN NULL ELSE annulee_le END
+     WHERE id = $1 AND statut IN ('attente_paiement', 'annulee', 'en_attente', 'acceptee', 'recuperee') RETURNING id`,
     [x.id, montant || null]
   );
   if (!r.rows.length) return false;
-  // Pas d'alerte de notre part : la page de paiement Nangu envoie elle-même « Paiement reçu » et ramène le client
+  // Pas d'alerte au client : la page de paiement Nangu envoie elle-même « Paiement reçu » et le ramène
   const course = await diffuserMaj(c, x.id, { notifierClient: false });
-  c.attendre(notifierNouvelleCourse(c, course).catch((e) => console.error('Notification :', e.message)));
+  if (course.statut === 'acceptee' && course.livreur_id) {
+    alerterLivreur(c, course.livreur_id, 'Paiement reçu ✓', `Le client a payé. Vous pouvez récupérer le colis : ${course.depart_repere}`);
+  } else if (course.statut === 'en_attente') {
+    c.attendre(notifierNouvelleCourse(c, course).catch((e) => console.error('Notification :', e.message)));
+  }
   return true;
 }
 
+/** Paiement expiré ou annulé sans avoir été payé : course annulée, livreur libéré, rien à rembourser. */
 export async function terminer(c, nanguId, etat) {
   const x = await courseParNangu(c, nanguId);
-  if (!x || x.statut !== 'attente_paiement') return false;
+  if (!x || x.paiement_statut === 'paye' || !['attente_paiement', 'en_attente', 'acceptee'].includes(x.statut)) return false;
   await c.db.query(
     `UPDATE courses SET paiement_statut = $2, statut = 'annulee', annulee_le = ${MAINTENANT}
-     WHERE id = $1 AND statut = 'attente_paiement'`,
+     WHERE id = $1 AND paiement_statut <> 'paye' AND statut IN ('attente_paiement', 'en_attente', 'acceptee')`,
     [x.id, etat === 'expired' ? 'expire' : 'annule']
   );
-  await diffuserMaj(c, x.id, { message: etat === 'expired' ? 'Le délai de paiement est dépassé : la commande est annulée.' : 'Paiement annulé.' });
+  await diffuserMaj(c, x.id, { message: etat === 'expired' ? 'Le délai de paiement est dépassé : la commande est annulée. Vous n\'avez rien payé.' : 'Paiement annulé : la commande est annulée.' });
+  if (x.statut === 'acceptee') alerterLivreur(c, x.livreur_id, 'Course annulée', 'Le client n\'a pas payé à temps. Vous êtes libre pour une autre course.');
   return true;
 }
 
@@ -56,7 +111,7 @@ export async function releverPaiementsEnAttente(c) {
   if (!nangu.actif(c.env)) return 0;
   const r = await c.db.query(
     `SELECT nangu_id FROM courses WHERE paiement_statut = 'en_attente' AND nangu_id IS NOT NULL
-       AND cree_le >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-2 hours') LIMIT 50`
+       AND coalesce(acceptee_le, cree_le) >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-2 hours') LIMIT 50`
   );
   for (const { nangu_id: id } of r.rows) {
     try { await appliquer(c, await nangu.lirePaiement(c.env, id)); } catch (e) { console.error('Relève Nangu :', e.message); }
@@ -95,6 +150,7 @@ export async function validerManuellement(c, courseId, { adminId, reference = ''
     [`manuel-${x.id}-${Date.now()}`, `admin:${adminId}:valide:course-${x.id}${ref ? ':' + ref : ''}`]);
   const course = await diffuserMaj(c, x.id, { message: 'Paiement reçu. Nous cherchons un livreur pour vous.', paiementRecu: true });
   if (rouvrir) c.attendre(notifierNouvelleCourse(c, course).catch((e) => console.error('Notification :', e.message)));
+  if (course.statut === 'acceptee') alerterLivreur(c, course.livreur_id, 'Paiement reçu ✓', 'Le client a payé. Vous pouvez récupérer le colis.');
   return course;
 }
 

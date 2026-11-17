@@ -6,6 +6,7 @@ const { distanceKm, pointValide, parametres } = require('../tarifs');
 const { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj } = require('../courses-service');
 const { apprendreDeLaCourse } = require('../lieux');
 const argent = require('../argent');
+const paiements = require('../paiements');
 
 // Tout livreur doit être connecté ET validé par l'admin
 router.use(exiger('livreur'), a(async (req, res, next) => {
@@ -90,7 +91,23 @@ router.post('/courses/:id/accepter', a(async (req, res) => {
     if (e.code === '23505') return res.status(409).json({ erreur: 'Terminez d\'abord votre course en cours' });
     throw e;
   }
-  res.json(await diffuserMaj(req.app.get('io'), req.params.id));
+  const io = req.app.get('io');
+  const c = (await query('SELECT paiement, paiement_statut FROM courses WHERE id = $1', [req.params.id])).rows[0];
+  if (c.paiement !== 'especes' && c.paiement_statut !== 'paye') {
+    // course à payer en ligne : le client paie maintenant qu'un livreur est trouvé
+    try {
+      const origine = (process.env.PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+      await paiements.demanderPaiement(io, req.params.id, origine);
+    } catch (e) {
+      // Nangu indisponible : on rend la course aux autres livreurs plutôt que de faire attendre celui-ci
+      console.error('Demande de paiement :', e.message);
+      await query(`UPDATE courses SET statut = 'en_attente', livreur_id = NULL, acceptee_le = NULL WHERE id = $1 AND statut = 'acceptee'`, [req.params.id]);
+      await diffuserMaj(io, req.params.id, { notifierClient: false });
+      return res.status(502).json({ erreur: 'Le paiement du client ne peut pas être lancé pour le moment. Réessayez dans un instant.' });
+    }
+    return res.json(await lireCourse(req.params.id));
+  }
+  res.json(await diffuserMaj(io, req.params.id));
 }));
 
 // Transitions autorisées : acceptee → recuperee → livree
@@ -100,6 +117,13 @@ const ETAPES = {
 };
 for (const [statut, e] of Object.entries(ETAPES)) {
   router.post(`/courses/:id/${statut}`, a(async (req, res) => {
+    if (statut === 'recuperee') {
+      // course à payer en ligne : on ne prend pas le colis avant que le client ait payé
+      const c = (await query('SELECT paiement, paiement_statut FROM courses WHERE id = $1 AND livreur_id = $2', [req.params.id, req.user.id])).rows[0];
+      if (c && c.paiement !== 'especes' && c.paiement_statut !== 'paye') {
+        return res.status(409).json({ erreur: 'Le client n\'a pas encore payé. Attendez le paiement avant de récupérer le colis.' });
+      }
+    }
     const r = await query(
       `UPDATE courses SET statut = $3, ${e.colonne} = now()
        WHERE id = $1 AND livreur_id = $2 AND statut = $4 RETURNING id`,

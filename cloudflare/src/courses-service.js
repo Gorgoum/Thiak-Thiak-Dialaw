@@ -40,7 +40,7 @@ const MESSAGES_CLIENT = {
   en_attente: () => 'Le livreur s\'est désisté, nous cherchons un autre livreur.',
 };
 
-export async function diffuserMaj(c, id, { notifierClient = true, message = null, paiementRecu = false } = {}) {
+export async function diffuserMaj(c, id, { notifierClient = true, message = null, paiementRecu = false, titre = null, suffixe = '', urgent = false } = {}) {
   const course = await lireCourse(c, id);
   if (!course) return null;
   const prive = (await c.db.query('SELECT suivi_token, abonnement_push FROM courses WHERE id = $1', [id])).rows[0];
@@ -53,7 +53,7 @@ export async function diffuserMaj(c, id, { notifierClient = true, message = null
     // Paiement reçu : l'alerte sert de retour (même adresse que le return_url de Nangu) et reste affichée jusqu'au toucher
     const valide = await envoyerA(c.env, prive.abonnement_push, paiementRecu
       ? { titre: 'Paiement reçu ✓', corps: 'Touchez pour revenir à votre livraison. Nous cherchons un livreur.', url: '/retour-paiement/' + prive.suivi_token, tag: 'suivi-' + course.id, urgent: true }
-      : { titre: 'Thiak Thiak Dialaw', corps: msg(course), url: '/?suivi=' + prive.suivi_token, tag: 'suivi-' + course.id });
+      : { titre: titre || 'Thiak Thiak Dialaw', corps: msg(course), url: '/?suivi=' + prive.suivi_token + suffixe, tag: 'suivi-' + course.id, urgent });
     if (!valide) await c.db.query('UPDATE courses SET abonnement_push = NULL WHERE id = $1', [id]);
   }
   return course;

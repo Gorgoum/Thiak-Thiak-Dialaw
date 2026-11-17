@@ -35,11 +35,12 @@ export function creerPaiement(env, course, fournisseur) {
     provider: fournisseur,
     customer_phone: course.client_tel,
     description: `Livraison Thiak Thiak : ${course.depart_repere} → ${course.arrivee_repere}`.slice(0, 200),
-    expires_in: 30 * 60,
+    expires_in: course.expireDans || 30 * 60, // délai pour payer (10 min quand un livreur attend)
     metadata: { course_id: String(course.id) },
     // après le paiement, la page de paiement Nangu ramène le client sur son suivi (https uniquement)
     ...(course.retour ? { return_url: course.retour } : {}),
-  }, { 'Idempotency-Key': `thiak-${course.suivi}-${fournisseur}` }); // code secret aléatoire : unique même si la numérotation repart à 1
+    // code secret aléatoire (+ numéro de tentative : un nouveau livreur → un nouveau paiement)
+  }, { 'Idempotency-Key': `thiak-${course.suivi}-${fournisseur}${course.essai ? '-' + course.essai : ''}` });
 }
 
 export const lirePaiement = (env, id) => appeler(env, 'GET', `/v1/payments/${encodeURIComponent(id)}`);

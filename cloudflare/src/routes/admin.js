@@ -4,7 +4,7 @@ import { DEBUT_JOUR, MAINTENANT } from '../db.js';
 import { exiger, hacherPin, normaliserTel } from '../securite.js';
 import { parametres, pointValide } from '../tarifs.js';
 import { SELECT_COURSE, diffuserMaj, notifierNouvelleCourse, lireCourse } from '../courses-service.js';
-import { rapprocher, validerManuellement } from '../paiements.js';
+import { rapprocher, validerManuellement, demanderPaiement } from '../paiements.js';
 import { envoyer } from '../push.js';
 import * as argent from '../argent.js';
 import { CATEGORIES } from '../lieux.js';
@@ -69,9 +69,13 @@ export function enregistrer(r) {
   r.get('/api/admin/courses', async (req, c) => {
     await exigerAdmin(req, c);
     const statut = c.url.searchParams.get('statut');
-    const res = statut
-      ? await c.db.query(SELECT_COURSE + ' WHERE c.statut = $1 ORDER BY c.cree_le DESC LIMIT 100', [statut])
-      : await c.db.query(SELECT_COURSE + ' ORDER BY c.cree_le DESC LIMIT 100');
+    // « Paiement en attente » : ancien statut, ou course en ligne pas encore payée (avant ou après l'acceptation)
+    const ATTENTE_PAIEMENT = ` WHERE (c.statut = 'attente_paiement' OR (c.paiement <> 'especes' AND c.paiement_statut = 'en_attente' AND c.statut IN ('en_attente', 'acceptee')))`;
+    const res = statut === 'attente_paiement'
+      ? await c.db.query(SELECT_COURSE + ATTENTE_PAIEMENT + ' ORDER BY c.cree_le DESC LIMIT 100')
+      : statut
+        ? await c.db.query(SELECT_COURSE + ' WHERE c.statut = $1 ORDER BY c.cree_le DESC LIMIT 100', [statut])
+        : await c.db.query(SELECT_COURSE + ' ORDER BY c.cree_le DESC LIMIT 100');
     return json(res.rows);
   });
 
@@ -310,7 +314,20 @@ export function enregistrerGestion(r) {
     const occupe = await c.db.query(`SELECT 1 FROM courses WHERE livreur_id = $1 AND statut IN ('acceptee', 'recuperee') AND id <> $2`, [livreurId, course.id]);
     if (occupe.rows.length) throw new HttpErreur(409, 'Ce livreur a déjà une course en cours');
     await c.db.query(`UPDATE courses SET statut = 'acceptee', livreur_id = $2, acceptee_le = ${MAINTENANT} WHERE id = $1`, [course.id, livreurId]);
-    const maj = await diffuserMaj(c, course.id);
+    let maj;
+    if (course.paiement_statut !== 'paye' && (await c.db.query('SELECT paiement FROM courses WHERE id = $1', [course.id])).rows[0].paiement !== 'especes') {
+      // course à payer en ligne : le client paie maintenant qu'un livreur est trouvé
+      try {
+        await demanderPaiement(c, course.id);
+      } catch (e) {
+        await c.db.query(`UPDATE courses SET statut = $2, livreur_id = $3, acceptee_le = CASE WHEN $3 IS NULL THEN NULL ELSE acceptee_le END WHERE id = $1`,
+          [course.id, course.statut, course.livreur_id]);
+        throw new HttpErreur(502, 'Le paiement du client ne peut pas être lancé pour le moment (Nangu). Réessayez.');
+      }
+      maj = await lireCourse(c, course.id);
+    } else {
+      maj = await diffuserMaj(c, course.id);
+    }
     if (course.livreur_id && course.livreur_id !== livreurId) c.io.to('user:' + course.livreur_id).emit('course:maj', maj);
     await envoyer(c, [livreurId], {
       titre: 'Course attribuée par l\'administrateur', corps: `${maj.depart_repere} → ${maj.arrivee_repere}`,
