@@ -1051,8 +1051,15 @@ async function reprendrePaiement(code) {
       return toast('Rien à payer pour l\'instant : vous paierez dès qu\'un livreur aura accepté.');
     }
     if (p.paiement_statut !== 'en_attente' || !p.infos) { chargerListe(); return toast('Ce paiement n\'est plus en attente.'); }
+    // Pas d'écran en double : on va directement sur la page de paiement Nangu (un seul bouton « Payer avec Wave »).
+    // Elle ramène le client ici tout seul après le paiement (return_url).
+    if (p.infos.checkout_url) {
+      toast(`Ouverture du paiement ${p.infos.fournisseur === 'orange_money' ? 'Orange Money' : 'Wave'}…`);
+      setTimeout(() => { location.href = p.infos.checkout_url; }, 1200);
+      return;
+    }
     fermerTiroir();
-    afficherEcranPaiement(code, p.infos, p.montant_du);
+    afficherEcranPaiement(code, p.infos, p.montant_du); // secours : pas de page Nangu
   } catch (e) { toast(e.message, true); }
 }
 
