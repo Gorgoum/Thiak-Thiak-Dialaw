@@ -901,15 +901,8 @@ function afficherEcranPaiement(code, infos, prix) {
   const consigneRetour = `<p class="consigne-retour">${ico('info', 'ic-sm')} Après avoir payé dans ${wave ? 'Wave' : 'Max it'}, <b>revenez sur cette page</b> : la confirmation s'affiche toute seule.</p>`;
   // L'appli Wave ne ramène pas au navigateur, mais une alerte du téléphone s'affiche par-dessus :
   // en la touchant, le client revient directement sur le suivi de sa livraison.
-  const alertesPossibles = estMobile && 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window && window.isSecureContext;
-  const blocAlerte = !alertesPossibles ? ''
-    : Notification.permission === 'granted'
-      ? `<p class="alerte-paiement ok">${ico('bell', 'ic-sm')} Une alerte s'affichera sur votre téléphone dès le paiement reçu : touchez-la pour revenir ici.</p>`
-      : Notification.permission === 'default'
-        ? `<div class="alerte-paiement" id="bloc-alerte-paiement">
-            <button type="button" class="btn" id="activer-alerte-paiement">${ico('bell', 'ic-sm')} M'avertir quand le paiement est reçu</button>
-            <small>Conseillé : une alerte apparaîtra même dans l'appli Wave. Touchez-la pour revenir ici.</small></div>`
-        : '';
+  // (l'autorisation est demandée automatiquement au toucher de « Payer avec … », voir envoyerCommande)
+  const blocAlerte = `<div id="bloc-alerte-paiement">${'Notification' in window && Notification.permission === 'granted' ? texteAlerteActive() : ''}</div>`;
   let corps;
   if (wave) {
     corps = lien
@@ -941,15 +934,6 @@ function afficherEcranPaiement(code, infos, prix) {
       <div class="attente-paiement" id="etat-paiement">${ico('loader-circle', 'tourne')} En attente de votre paiement…</div>
       <p class="meta">La confirmation est automatique. Les livreurs sont prévenus dès le paiement reçu.</p>
     </div>`;
-  const boutonAlerte = $('activer-alerte-paiement');
-  if (boutonAlerte) {
-    boutonAlerte.onclick = () => boutonChargement(boutonAlerte, async () => {
-      try {
-        await activerNotifications(); // abonne ce téléphone à toutes ses livraisons, dont celle-ci
-        $('bloc-alerte-paiement').outerHTML = `<p class="alerte-paiement ok">${ico('bell', 'ic-sm')} C'est noté : une alerte s'affichera dès le paiement reçu.</p>`;
-      } catch (e) { toast(e.message, true); }
-    });
-  }
   $('conf-envoyer').hidden = true;
   const bas = $('confirmation').querySelector('.conf-pied [data-fermer-conf]');
   bas.textContent = 'Fermer (je paierai depuis Mes livraisons)';
@@ -959,6 +943,13 @@ function afficherEcranPaiement(code, infos, prix) {
   arreterSuiviPaiement();
   suiviPaiement = { code, minuterie: setInterval(() => verifierPaiement(code), 4000) };
   verifierPaiement(code);
+}
+
+const texteAlerteActive = () => `<p class="alerte-paiement ok">${ico('bell', 'ic-sm')} Une alerte s'affichera sur votre téléphone dès le paiement reçu, même dans l'appli Wave : touchez-la pour revenir ici.</p>`;
+/** Le client vient d'accepter les alertes : on le lui confirme sur l'écran de paiement. */
+function afficherAlerteActive() {
+  const bloc = $('bloc-alerte-paiement');
+  if (bloc) bloc.innerHTML = texteAlerteActive();
 }
 
 // Retour dans le navigateur après Wave / Max it : on vérifie tout de suite, sans attendre le prochain tour
@@ -1025,6 +1016,13 @@ async function envoyerCommande() {
   const d = Object.fromEntries(new FormData(form));
   d.paiement = moyenChoisi();
   Stock.set(CLE_PAIEMENT, d.paiement);
+  // Paiement Wave / Orange Money : le téléphone demande ici, une seule fois, l'autorisation des alertes
+  // (le navigateur n'accepte cette question que juste après un toucher). Accepté, l'alerte « Paiement reçu »
+  // apparaîtra même dans l'appli Wave et ramènera le client ici. Refusé, le paiement continue normalement.
+  const demandeAlertes = d.paiement !== 'especes' && estMobile && 'Notification' in window && 'PushManager' in window
+    && window.isSecureContext && Notification.permission === 'default'
+    ? Notification.requestPermission().catch(() => 'default')
+    : null;
   const bouton = $('conf-envoyer');
   const contenu = bouton.innerHTML;
   bouton.disabled = true;
@@ -1035,7 +1033,14 @@ async function envoyerCommande() {
     Stock.set(CLE_COORD, JSON.stringify({ nom: d.client_nom, tel: d.client_tel }));
     memoriserAdresse(coord(points.arrivee), d.arrivee_repere);
     memoriserAdresse(coord(points.depart), d.depart_repere);
-    if ('Notification' in window && Notification.permission === 'granted') activerNotifications().catch(() => {});
+    if (demandeAlertes) {
+      // réponse du client à la question du téléphone : abonnement aux alertes de cette livraison
+      demandeAlertes.then((reponse) => {
+        if (reponse === 'granted') activerNotifications().then(() => afficherAlerteActive()).catch(() => {});
+      });
+    } else if ('Notification' in window && Notification.permission === 'granted') {
+      activerNotifications().catch(() => {});
+    }
 
     // remise à zéro (on garde nom et téléphone)
     ['depart_repere', 'arrivee_repere', 'montant_achat', 'description', 'destinataire_nom', 'destinataire_tel']
