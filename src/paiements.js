@@ -21,7 +21,8 @@ async function confirmer(io, nanguId, montant) {
     [c.id, montant || null]
   );
   if (!r.rows.length) return false;
-  const course = await diffuserMaj(io, c.id, { message: 'Paiement reçu. Nous cherchons un livreur pour vous.', paiementRecu: true });
+  // Pas d'alerte de notre part : la page de paiement Nangu envoie elle-même « Paiement reçu » et ramène le client
+  const course = await diffuserMaj(io, c.id, { notifierClient: false });
   notifierNouvelleCourse(io, course).catch((e) => console.error('Notification :', e.message));
   return true;
 }

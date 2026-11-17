@@ -893,27 +893,24 @@ function arreterSuiviPaiement() {
 function afficherEcranPaiement(code, infos, prix) {
   const wave = infos.fournisseur !== 'orange_money';
   const montant = fcfa(infos.montant_du || prix);
-  // L'appli Wave s'ouvre PAR-DESSUS cette page, qui reste ouverte derrière et surveille le paiement :
-  // en revenant dans le navigateur, le client voit tout de suite « Paiement reçu ».
-  // (L'appli Wave, elle, ne ramène jamais toute seule vers le navigateur.)
+  // Recommandation de Nangu : toujours passer par sa page de paiement (checkout_url), jamais par le lien Wave direct.
+  // C'est elle qui ouvre Wave, surveille le paiement, envoie l'alerte « Paiement reçu » (Android)
+  // et ramène le client ici par le return_url. Le lien direct ne sert qu'en secours si la page manque.
   const lien = wave ? (estAndroid && infos.android_intent_url) || infos.pay_url : infos.maxit_url;
-  const pageNangu = infos.checkout_url; // secours : page Nangu, qui ramène ici après confirmation (return_url)
-  const consigneRetour = `<p class="consigne-retour">${ico('info', 'ic-sm')} Après avoir payé dans ${wave ? 'Wave' : 'Max it'}, <b>revenez sur cette page</b> : la confirmation s'affiche toute seule.</p>`;
-  // L'appli Wave ne ramène pas au navigateur, mais une alerte du téléphone s'affiche par-dessus :
-  // en la touchant, le client revient directement sur le suivi de sa livraison.
-  // (l'autorisation est demandée automatiquement au toucher de « Payer avec … », voir envoyerCommande)
-  const blocAlerte = `<div id="bloc-alerte-paiement">${'Notification' in window && Notification.permission === 'granted' ? texteAlerteActive() : ''}</div>`;
+  const pageNangu = infos.checkout_url;
+  const retourAuto = pageNangu ? `<p class="consigne-retour">${ico('info', 'ic-sm')} Après le paiement, vous serez ramené ici automatiquement.</p>` : '';
+  const blocAlerte = '';
   let corps;
   if (wave) {
-    corps = lien
-      ? `<a class="btn btn-payer wave" href="${esc(lien)}">${ico('wallet')} Payer avec Wave</a>${estMobile ? consigneRetour : ''}`
-      : (pageNangu ? `<a class="btn btn-payer wave" href="${esc(pageNangu)}">${ico('wallet')} Payer avec Wave</a>` : '');
+    corps = pageNangu
+      ? `<a class="btn btn-payer wave" href="${esc(pageNangu)}">${ico('wallet')} Payer avec Wave</a>${retourAuto}`
+      : (lien ? `<a class="btn btn-payer wave" href="${esc(lien)}">${ico('wallet')} Payer avec Wave</a>` : '');
     corps += infos.qr_code_url && !estMobile ? `<p class="meta">Ou scannez ce code avec l'appli Wave de votre téléphone :</p><div class="qr"><img src="${esc(infos.qr_code_url)}" alt="QR code de paiement Wave"></div>` : '';
   } else {
     corps = `
-      ${lien ? `<a class="btn btn-payer orange" href="${esc(lien)}">${ico('wallet')} Ouvrir Max it</a>
-        <p class="meta">Dans Max it, tapez exactement <b>${montant}</b>.</p>${estMobile ? consigneRetour : ''}`
-        : (pageNangu ? `<a class="btn btn-payer orange" href="${esc(pageNangu)}">${ico('wallet')} Payer avec Orange Money</a>` : '')}
+      ${pageNangu ? `<a class="btn btn-payer orange" href="${esc(pageNangu)}">${ico('wallet')} Payer avec Orange Money</a>${retourAuto}`
+        : lien ? `<a class="btn btn-payer orange" href="${esc(lien)}">${ico('wallet')} Ouvrir Max it</a>
+        <p class="meta">Dans Max it, tapez exactement <b>${montant}</b>.</p>` : ''}
       <ol class="etapes-om">
         <li>Composez <b>${esc(infos.ussd_code || '#144#')}</b>${estMobile ? ` (<a href="tel:${encodeURIComponent(infos.ussd_code || '#144#')}">appeler</a>)` : ''}</li>
         <li>Choisissez <b>Paiement marchand</b></li>
@@ -1016,13 +1013,10 @@ async function envoyerCommande() {
   const d = Object.fromEntries(new FormData(form));
   d.paiement = moyenChoisi();
   Stock.set(CLE_PAIEMENT, d.paiement);
-  // Paiement Wave / Orange Money : le téléphone demande ici, une seule fois, l'autorisation des alertes
-  // (le navigateur n'accepte cette question que juste après un toucher). Accepté, l'alerte « Paiement reçu »
-  // apparaîtra même dans l'appli Wave et ramènera le client ici. Refusé, le paiement continue normalement.
-  const demandeAlertes = d.paiement !== 'especes' && estMobile && 'Notification' in window && 'PushManager' in window
-    && window.isSecureContext && Notification.permission === 'default'
-    ? Notification.requestPermission().catch(() => 'default')
-    : null;
+  // Pas de question d'alertes ici : pour le paiement, c'est la page Nangu qui la pose et qui envoie
+  // « Paiement reçu » (sinon le client aurait deux questions et deux alertes). Nos propres alertes
+  // (livreur en route, livré…) se proposent à l'ouverture de l'application.
+  const demandeAlertes = null;
   const bouton = $('conf-envoyer');
   const contenu = bouton.innerHTML;
   bouton.disabled = true;
