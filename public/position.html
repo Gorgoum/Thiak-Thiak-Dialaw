@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Envoyer ma position — Yobalema Yène</title>
   <meta name="theme-color" content="#0a2a62">
-    <meta name="description" content="Touchez « Envoyer ma position » pour que le livreur trouve l'endroit exact.">
+    <meta name="description" content="Touchez « Envoyer ma position » pour que le chauffeur ou le livreur trouve l'endroit exact.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Yobalema Yène">
-  <meta property="og:title" content="Une livraison Yobalema Yène arrive">
-  <meta property="og:description" content="Touchez « Envoyer ma position » pour que le livreur trouve l'endroit exact.">
+  <meta property="og:title" content="Yobalema Yène a besoin de votre position">
+  <meta property="og:description" content="Touchez « Envoyer ma position » pour que le chauffeur ou le livreur trouve l'endroit exact.">
   <meta property="og:image" content="https://thiak-thiak-dialaw.thiakthiakdialaw.workers.dev/icons/icon-512.png">
   <meta property="og:image:width" content="512">
   <meta property="og:image:height" content="512">
@@ -28,14 +28,14 @@
   <main>
     <div class="card carte-position">
       <div class="icone-ronde" id="icone"><svg class="ic" aria-hidden="true"><use href="/icons.svg#map-pin"></use></svg></div>
-      <h2 id="titre">Une livraison arrive</h2>
-      <p id="texte">Pour que le livreur trouve l'endroit exact, envoyez votre position. Restez à l'endroit où il doit venir.</p>
+      <h2 id="titre">On a besoin de votre position</h2>
+      <p id="texte">Pour que le chauffeur ou le livreur trouve l'endroit exact, envoyez votre position. Restez à l'endroit où il doit venir.</p>
       <button id="envoyer" class="primaire">
         <svg class="ic" aria-hidden="true"><use href="/icons.svg#navigation"></use></svg> Envoyer ma position
       </button>
       <p class="etat" id="etat" role="status" aria-live="polite"></p>
     </div>
-    <p class="pied"><svg class="ic ic-sm" aria-hidden="true"><use href="/icons.svg#shield-check"></use></svg> Votre position sert uniquement à cette livraison.</p>
+    <p class="pied"><svg class="ic ic-sm" aria-hidden="true"><use href="/icons.svg#shield-check"></use></svg> Votre position sert uniquement à cette course.</p>
   </main>
   <script>window.ROLE = 'destinataire';</script>
   <script src="/js/commun.js"></script>
@@ -59,7 +59,7 @@
       try {
         const d = await api('GET', '/api/positions/' + encodeURIComponent(code));
         if (d.expiree) return fin('Lien expiré', 'Ce lien n\'est plus valable. Demandez-en un nouveau.');
-        if (d.demandeur) document.getElementById('titre').textContent = `${d.demandeur} vous envoie une livraison`;
+        if (d.demandeur) document.getElementById('titre').textContent = `${d.demandeur} a besoin de votre position`;
         if (d.recue_le) etat.textContent = 'Position déjà envoyée. Vous pouvez la renvoyer si vous avez bougé.';
       } catch (e) { return fin('Lien invalide', 'Demandez à la personne de vous renvoyer le lien.'); }
     })();
@@ -74,7 +74,7 @@
           await api('POST', '/api/positions/' + encodeURIComponent(code), {
             lat: p.coords.latitude, lng: p.coords.longitude, precision: p.coords.accuracy,
           });
-          fin('Position envoyée', 'Merci. Le livreur viendra jusqu\'à vous.', true);
+          fin('Position envoyée', 'Merci. Le chauffeur ou le livreur viendra jusqu\'à vous.', true);
         } catch (e) { toast(e.message, true); reinit(); }
       };
       const echec = (e) => {

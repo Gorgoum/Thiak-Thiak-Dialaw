@@ -88,6 +88,9 @@
             <button type="button" class="btn-rond btn-position" id="btn-ma-position" title="Ma position" aria-label="Utiliser ma position">
               <svg class="ic" aria-hidden="true"><use href="/icons.svg#locate-fixed"></use></svg>
             </button>
+            <button type="button" class="btn-rond btn-position btn-demander" data-demander="depart" title="Demander la position par WhatsApp" aria-label="Demander la position du départ par WhatsApp">
+              <svg class="ic" aria-hidden="true"><use href="/icons.svg#message-circle"></use></svg>
+            </button>
           </div>
           <div class="ligne-lieu" data-type="arrivee">
             <span class="puce puce-b">B</span>
@@ -95,8 +98,13 @@
               <input name="arrivee_repere" maxlength="300" autocomplete="off" enterkeyhint="search" placeholder="Où allez-vous ?" aria-label="Arrivée">
               <ul class="suggestions" id="sugg-arrivee" role="listbox" hidden></ul>
             </span>
+            <button type="button" class="btn-rond btn-position btn-demander" data-demander="arrivee" title="Demander la position par WhatsApp" aria-label="Demander la position de l'arrivée par WhatsApp">
+              <svg class="ic" aria-hidden="true"><use href="/icons.svg#message-circle"></use></svg>
+            </button>
           </div>
         </div>
+        <!-- Lieu trop vague (« Yène ») ou position demandée par WhatsApp -->
+        <div class="precision" id="precision" hidden></div>
         <p class="aide-lieux" id="aide-lieux">Écrivez le lieu, ou touchez la carte.</p>
         <div class="recents" id="recents" hidden>
           <div class="raccourcis" id="recents-liste"></div>

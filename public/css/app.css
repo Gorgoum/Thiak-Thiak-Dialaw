@@ -1102,3 +1102,20 @@ body.course-en-cours #aide-carte { display: none; }
 .etat-auto small { color: var(--ink-3); line-height: 1.35; }
 .etat-auto.alerte { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
 @media (prefers-color-scheme: dark) { .etat-auto.alerte { background: rgba(234, 88, 12, .12); border-color: rgba(234, 88, 12, .35); } }
+
+/* Position exacte : bouton WhatsApp des lignes A / B, alerte « village entier », attente de la position */
+.btn-demander { color: #128c7e; }
+.precision { margin-top: 10px; padding: 12px; border-radius: 14px; }
+.precision.alerte { background: #fff7ed; border: 1px solid #fed7aa; }
+.precision.alerte .titre { color: #c2410c; }
+.precision .titre { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 4px; font-size: .92rem; }
+.precision p { margin: 0 0 10px; font-size: .85rem; color: var(--ink-3); }
+.precision .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
+.precision .actions > * { min-width: 0; justify-content: center; }
+.precision .whatsapp { background: #25d366; border-color: #25d366; color: #fff; }
+@media (prefers-color-scheme: dark) { .precision.alerte { background: rgba(234, 88, 12, .12); border-color: rgba(234, 88, 12, .35); } }
+/* « Commander » sur une ligne, le prix en dessous : lisible même sur un petit téléphone */
+.btn-commander { flex-direction: column; gap: 0; line-height: 1.15; padding-block: 6px; }
+.btn-commander small { font-size: .82rem; font-weight: 600; opacity: .9; }
+.precision .actions > * { white-space: normal; text-align: center; line-height: 1.2; padding-block: 8px; }
+@media (max-width: 400px) { .precision .actions { grid-template-columns: 1fr; } .precision.attente-pos .actions { grid-template-columns: 1fr 1fr; } }

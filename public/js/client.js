@@ -16,6 +16,8 @@ let mode = 'depart';
 let dernierDevis = null;
 const points = { depart: null, arrivee: null };
 const parGPS = { depart: false, arrivee: false }; // point placé avec « Je suis ici » / « Chez moi, ici »
+const imprecis = { depart: null, arrivee: null }; // nom du village / quartier choisi tel quel (position trop vague)
+let attente = null; // position demandée par WhatsApp : { type, code, minuterie }
 
 // =========================================================================
 // Codes de suivi (gardés sur ce téléphone)
@@ -80,6 +82,7 @@ function majEtat(type, texte, classe = '') {
 
 function placer(type, latlng) {
   parGPS[type] = false; // remis à true par le bouton de position, juste après
+  imprecis[type] = null; // remis par la recherche si l'on a choisi un village entier
   if (points[type]) {
     points[type].setLatLng(latlng);
   } else {
@@ -96,6 +99,7 @@ function placer(type, latlng) {
     }).addTo(carte);
     points[type].on('drag', () => majCoord(type));
     points[type].on('dragend', () => {
+      imprecis[type] = null; // point posé à la main : position exacte
       majEtat(type, `${ico('check', 'ic-sm')} Position ajustée`, 'place');
       verifierMemeEndroit(type);
       proposerRepere(type);
@@ -136,8 +140,103 @@ function retirerPoint(type) {
   majChoixGPS();
 }
 
-/** (ancien assistant) — rien à adapter dans l'écran unique. */
-function majChoixGPS() {}
+/** Appelé à chaque placement : met à jour l'alerte « lieu trop vague ». */
+function majChoixGPS() { majPrecision(); }
+
+// =========================================================================
+// Position exacte : alerte si le lieu est un village entier, demande par WhatsApp
+// =========================================================================
+function majPrecision() {
+  const zone = $('precision');
+  if (!zone) return;
+  if (attente) return; // le panneau « en attente de la position » reste affiché
+  const type = ['depart', 'arrivee'].find((t) => imprecis[t] && points[t]);
+  if (!type) { zone.hidden = true; zone.innerHTML = ''; return; }
+  const qui = type === 'depart' ? 'où vous trouver' : (estTrajet() ? 'où vous déposer' : 'où livrer');
+  zone.className = 'precision alerte';
+  zone.innerHTML = `
+    <div class="titre">${ico('triangle-alert', 'ic-sm')} « ${esc(imprecis[type])} » est ${/quartier/i.test(imprecis[type + 'Cat'] || '') ? 'un quartier' : 'un village'} entier</div>
+    <p>Le ${estTrajet() ? 'chauffeur' : 'livreur'} ne saura pas ${qui}. Montrez l'endroit exact :</p>
+    <div class="actions">
+      <button type="button" data-sur-carte="${type}">${ico('pointer', 'ic-sm')} Toucher la carte</button>
+      <button type="button" class="whatsapp" data-demander="${type}">${ico('message-circle', 'ic-sm')} Demander par WhatsApp</button>
+    </div>`;
+  zone.hidden = false;
+}
+
+function arreterAttente() {
+  if (attente) clearInterval(attente.minuterie);
+  attente = null;
+  majPrecision();
+}
+
+function positionRecue(d) {
+  if (!attente || attente.code !== d.code || d.lat == null) return;
+  const type = attente.type;
+  arreterAttente();
+  const champ = form[type + '_repere'];
+  if (imprecis[type] || !champ.value.trim()) { champ.value = ''; delete champ.dataset.auto; delete champ.dataset.ancre; }
+  placerAvecRepere(type, d.lat, d.lng, null);
+  proposerRepere(type, type === 'depart' ? 'Position envoyée' : 'Position du destinataire');
+  apresPoint(type);
+  toast(`Position ${type === 'depart' ? 'du départ' : 'de l\'arrivée'} reçue${d.precision_m ? ` (±${d.precision_m} m)` : ''}. Le point ${LETTRE[type]} est placé.`);
+}
+
+/** Envoie un lien : la personne qui est sur place touche « Envoyer ma position », le point se place tout seul. */
+async function demanderPosition(type) {
+  const nom = form.client_nom.value.trim();
+  let code;
+  try {
+    ({ code } = await api('POST', '/api/positions', { demandeur: nom || null }));
+  } catch (e) { return toast(e.message, true); }
+  if (attente) clearInterval(attente.minuterie);
+  choisirMode(type);
+  const lien = `${location.origin}/position.html?d=${encodeURIComponent(code)}`;
+  const qui = estTrajet() ? 'le chauffeur' : 'le livreur';
+  const message = `${nom || 'Quelqu\'un'} a besoin de votre position exacte pour une course Yobalema Yène. `
+    + `Ouvrez ce lien et touchez « Envoyer ma position » pour que ${qui} trouve l'endroit : ${lien}`;
+  const tel = type === 'arrivee' ? form.destinataire_tel.value.replace(/\D/g, '').slice(-9) : '';
+  const telOk = /^7\d{8}$/.test(tel);
+  const texte = encodeURIComponent(message);
+
+  attente = { type, code, minuterie: null };
+  socket.emit('attendre-position', code);
+  attente.minuterie = setInterval(async () => {
+    try { positionRecue(await api('GET', '/api/positions/' + encodeURIComponent(code))); } catch { /* nouvel essai */ }
+  }, 5000);
+
+  const zone = $('precision');
+  zone.className = 'precision attente-pos';
+  zone.hidden = false;
+  zone.innerHTML = `
+    <div class="titre">${ico('loader-circle', 'ic-sm tourne')} En attente de la position ${type === 'depart' ? 'du départ (A)' : 'de l\'arrivée (B)'}</div>
+    <p>Envoyez ce lien à la personne qui est sur place. Dès qu'elle touche « Envoyer ma position », le point ${LETTRE[type]} se place tout seul.</p>
+    <div class="actions">
+      <a class="bouton whatsapp" href="https://wa.me/${telOk ? '221' + tel : ''}?text=${texte}" target="_blank" rel="noopener">${ico('message-circle', 'ic-sm')} WhatsApp</a>
+      <a class="bouton" href="sms:${telOk ? '+221' + tel : ''}?body=${texte}">${ico('message-square', 'ic-sm')} SMS</a>
+      <button type="button" data-copier>${ico('copy', 'ic-sm')} Copier</button>
+      <button type="button" class="danger" data-annuler-attente>${ico('x', 'ic-sm')} Annuler</button>
+    </div>`;
+  zone.querySelector('[data-copier]').onclick = async () => {
+    if (navigator.share) { await navigator.share({ text: message }).catch(() => {}); return; }
+    try { await navigator.clipboard.writeText(message); toast('Message copié. Collez-le dans WhatsApp ou par SMS.'); }
+    catch { prompt('Copiez ce message :', message); }
+  };
+  zone.querySelector('[data-annuler-attente]').onclick = () => arreterAttente();
+  zone.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// boutons WhatsApp des lignes A / B et de l'alerte ; « Toucher la carte »
+document.addEventListener('click', (e) => {
+  const d = e.target.closest('[data-demander]');
+  if (d) { e.preventDefault(); demanderPosition(d.dataset.demander); return; }
+  const s = e.target.closest('[data-sur-carte]');
+  if (s) {
+    choisirMode(s.dataset.surCarte);
+    $('bloc-carte').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast(`Touchez l'endroit exact sur la carte (ou faites glisser le point ${LETTRE[s.dataset.surCarte]}).`);
+  }
+});
 
 /**
  * Départ et arrivée au même endroit.
@@ -406,7 +505,7 @@ $('options').addEventListener('click', (e) => {
 
 function majCommander() {
   const m = moyenChoisi();
-  $('btn-commander').innerHTML = `Commander · ${fcfa(prixCourse())}`;
+  $('btn-commander').innerHTML = `<span>Commander</span><small>${fcfa(prixCourse())}</small>`;
   const qui = estTrajet() ? 'un chauffeur' : 'un livreur';
   $('fiche-note').textContent = m === 'especes'
     ? (estTrajet() ? 'Vous payez le chauffeur à l\'arrivée.' : 'Vous payez le livreur à la livraison.')
@@ -1085,6 +1184,8 @@ async function envoyerCommande() {
     form.type.value = 'colis';
     $('bloc-destinataire').open = false;
     if (points.arrivee) { points.arrivee.remove(); points.arrivee = null; }
+    imprecis.arrivee = null;
+    arreterAttente();
     coordEnEdition = false;
     choisirMode('arrivee');
     afficherChoixRapides();
@@ -1180,6 +1281,12 @@ function initCarte() {
       const texte = nomAvecVillage(lieu);
       champ.dataset.ancre = JSON.stringify({ nom: texte, lat: lieu.lat, lng: lieu.lng });
       placerAvecRepere(type, lieu.lat, lieu.lng, texte, true);
+      // un village ou un quartier entier : le chauffeur ne saura pas où aller exactement
+      if (['village', 'quartier'].includes(lieu.categorie)) {
+        imprecis[type] = lieu.nom;
+        imprecis[type + 'Cat'] = lieu.categorie;
+        majPrecision();
+      }
       champ.blur(); // fermer le clavier pour voir le trajet et la fiche
       apresPoint(type);
     }, { discret: true });
@@ -1207,7 +1314,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('conf
 brancherBoutonNotif($('btn-notif'));
 proposerNotifications();
 // nouvelle version en ligne : rechargement seulement si le client n'est pas en train de commander ou de payer
-surveillerMiseAJour(() => $('confirmation').hidden && !suiviPaiement && !points.arrivee);
+surveillerMiseAJour(() => $('confirmation').hidden && !suiviPaiement && !points.arrivee && !attente);
 
 /**
  * Comme une application de téléphone : à l'ouverture, on propose une fois d'activer les notifications.
@@ -1243,6 +1350,8 @@ chargerListe().then(() => {
 
 socket = io({ auth: { suivi: lireCodes() } });
 socket.on('livreur:position', positionVehicule);
+socket.on('position:recue', positionRecue);
+socket.on('connect', () => { if (attente) socket.emit('attendre-position', attente.code); });
 socket.on('course:maj', (c) => {
   if (c.statut === 'acceptee' && c.arrive_le && Date.now() - new Date(c.arrive_le).getTime() < 60000) {
     toast(c.service === 'trajet' ? 'Votre chauffeur est arrivé !' : 'Le livreur est arrivé au point de départ.');
