@@ -20,9 +20,26 @@ function bip() {
 }
 
 let maPosition = null; // dernière position connue du livreur { lat, lng }
+let maPositionInfo = { le: 0, precision: null }; // quand et avec quelle précision (pour le contrôle « sur place »)
+
+/** Position fraîche (≤ 8 s) envoyée avec « Je suis arrivé » & co : le serveur vérifie que le livreur est sur place. */
+function positionPourControle() {
+  return new Promise((ok) => {
+    const repli = () => ok(maPosition ? { ...maPosition, precision: maPositionInfo.precision } : null);
+    // position du suivi GPS toute fraîche : on l'utilise tout de suite (pas d'attente)
+    if (maPosition && Date.now() - maPositionInfo.le < 15000) return repli();
+    if (!('geolocation' in navigator)) return repli();
+    navigator.geolocation.getCurrentPosition(
+      (p) => ok({ lat: p.coords.latitude, lng: p.coords.longitude, precision: p.coords.accuracy }),
+      repli,
+      { enableHighAccuracy: true, timeout: 6000, maximumAge: 10000 }
+    );
+  });
+}
 
 function envoyerPosition(p) {
   maPosition = { lat: p.coords.latitude, lng: p.coords.longitude };
+  maPositionInfo = { le: Date.now(), precision: p.coords.accuracy };
   majPositionSurCarte();
   Guidage.majPosition(maPosition);
   // envoi au serveur : toutes les 5 s pendant une course (le client voit le véhicule bouger), sinon toutes les 30 s
@@ -342,7 +359,12 @@ document.getElementById('app').addEventListener('click', async (e) => {
         liberer: 'Rendre cette course aux autres livreurs ?',
       };
       if (msgs[b.dataset.etape] && !confirm(msgs[b.dataset.etape])) return;
-      await api('POST', `/api/livreur/courses/${b.dataset.id}/${b.dataset.etape}`);
+      b.disabled = true;
+      // arrivée, prise en charge, fin de course : le serveur vérifie que le livreur est bien sur place
+      const surPlace = ['arrive', 'recuperee', 'livree'].includes(b.dataset.etape);
+      if (surPlace) b.innerHTML = `${ico('loader-circle', 'tourne')} Vérification de votre position…`;
+      const ici = surPlace ? await positionPourControle() : null;
+      await api('POST', `/api/livreur/courses/${b.dataset.id}/${b.dataset.etape}`, ici || {});
     } else return;
     chargerTout();
   } catch (err) { toast(err.message, true); chargerTout(); }

@@ -88,4 +88,20 @@ function pointValide(pt) {
   );
 }
 
-module.exports = { parametres, distanceKm, devis, pointValide, CENTRE_YENE };
+/**
+ * Contrôle « sur place » : le chauffeur / livreur doit être près du point où l'attend le client
+ * (départ A pour « Je suis arrivé » et la prise en charge, arrivée B pour la fin de course).
+ * Renvoie null si c'est bon, sinon le message à afficher. rayon = 0 : pas de contrôle.
+ */
+function messageSurPlace({ position, cible, repere, rayon, precision, versArrivee }) {
+  if (!rayon) return null;
+  if (!position) return 'Activez la localisation de votre téléphone : elle sert à vérifier que vous êtes bien sur place.';
+  const marge = Math.min(Math.max(Number(precision) || 0, 0), 100); // GPS imprécis : jusqu'à 100 m de tolérance en plus
+  const d = distanceKm(position, cible) * 1000;
+  if (d <= rayon + marge) return null;
+  const loin = d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`;
+  const ou = versArrivee ? 'du point d\'arrivée' : 'du point de départ';
+  return `Vous êtes à ${loin} ${ou}${repere ? ` (« ${repere} »)` : ''}. Rapprochez-vous à moins de ${rayon} m, puis réessayez.`;
+}
+
+module.exports = { parametres, distanceKm, messageSurPlace, devis, pointValide, CENTRE_YENE };

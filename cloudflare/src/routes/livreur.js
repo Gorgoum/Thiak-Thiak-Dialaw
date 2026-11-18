@@ -2,7 +2,7 @@
 import { HttpErreur, json, lireCorps } from '../outils.js';
 import { MAINTENANT, DEBUT_JOUR } from '../db.js';
 import { exiger } from '../securite.js';
-import { distanceKm, pointValide, parametres } from '../tarifs.js';
+import { distanceKm, pointValide, parametres, messageSurPlace } from '../tarifs.js';
 import { SELECT_COURSE, notifierNouvelleCourse, diffuserMaj, lireCourse } from '../courses-service.js';
 import * as paiements from '../paiements.js';
 import { apprendreDeLaCourse } from '../lieux.js';
@@ -15,6 +15,36 @@ async function livreur(req, c) {
   if (!u) throw new HttpErreur(401, 'Compte introuvable');
   if (!u.actif) throw new HttpErreur(403, 'Votre compte livreur attend la validation de l\'administrateur');
   return u;
+}
+
+/**
+ * Le livreur est-il vraiment sur place ? Sa position est envoyée avec le bouton (sinon la dernière connue).
+ * Lance une erreur 409 avec un message clair s'il est trop loin.
+ */
+async function exigerSurPlace(req, c, moi, id, versArrivee) {
+  const x = (await c.db.query(
+    'SELECT depart_lat, depart_lng, depart_repere, arrivee_lat, arrivee_lng, arrivee_repere FROM courses WHERE id = $1 AND livreur_id = $2',
+    [id, c.user.id]
+  )).rows[0];
+  if (!x) return; // la mise à jour répondra « action impossible »
+  const p = await parametres(c.db);
+  const b = await lireCorps(req).catch(() => ({}));
+  let position = null;
+  if (pointValide({ lat: b.lat, lng: b.lng })) {
+    position = { lat: Number(b.lat), lng: Number(b.lng) };
+    await c.db.query(`UPDATE utilisateurs SET lat = $2, lng = $3, position_maj = ${MAINTENANT} WHERE id = $1`, [c.user.id, position.lat, position.lng]);
+  } else if (moi.lat != null) {
+    position = { lat: Number(moi.lat), lng: Number(moi.lng) };
+  }
+  const loin = messageSurPlace({
+    position,
+    cible: versArrivee ? { lat: x.arrivee_lat, lng: x.arrivee_lng } : { lat: x.depart_lat, lng: x.depart_lng },
+    repere: versArrivee ? x.arrivee_repere : x.depart_repere,
+    rayon: p.rayon_arrivee_m ?? 200,
+    precision: b.precision,
+    versArrivee,
+  });
+  if (loin) throw new HttpErreur(409, loin);
 }
 
 export function enregistrer(r) {
@@ -128,8 +158,9 @@ export function enregistrer(r) {
 
   // « Je suis arrivé » au point de départ : le client est prévenu (passager : « votre chauffeur est là »)
   r.post('/api/livreur/courses/:id/arrive', async (req, c) => {
-    await livreur(req, c);
+    const moi = await livreur(req, c);
     const id = Number(c.params.id);
+    await exigerSurPlace(req, c, moi, id, false);
     const res = await c.db.query(
       `UPDATE courses SET arrive_le = ${MAINTENANT} WHERE id = $1 AND livreur_id = $2 AND statut = 'acceptee' RETURNING id, service`,
       [id, c.user.id]
@@ -147,7 +178,7 @@ export function enregistrer(r) {
   const ETAPES = { recuperee: { depuis: 'acceptee', colonne: 'recuperee_le' }, livree: { depuis: 'recuperee', colonne: 'livree_le' } };
   for (const [statut, e] of Object.entries(ETAPES)) {
     r.post(`/api/livreur/courses/:id/${statut}`, async (req, c) => {
-      await livreur(req, c);
+      const moi = await livreur(req, c);
       const id = Number(c.params.id);
       if (statut === 'recuperee') {
         // course à payer en ligne : on ne prend pas le colis avant que le client ait payé
@@ -156,6 +187,7 @@ export function enregistrer(r) {
           throw new HttpErreur(409, 'Le client n\'a pas encore payé. Attendez le paiement avant de récupérer le colis.');
         }
       }
+      await exigerSurPlace(req, c, moi, id, statut === 'livree');
       const res = await c.db.query(
         `UPDATE courses SET statut = $3, ${e.colonne} = ${MAINTENANT}
          WHERE id = $1 AND livreur_id = $2 AND statut = $4 RETURNING id`,

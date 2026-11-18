@@ -9,7 +9,7 @@ import { envoyer } from '../push.js';
 import * as argent from '../argent.js';
 import { CATEGORIES } from '../lieux.js';
 
-const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture'];
+const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture', 'rayon_arrivee_m'];
 
 export function enregistrer(r) {
   enregistrerGestion(r);

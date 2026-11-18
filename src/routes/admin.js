@@ -136,7 +136,7 @@ router.delete('/lieux/:id', a(async (req, res) => {
   res.json({ ok: true });
 }));
 
-const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture'];
+const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture', 'rayon_arrivee_m'];
 
 router.get('/parametres', a(async (req, res) => res.json(await parametres())));
 

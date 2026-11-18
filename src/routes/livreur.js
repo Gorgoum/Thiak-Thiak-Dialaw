@@ -2,7 +2,7 @@
 const router = require('express').Router();
 const { query } = require('../db');
 const { exiger, a } = require('../auth');
-const { distanceKm, pointValide, parametres } = require('../tarifs');
+const { distanceKm, pointValide, parametres, messageSurPlace } = require('../tarifs');
 const { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj } = require('../courses-service');
 const { apprendreDeLaCourse } = require('../lieux');
 const argent = require('../argent');
@@ -119,8 +119,39 @@ router.post('/courses/:id/accepter', a(async (req, res) => {
   res.json(await diffuserMaj(io, req.params.id));
 }));
 
+/**
+ * Le livreur est-il vraiment sur place ? Sa position est envoyée avec le bouton (sinon la dernière connue).
+ * Renvoie null si c'est bon (ou si la course n'est pas à lui : la mise à jour répondra), sinon le message.
+ */
+async function controleSurPlace(req, versArrivee) {
+  const c = (await query(
+    'SELECT depart_lat, depart_lng, depart_repere, arrivee_lat, arrivee_lng, arrivee_repere FROM courses WHERE id = $1 AND livreur_id = $2',
+    [req.params.id, req.user.id]
+  )).rows[0];
+  if (!c) return null;
+  const p = await parametres();
+  const b = req.body || {};
+  let position = null;
+  if (pointValide({ lat: b.lat, lng: b.lng })) {
+    position = { lat: Number(b.lat), lng: Number(b.lng) };
+    await query('UPDATE utilisateurs SET lat = $2, lng = $3, position_maj = now() WHERE id = $1', [req.user.id, position.lat, position.lng]);
+  } else if (req.livreur.lat != null) {
+    position = { lat: Number(req.livreur.lat), lng: Number(req.livreur.lng) };
+  }
+  return messageSurPlace({
+    position,
+    cible: versArrivee ? { lat: c.arrivee_lat, lng: c.arrivee_lng } : { lat: c.depart_lat, lng: c.depart_lng },
+    repere: versArrivee ? c.arrivee_repere : c.depart_repere,
+    rayon: p.rayon_arrivee_m ?? 200,
+    precision: b.precision,
+    versArrivee,
+  });
+}
+
 // « Je suis arrivé » au point de départ : le client est prévenu (passager : « votre chauffeur est là »)
 router.post('/courses/:id/arrive', a(async (req, res) => {
+  const loin = await controleSurPlace(req, false);
+  if (loin) return res.status(409).json({ erreur: loin });
   const r = await query(
     `UPDATE courses SET arrive_le = now() WHERE id = $1 AND livreur_id = $2 AND statut = 'acceptee' RETURNING id, service`,
     [req.params.id, req.user.id]
@@ -148,6 +179,8 @@ for (const [statut, e] of Object.entries(ETAPES)) {
         return res.status(409).json({ erreur: 'Le client n\'a pas encore payé. Attendez le paiement avant de récupérer le colis.' });
       }
     }
+    const loin = await controleSurPlace(req, statut === 'livree');
+    if (loin) return res.status(409).json({ erreur: loin });
     const r = await query(
       `UPDATE courses SET statut = $3, ${e.colonne} = now()
        WHERE id = $1 AND livreur_id = $2 AND statut = $4 RETURNING id`,
