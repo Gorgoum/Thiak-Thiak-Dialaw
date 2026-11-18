@@ -562,8 +562,14 @@ const cibleCourse = (c) => (c.statut === 'recuperee'
   ? { lat: c.arrivee_lat, lng: c.arrivee_lng }
   : { lat: c.depart_lat, lng: c.depart_lng });
 
-/** Distance et durée estimées (à vol d'oiseau, corrigées pour les routes). */
+/** Distance et durée restantes : sur la route (OSRM) quand elle est connue, sinon à vol d'oiseau corrigé. */
 function approche(c) {
+  const v = vehicules.get(c.id);
+  const r = v && v.route;
+  if (r && r.cle === cleRoute(c) && r.reste != null) {
+    const min = r.duree * (r.reste / Math.max(r.distance, 1)) / 60;
+    return { m: r.reste, min: Math.max(1, Math.round(min)) };
+  }
   const d = distanceM({ lat: c.livreur_lat, lng: c.livreur_lng }, cibleCourse(c)) * 1.3;
   const vitesse = c.livreur_vehicule === 'voiture' ? 22 : 25; // km/h en moyenne à Yène
   return { m: d, min: Math.max(1, Math.round((d / 1000 / vitesse) * 60)) };
@@ -578,6 +584,74 @@ function iconeVehicule(c) {
     iconSize: [40, 40],
     iconAnchor: [20, 20],
   });
+}
+
+// ---------- Itinéraire par la route (OSRM, comme le guidage du chauffeur) ----------
+const OSRM_CLIENT = 'https://routing.openstreetmap.de/routed-car/route/v1/driving/';
+const cleRoute = (c) => c.id + ':' + c.statut; // la cible change quand le passager monte / le colis est récupéré
+async function routeOSRM(de, vers) {
+  const r = await fetch(`${OSRM_CLIENT}${de.lng},${de.lat};${vers.lng},${vers.lat}?overview=full&geometries=geojson`);
+  if (!r.ok) throw new Error('itinéraire indisponible');
+  const j = await r.json();
+  if (j.code !== 'Ok' || !j.routes.length) throw new Error('aucun itinéraire');
+  const x = j.routes[0];
+  return { pts: x.geometry.coordinates.map(([lng, lat]) => [lat, lng]), distance: x.distance, duree: x.duration };
+}
+/** Longueur (m) d'une suite de points [lat, lng]. */
+function longueur(pts) {
+  let m = 0;
+  for (let i = 1; i < pts.length; i++) m += distanceM({ lat: pts[i - 1][0], lng: pts[i - 1][1] }, { lat: pts[i][0], lng: pts[i][1] });
+  return m;
+}
+/** Morceau de route qui reste devant le chauffeur, et sa distance à la route (pour savoir s'il s'en écarte). */
+function resteDeRoute(pts, pos) {
+  let k = 0;
+  let best = Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    const d = distanceM(pos, { lat: pts[i][0], lng: pts[i][1] });
+    if (d < best) { best = d; k = i; }
+  }
+  return { pts: [[pos.lat, pos.lng], ...pts.slice(k + 1)], ecart: best };
+}
+/** Trace (ou met à jour) la route du chauffeur jusqu'à sa cible ; recalculée s'il s'écarte de plus de 120 m. */
+async function majRouteVehicule(c, v, pos) {
+  const cle = cleRoute(c);
+  const r = v.route;
+  if (r && r.cle === cle && r.pts) {
+    const reste = resteDeRoute(r.pts, pos);
+    if (reste.ecart < 120) {
+      v.ligneRoute.forEach((l) => l.setLatLngs(reste.pts));
+      r.reste = longueur(reste.pts);
+      v.ligne.setStyle({ opacity: 0 });
+      return;
+    }
+    r.reste = null; // il a pris une autre route : estimation à vol d'oiseau en attendant le nouveau calcul
+  }
+  if (v.calcul || (r && r.cle === cle && Date.now() - r.le < 8000)) return; // pas plus d'un calcul toutes les 8 s
+  v.calcul = true;
+  try {
+    const x = await routeOSRM(pos, cibleCourse(c));
+    x.pts.unshift([pos.lat, pos.lng]); // le tracé part bien de la moto / de la voiture, même hors route
+    v.route = { cle, pts: x.pts, distance: x.distance, duree: x.duree, reste: x.distance, le: Date.now() };
+    v.ligneRoute.forEach((l) => l.setLatLngs(x.pts));
+    v.ligne.setStyle({ opacity: 0 }); // la ligne droite de secours disparaît
+    afficherCourseActive();
+    const ligne = document.querySelector(`[data-approche="${c.id}"]`);
+    if (ligne) ligne.innerHTML = texteApproche(c);
+  } catch {
+    v.route = { cle, pts: null, le: Date.now() }; // serveur d'itinéraire indisponible : on garde la ligne droite
+    v.ligne.setStyle({ opacity: 0.55 });
+  } finally { v.calcul = false; }
+}
+/** Trajet prévu du départ à l'arrivée, en pointillé clair (calculé une fois par course). */
+async function majTrajetPrevu(c, v) {
+  if (v.prevu || v.calculPrevu) return;
+  v.calculPrevu = true;
+  try {
+    const x = await routeOSRM({ lat: c.depart_lat, lng: c.depart_lng }, { lat: c.arrivee_lat, lng: c.arrivee_lng });
+    v.prevu = L.polyline(x.pts, { color: '#2e90fa', weight: 4, opacity: 0.45, dashArray: '2 9', lineCap: 'round', interactive: false }).addTo(carte);
+    v.prevu.bringToBack();
+  } catch { /* pas grave : seule la route du chauffeur est affichée */ } finally { v.calculPrevu = false; }
 }
 
 /** Déplace le marqueur en douceur jusqu'à la nouvelle position (au lieu d'un saut). */
@@ -599,7 +673,10 @@ function majVehicules() {
   const actives = derniereListe.filter(enRoute);
   const ids = new Set(actives.map((c) => c.id));
   for (const [id, v] of vehicules) {
-    if (!ids.has(id)) { v.marqueur.remove(); v.ligne.remove(); vehicules.delete(id); }
+    if (!ids.has(id)) {
+      [v.marqueur, v.ligne, ...v.ligneRoute, v.prevu].forEach((l) => l && l.remove());
+      vehicules.delete(id);
+    }
   }
   for (const c of actives) {
     const pos = { lat: Number(c.livreur_lat), lng: Number(c.livreur_lng) };
@@ -609,6 +686,11 @@ function majVehicules() {
       v = {
         marqueur: L.marker(pos, { icon: iconeVehicule(c), zIndexOffset: 2000, interactive: false }).addTo(carte),
         ligne: L.polyline([pos, cible], { color: '#0a2a62', weight: 3, opacity: 0.55, dashArray: '6 8', interactive: false }).addTo(carte),
+        // route par les rues : bordure blanche + trait bleu foncé, comme un GPS
+        ligneRoute: [
+          L.polyline([], { color: '#ffffff', weight: 9, opacity: 0.95, interactive: false }).addTo(carte),
+          L.polyline([], { color: '#0a2a62', weight: 5, opacity: 0.95, interactive: false }).addTo(carte),
+        ],
       };
       vehicules.set(c.id, v);
     } else {
@@ -616,6 +698,9 @@ function majVehicules() {
       glisser(v, pos);
     }
     v.ligne.setLatLngs([pos, cible]);
+    majRouteVehicule(c, v, pos);
+    if (c.statut === 'acceptee') majTrajetPrevu(c, v);
+    else if (v.prevu) { v.prevu.remove(); v.prevu = null; } // passager à bord : la route du chauffeur suffit
   }
   courseSuivie = actives[0] || derniereListe.find((c) => c.statut === 'acceptee' || c.statut === 'recuperee') || null;
   afficherCourseActive();
@@ -630,7 +715,10 @@ function recadrerSurVehicule(c) {
   if (!carte || !enRoute(c)) return;
   const cible = cibleCourse(c);
   carte.invalidateSize(); // la carte a pu changer de taille (bandeau, rotation, plein écran)
-  carte.fitBounds([[c.livreur_lat, c.livreur_lng], [cible.lat, cible.lng]], { padding: [60, 60], maxZoom: 17 });
+  const v = vehicules.get(c.id);
+  const zone = L.latLngBounds([[c.livreur_lat, c.livreur_lng], [cible.lat, cible.lng]]);
+  if (v && v.route && v.route.pts) zone.extend(L.latLngBounds(v.route.pts));
+  carte.fitBounds(zone, { padding: [60, 60], maxZoom: 17 });
 }
 
 /** Bandeau sur l'écran principal : qui arrive, dans combien de temps, avec quel véhicule. */
