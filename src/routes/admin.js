@@ -142,7 +142,7 @@ router.delete('/lieux/:id', a(async (req, res) => {
   res.json({ ok: true });
 }));
 
-const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture', 'rayon_arrivee_m', 'frais_service', 'frais_achat_pct', 'frais_achat_min', 'frais_wave_pct', 'frais_om_pct'];
+const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture', 'coef_confort', 'rayon_arrivee_m', 'frais_service', 'frais_achat_pct', 'frais_achat_min', 'frais_wave_pct', 'frais_om_pct'];
 
 router.get('/parametres', a(async (req, res) => res.json(await parametres())));
 
@@ -219,7 +219,7 @@ async function lireCompte(b, { id = null, pinObligatoire = true } = {}) {
 /** Véhicule d'un chauffeur : moto (par défaut) ou voiture, plaque et modèle. */
 async function majVehicule(id, b) {
   await query('UPDATE utilisateurs SET vehicule = $2, plaque = $3, modele = $4 WHERE id = $1', [
-    id, b.vehicule === 'voiture' ? 'voiture' : 'moto',
+    id, ['voiture', 'confort'].includes(b.vehicule) ? b.vehicule : 'moto',
     String(b.plaque || '').trim().toUpperCase().slice(0, 20) || null, String(b.modele || '').trim().slice(0, 40) || null,
   ]);
 }

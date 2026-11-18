@@ -2,7 +2,8 @@
 import { HttpErreur, json, lireCorps } from '../outils.js';
 import { MAINTENANT, DEBUT_JOUR } from '../db.js';
 import { exiger } from '../securite.js';
-import { distanceKm, pointValide, parametres, messageSurPlace, partage } from '../tarifs.js';
+import { distanceKm, pointValide, parametres, messageSurPlace, partage, gammesDuChauffeur, peutFaire } from '../tarifs.js';
+const messageGamme = (g) => (g === 'confort' ? 'Ce trajet est en Confort (voiture climatisée) : réservé aux chauffeurs Confort.' : g === 'voiture' ? 'Ce trajet est en Éco (voiture) : réservé aux chauffeurs en voiture.' : 'Ce trajet est à moto : réservé aux chauffeurs à moto.');
 import { SELECT_COURSE, notifierNouvelleCourse, diffuserMaj, lireCourse } from '../courses-service.js';
 import * as paiements from '../paiements.js';
 import { apprendreDeLaCourse } from '../lieux.js';
@@ -129,8 +130,8 @@ export function enregistrer(r) {
     const res = await c.db.query(
       `SELECT id, type, description, montant_achat, depart_lat, depart_lng, depart_repere,
               arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule, frais_service, frais_achat
-       FROM courses WHERE statut = 'en_attente' AND (service = 'livraison' OR vehicule = $1) ORDER BY cree_le DESC LIMIT 50`,
-      [moi.vehicule || 'moto'] // un trajet en voiture n'est proposé qu'aux voitures
+       FROM courses WHERE statut = 'en_attente' AND (service = 'livraison' OR vehicule IN ($1, $2)) ORDER BY cree_le DESC LIMIT 50`,
+      (({ 0: a, 1: b }) => [a, b || a])(gammesDuChauffeur(moi.vehicule)) // chaque gamme à ses chauffeurs
     );
     const p = await parametres(c.db);
     const liste = res.rows.map((x) => ({
@@ -171,8 +172,8 @@ export function enregistrer(r) {
   r.post('/api/livreur/courses/:id/accepter', async (req, c) => {
     const moi = await livreur(req, c);
     const demande = (await c.db.query('SELECT service, vehicule FROM courses WHERE id = $1', [Number(c.params.id)])).rows[0];
-    if (demande && demande.service === 'trajet' && demande.vehicule !== (moi.vehicule || 'moto')) {
-      throw new HttpErreur(409, `Ce trajet demande une ${demande.vehicule}.`);
+    if (demande && demande.service === 'trajet' && !peutFaire(moi.vehicule, demande.vehicule)) {
+      throw new HttpErreur(409, messageGamme(demande.vehicule));
     }
     const b = await argent.bloque(c, c.user.id);
     if (b) {

@@ -1,6 +1,6 @@
 // Lecture des courses et diffusion des changements (temps réel + notifications).
 import { envoyer, envoyerA } from './push.js';
-import { parametres, distanceKm } from './tarifs.js';
+import { parametres, distanceKm, peutFaire } from './tarifs.js';
 
 const COLONNES = `c.id, c.client_nom, c.client_tel, c.livreur_id, c.type, c.description, c.montant_achat,
   c.depart_lat, c.depart_lng, c.depart_repere, c.arrivee_lat, c.arrivee_lng, c.arrivee_repere,
@@ -27,7 +27,7 @@ export async function notifierNouvelleCourse(c, course) {
   const depart = { lat: course.depart_lat, lng: course.depart_lng };
   const trajet = course.service === 'trajet';
   const cibles = r.rows
-    .filter((l) => !trajet || (l.vehicule || 'moto') === course.vehicule) // un trajet en voiture → les voitures seulement
+    .filter((l) => !trajet || peutFaire(l.vehicule, course.vehicule)) // chaque gamme à ses chauffeurs
     .filter((l) => l.lat == null || distanceKm(depart, l) <= (p.rayon_km || 10)).map((l) => l.id);
   c.io.to(['livreurs', 'admins']).emit('courses:changement');
   await envoyer(c, cibles, {

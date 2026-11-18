@@ -223,7 +223,7 @@ function trajet(c) {
     <div>${esc(c.arrivee_repere)}</div>
   </div>
   ${c.service === 'trajet'
-    ? `<div class="ligne-info">${ico(c.vehicule === 'voiture' ? 'car' : 'bike', 'ic-sm')} <b>Passager</b> · ${esc(c.description)}</div>`
+    ? `<div class="ligne-info">${ico(gamme(c.vehicule).icone, 'ic-sm')} <b>Passager · ${gamme(c.vehicule).nom}</b> · ${esc(c.description)}</div>`
     : `<div class="ligne-info">${ico(c.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${c.type === 'achat' ? '<b>Achat :</b> ' : ''}${esc(c.description)}</div>`}
   ${c.type === 'achat' && c.montant_achat ? `<div class="meta">Avance estimée : ${fcfa(c.montant_achat)} (remboursée par le client)</div>` : ''}`;
 }
@@ -284,8 +284,15 @@ function carteActive(c) {
       <h2>Course en cours ${badge(c.statut, c.service)}</h2>
       ${frise(c.statut, c.service)}
       ${trajet(c)}
-      ${blocPersonne(c.client_nom, c.client_tel, c.service === 'trajet' ? 'Passager' : c.destinataire_nom || c.destinataire_tel ? 'Client' : 'Client · reçoit la livraison')}
-      ${c.destinataire_nom || c.destinataire_tel ? blocPersonne(c.destinataire_nom || 'Destinataire', c.destinataire_tel, 'Destinataire') : ''}
+      ${(() => {
+        const autre = !!(c.destinataire_nom || c.destinataire_tel);
+        const trajet = c.service === 'trajet';
+        // commande pour quelqu'un d'autre : on appelle d'abord le passager (ou le destinataire du colis)
+        return autre
+          ? blocPersonne(c.destinataire_nom || (trajet ? 'Passager' : 'Destinataire'), c.destinataire_tel, trajet ? 'Passager' : 'Destinataire')
+            + blocPersonne(c.client_nom, c.client_tel, 'A commandé la course')
+          : blocPersonne(c.client_nom, c.client_tel, trajet ? 'Passager' : 'Client · reçoit la livraison');
+      })()}
       ${blocEncaisser}
       <div class="actions">
         <button class="btn-primaire" data-guidage>${ico('navigation', 'ic-sm')} Guider jusqu'${versDepart ? 'au départ' : 'à l\'arrivée'}</button>
@@ -340,7 +347,7 @@ async function chargerTout() {
         <div class="course">
           <div class="haut"><span class="meta">${dateCourte(c.cree_le)} · ${Number(c.distance_km).toLocaleString('fr-FR')} km
             ${c.distance_moi_km != null ? ` · à ${c.distance_moi_km.toLocaleString('fr-FR')} km de vous` : ''}</span>
-            <span class="prix-course">${fcfa(c.prix)}${c.part_livreur != null ? `<br><small class="part-livreur">vous gagnez ${fcfa(c.part_livreur)}</small>` : ''}${c.service === 'trajet' ? `<br><span class="badge b-acceptee">${ico(c.vehicule === 'voiture' ? 'car' : 'bike', 'ic-sm')} Trajet · ${c.vehicule === 'voiture' ? 'Voiture' : 'Moto'}</span>` : ''}${c.paiement_statut === 'paye' ? `<br><span class="badge b-livree">Payé en ligne</span>` : c.paiement !== 'especes' ? `<br><span class="badge b-acceptee">${c.paiement === 'wave' ? 'Wave' : 'Orange Money'} à l'acceptation</span>` : ''}</span></div>
+            <span class="prix-course">${fcfa(c.prix)}${c.part_livreur != null ? `<br><small class="part-livreur">vous gagnez ${fcfa(c.part_livreur)}</small>` : ''}${c.service === 'trajet' ? `<br><span class="badge b-acceptee">${ico(gamme(c.vehicule).icone, 'ic-sm')} Trajet · ${gamme(c.vehicule).nom}</span>` : ''}${c.paiement_statut === 'paye' ? `<br><span class="badge b-livree">Payé en ligne</span>` : c.paiement !== 'especes' ? `<br><span class="badge b-acceptee">${c.paiement === 'wave' ? 'Wave' : 'Orange Money'} à l'acceptation</span>` : ''}</span></div>
           ${trajet(c)}
           <div class="actions">
             <a class="bouton" data-nav="${c.depart_lat},${c.depart_lng}" ${lienItineraire(c.depart_lat, c.depart_lng, maPosition)}>${ico('map', 'ic-sm')} Voir le départ</a>
@@ -416,7 +423,7 @@ function afficherApp(u) {
   document.getElementById('deco').onclick = deconnexion;
   document.querySelectorAll('.nom').forEach((n) => { n.textContent = u.nom; });
   const ligneVehicule = document.querySelector('.bonjour small.meta');
-  if (ligneVehicule) ligneVehicule.textContent = [u.vehicule === 'voiture' ? 'Chauffeur · Voiture' : 'Chauffeur · Moto', u.modele, u.plaque].filter(Boolean).join(' · ');
+  if (ligneVehicule) ligneVehicule.textContent = ['Chauffeur · ' + gamme(u.vehicule).vehicule, u.modele, u.plaque].filter(Boolean).join(' · ');
   const av = document.getElementById('avatar');
   if (av) av.textContent = initiales(u.nom);
 

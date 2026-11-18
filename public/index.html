@@ -120,6 +120,16 @@
           <div class="options" id="options" role="radiogroup" aria-label="Que voulez-vous ?"></div>
           <p class="option-detail" id="option-detail"></p>
 
+          <!-- Commander pour quelqu'un d'autre (passager ou destinataire du colis) -->
+          <details class="replier pour-autre" id="bloc-destinataire">
+            <summary><svg class="ic ic-sm"><use href="/icons.svg#user-plus"></use></svg><span id="pour-autre-titre">Commander pour quelqu'un d'autre</span></summary>
+            <p class="pour-autre-aide" id="pour-autre-aide"></p>
+            <div class="grille-2">
+              <label class="champ"><span id="pour-autre-nom">Son nom</span><input name="destinataire_nom" maxlength="100" autocomplete="off"></label>
+              <label class="champ"><span id="pour-autre-tel">Son téléphone</span><input name="destinataire_tel" type="tel" inputmode="tel" autocomplete="off" placeholder="77 123 45 67"></label>
+            </div>
+          </details>
+
           <!-- Colis : que faut-il livrer ? -->
           <div class="bloc-colis" id="bloc-colis" hidden>
             <div class="puces-choix" id="choix-rapides" aria-label="Que faut-il livrer ?"></div>
@@ -127,13 +137,6 @@
             <label class="champ" id="l-montant" hidden>Montant des achats (FCFA)
               <input name="montant_achat" type="number" inputmode="numeric" min="0" step="50" placeholder="5 000">
             </label>
-            <details class="replier" id="bloc-destinataire">
-              <summary><svg class="ic ic-sm"><use href="/icons.svg#chevron-down"></use></svg>Pour une autre personne</summary>
-              <div class="grille-2">
-                <label class="champ">Son nom<input name="destinataire_nom" maxlength="100"></label>
-                <label class="champ">Son téléphone<input name="destinataire_tel" type="tel" inputmode="tel" placeholder="77 123 45 67"></label>
-              </div>
-            </details>
           </div>
 
           <!-- Vous : demandé une seule fois, ensuite résumé sur une ligne -->
@@ -152,6 +155,9 @@
               <select name="paiement" id="choix-paiement" aria-label="Moyen de paiement"></select>
             </label>
             <button type="submit" class="btn btn-primaire btn-commander" id="btn-commander">Commander</button>
+            <button type="button" class="btn-rond btn-options" id="btn-options" title="Commander pour quelqu'un d'autre" aria-label="Commander pour quelqu'un d'autre">
+              <svg class="ic" aria-hidden="true"><use href="/icons.svg#user-plus"></use></svg>
+            </button>
           </div>
           <p class="fiche-note" id="fiche-note"></p>
         </div>

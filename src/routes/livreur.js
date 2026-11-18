@@ -2,7 +2,8 @@
 const router = require('express').Router();
 const { query } = require('../db');
 const { exiger, a } = require('../auth');
-const { distanceKm, pointValide, parametres, messageSurPlace, partage } = require('../tarifs');
+const { distanceKm, pointValide, parametres, messageSurPlace, partage, gammesDuChauffeur, peutFaire } = require('../tarifs');
+const messageGamme = (g) => (g === 'confort' ? 'Ce trajet est en Confort (voiture climatisée) : réservé aux chauffeurs Confort.' : g === 'voiture' ? 'Ce trajet est en Éco (voiture) : réservé aux chauffeurs en voiture.' : 'Ce trajet est à moto : réservé aux chauffeurs à moto.');
 const { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj } = require('../courses-service');
 const { apprendreDeLaCourse } = require('../lieux');
 const argent = require('../argent');
@@ -44,8 +45,8 @@ router.get('/courses-disponibles', a(async (req, res) => {
   const r = await query(
     `SELECT id, type, description, montant_achat, depart_lat, depart_lng, depart_repere,
             arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule, frais_service, frais_achat
-     FROM courses WHERE statut = 'en_attente' AND (service = 'livraison' OR vehicule = $1) ORDER BY cree_le DESC LIMIT 50`,
-    [req.livreur.vehicule || 'moto'] // un trajet en voiture n'est proposé qu'aux voitures
+     FROM courses WHERE statut = 'en_attente' AND (service = 'livraison' OR vehicule IN ($1, $2)) ORDER BY cree_le DESC LIMIT 50`,
+    (({ 0: a, 1: b }) => [a, b || a])(gammesDuChauffeur(req.livreur.vehicule)) // chaque gamme à ses chauffeurs
   );
   const moi = req.livreur;
   const p = await parametres();
@@ -82,8 +83,8 @@ router.get('/argent', a(async (req, res) => res.json(await argent.argentLivreur(
 
 router.post('/courses/:id/accepter', a(async (req, res) => {
   const demande = (await query('SELECT service, vehicule FROM courses WHERE id = $1', [req.params.id])).rows[0];
-  if (demande && demande.service === 'trajet' && demande.vehicule !== (req.livreur.vehicule || 'moto')) {
-    return res.status(409).json({ erreur: `Ce trajet demande une ${demande.vehicule}.` });
+  if (demande && demande.service === 'trajet' && !peutFaire(req.livreur.vehicule, demande.vehicule)) {
+    return res.status(409).json({ erreur: messageGamme(demande.vehicule) });
   }
   const b = await argent.bloque(req.user.id);
   if (b) {

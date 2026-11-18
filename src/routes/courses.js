@@ -50,9 +50,9 @@ router.post('/', a(async (req, res) => {
   const arriveeRepere = texte(b.arrivee_repere);
   // service : livraison d'un colis, ou trajet d'une personne (moto ou voiture)
   const service = b.service === 'trajet' ? 'trajet' : 'livraison';
-  const vehicule = service === 'trajet' && b.vehicule === 'voiture' ? 'voiture' : 'moto';
+  const vehicule = service === 'trajet' && ['voiture', 'confort'].includes(b.vehicule) ? b.vehicule : 'moto';
   const note = texte(b.description, 200);
-  const description = service === 'trajet' ? `Trajet en ${vehicule}${note ? ' · ' + note : ''}` : texte(b.description, 500);
+  const description = service === 'trajet' ? `Trajet ${{ moto: 'à moto', voiture: 'Éco (voiture)', confort: 'Confort (voiture climatisée)' }[vehicule]}${note ? ' · ' + note : ''}` : texte(b.description, 500);
   if (!departRepere || !arriveeRepere) return res.status(400).json({ erreur: 'Indiquez un repère pour le départ et l\'arrivée' });
   if (!description) return res.status(400).json({ erreur: 'Décrivez ce qu\'il faut livrer' });
 
@@ -88,7 +88,7 @@ router.post('/', a(async (req, res) => {
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING id`,
     [clientNom, clientTel, code, type, description, montantAchat,
       b.depart.lat, b.depart.lng, departRepere, b.arrivee.lat, b.arrivee.lng, arriveeRepere,
-      texte(b.destinataire_nom, 100) || null, destTel, d.distance_km, (service === 'trajet' && vehicule === 'voiture' ? d.prix_voiture : d.prix) + fAchat,
+      texte(b.destinataire_nom, 100) || null, destTel, d.distance_km, (service !== 'trajet' ? d.prix : vehicule === 'confort' ? d.prix_confort : vehicule === 'voiture' ? d.prix_voiture : d.prix) + fAchat,
       // paiement en ligne : rien à payer tant qu'aucun livreur n'a accepté (le paiement est créé à l'acceptation)
       paiement, enLigne ? 'en_attente' : 'a_la_livraison', 'en_attente', service, vehicule, d.frais_service || 0, fAchat]
   );

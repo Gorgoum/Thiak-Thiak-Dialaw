@@ -1243,3 +1243,12 @@ body.course-en-cours #aide-carte { display: none; }
 /* adresses récentes : lignes droites (les anciens boutons ronds ne s'appliquent pas) */
 .recents .raccourcis .recent { border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0; box-shadow: none; background: transparent; padding-left: 0; }
 .recents .raccourcis .recent:first-child { border-top: 0; }
+
+/* Commander pour quelqu'un d'autre : icône à droite de « Commander », comme une appli de VTC */
+.fiche-pied { grid-template-columns: minmax(0, max-content) minmax(0, 1fr) auto; }
+.btn-options { width: 52px; height: 56px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--surface); box-shadow: none; }
+.btn-options.actif { border-color: var(--brand); background: var(--brand-50); color: var(--brand); }
+.pour-autre { margin-top: 10px; }
+.pour-autre summary { display: flex; align-items: center; gap: 8px; }
+.pour-autre-aide { margin: 6px 0 8px; font-size: .84rem; color: var(--ink-3); }
+@media (max-width: 380px) { .btn-options { width: 46px; } .paiement-choix { max-width: 34vw; } }

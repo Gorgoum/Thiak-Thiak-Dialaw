@@ -495,12 +495,12 @@ async function majDevis(recadrer = false) {
 
 // ---------- Ce que veut le client : moto, voiture ou colis ----------
 const CLE_CHOIX = 'tt_choix';
-let choix = ['moto', 'voiture', 'colis'].includes(Stock.get(CLE_CHOIX)) ? Stock.get(CLE_CHOIX) : 'moto';
+let choix = ['moto', 'voiture', 'confort', 'colis'].includes(Stock.get(CLE_CHOIX)) ? Stock.get(CLE_CHOIX) : 'moto';
 const estTrajet = () => choix !== 'colis';
 /** Prix de la course selon le choix (le calcul renvoie le prix moto et le prix voiture). */
 function prixCourse(d = dernierDevis) {
   if (!d) return 0;
-  return (choix === 'voiture' ? (d.prix_voiture || d.prix) : d.prix) + fraisAchatClient();
+  return (choix === 'confort' ? (d.prix_confort || d.prix) : choix === 'voiture' ? (d.prix_voiture || d.prix) : d.prix) + fraisAchatClient();
 }
 /** Frais d'achat (« Acheter pour moi ») : même calcul que le serveur. */
 function fraisAchatClient() {
@@ -511,7 +511,8 @@ function fraisAchatClient() {
 }
 const OPTIONS = [
   { id: 'moto', icone: 'bike', nom: 'Moto', detail: '1 personne · le plus rapide', prix: (d) => d.prix_moto || d.prix },
-  { id: 'voiture', icone: 'car', nom: 'Voiture', detail: 'Jusqu\'à 4 personnes', prix: (d) => d.prix_voiture || d.prix },
+  { id: 'voiture', icone: 'car-taxi-front', nom: 'Éco', detail: 'Taxi ou clando · jusqu\'à 4 personnes', prix: (d) => d.prix_voiture || d.prix },
+  { id: 'confort', icone: 'car', nom: 'Confort', detail: 'Voiture climatisée · jusqu\'à 4 personnes', prix: (d) => d.prix_confort || d.prix_voiture || d.prix },
   { id: 'colis', icone: 'package', nom: 'Colis', detail: 'Livrer un objet, faire des courses', prix: (d) => d.prix },
 ];
 
@@ -566,14 +567,22 @@ function majFiche() {
   const dispo = ch[choix];
   $('option-detail').innerHTML = `<b>${o.nom}</b> · ${o.detail}`
     + (dispo && !dispo.nb
-      ? `<span class="occupe-note">${ico('clock', 'ic-sm')} Tous les ${choix === 'colis' ? 'livreurs' : choix === 'voiture' ? 'chauffeurs en voiture' : 'chauffeurs à moto'} sont occupés : votre demande attendra le premier libre.</span>`
+      ? `<span class="occupe-note">${ico('clock', 'ic-sm')} Tous les ${choix === 'colis' ? 'livreurs' : choix === 'confort' ? 'chauffeurs Confort' : choix === 'voiture' ? 'chauffeurs Éco' : 'chauffeurs à moto'} sont occupés : votre demande attendra le premier libre.</span>`
       : dispo ? ` · ${dispo.nb} libre${dispo.nb > 1 ? 's' : ''} autour de vous` : '');
   // faire défiler jusqu'au choix (petits écrans)
   const carteChoisie = $('options').querySelector('.option.choisi');
   if (carteChoisie) carteChoisie.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   form.service.value = estTrajet() ? 'trajet' : 'livraison';
-  form.vehicule.value = choix === 'voiture' ? 'voiture' : 'moto';
+  form.vehicule.value = ['voiture', 'confort'].includes(choix) ? choix : 'moto';
   $('bloc-colis').hidden = estTrajet();
+  // « pour quelqu'un d'autre » : passager (trajet) ou destinataire (colis)
+  $('pour-autre-titre').textContent = estTrajet() ? 'Commander pour quelqu\'un d\'autre' : 'Pour une autre personne (reçoit le colis)';
+  $('pour-autre-aide').textContent = estTrajet()
+    ? 'Le chauffeur appellera cette personne. Vous suivez la course depuis votre téléphone.'
+    : 'Le livreur appellera cette personne pour la livraison.';
+  $('pour-autre-nom').textContent = estTrajet() ? 'Nom du passager' : 'Son nom';
+  $('pour-autre-tel').textContent = estTrajet() ? 'Téléphone du passager' : 'Son téléphone';
+  majBoutonOptions();
   afficherCoordonnees();
   majPaiement();
   majCommander();
@@ -587,6 +596,20 @@ $('options').addEventListener('click', (e) => {
   majFiche();
   majBulles(fichePrete);
 });
+
+/** L'icône à droite de « Commander » est marquée quand la commande est pour quelqu'un d'autre. */
+function majBoutonOptions() {
+  const rempli = !!(form.destinataire_nom.value.trim() || form.destinataire_tel.value.trim());
+  $('btn-options').classList.toggle('actif', rempli || $('bloc-destinataire').open);
+}
+$('btn-options').onclick = () => {
+  const bloc = $('bloc-destinataire');
+  bloc.open = !bloc.open;
+  if (bloc.open) { bloc.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => form.destinataire_nom.focus(), 300); }
+  majBoutonOptions();
+};
+$('bloc-destinataire').addEventListener('toggle', majBoutonOptions);
+form.addEventListener('input', (e) => { if (/^destinataire_/.test(e.target.name)) majBoutonOptions(); });
 
 function majCommander() {
   const m = moyenChoisi();
@@ -724,12 +747,12 @@ function carteCourse(c) {
         <div>${esc(c.depart_repere)}</div>
         <div>${esc(c.arrivee_repere)}</div>
       </div>
-      <div class="ligne-info">${ico(c.service === 'trajet' ? (c.vehicule === 'voiture' ? 'car' : 'bike') : c.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${esc(c.description)}</div>
+      <div class="ligne-info">${ico(c.service === 'trajet' ? gamme(c.vehicule).icone : c.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${esc(c.description)}</div>
       ${c.type === 'achat' && c.montant_achat ? `<div class="ligne-info">${ico('banknote', 'ic-sm')} Budget achats : ${fcfa(c.montant_achat)}</div>` : ''}
       ${attente}
       ${c.livreur_nom && ['acceptee', 'recuperee'].includes(c.statut) ? blocPersonne(c.livreur_nom, c.livreur_tel, c.service === 'trajet' ? 'Votre chauffeur' : 'Votre livreur') : ''}
       ${c.livreur_nom && c.service === 'trajet' && ['acceptee', 'recuperee'].includes(c.statut)
-        ? `<div class="vehicule-chauffeur">${ico(c.livreur_vehicule === 'voiture' ? 'car' : 'bike', 'ic-sm')} ${c.livreur_vehicule === 'voiture' ? 'Voiture' : 'Moto'}${c.livreur_modele ? ' · ' + esc(c.livreur_modele) : ''}${c.livreur_plaque ? ' · ' + esc(c.livreur_plaque) : ''}</div>` : ''}
+        ? `<div class="vehicule-chauffeur">${ico(gamme(c.livreur_vehicule).icone, 'ic-sm')} ${gamme(c.livreur_vehicule).vehicule}${c.livreur_modele ? ' · ' + esc(c.livreur_modele) : ''}${c.livreur_plaque ? ' · ' + esc(c.livreur_plaque) : ''}</div>` : ''}
       ${enRoute(c) && !(c.statut === 'acceptee' && c.arrive_le) ? `<div class="ligne-info approche" data-approche="${c.id}">${texteApproche(c)}</div>` : ''}
       ${c.statut === 'acceptee' && c.arrive_le ? `<div class="ligne-info chauffeur-arrive">${ico('map-pin', 'ic-sm')} ${c.service === 'trajet' ? 'Votre chauffeur est arrivé au point de départ.' : 'Le livreur est arrivé au point de départ.'}</div>` : ''}
       <div class="meta" style="margin-top:8px">${dateCourte(c.cree_le)} · ${Number(c.distance_km).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km</div>
@@ -762,16 +785,16 @@ function approche(c) {
     return { m: r.reste, min: Math.max(1, Math.round(min)) };
   }
   const d = distanceM({ lat: c.livreur_lat, lng: c.livreur_lng }, cibleCourse(c)) * 1.3;
-  const vitesse = c.livreur_vehicule === 'voiture' ? 22 : 25; // km/h en moyenne à Yène
+  const vitesse = enVoiture(c.livreur_vehicule) ? 22 : 25; // km/h en moyenne à Yène
   return { m: d, min: Math.max(1, Math.round((d / 1000 / vitesse) * 60)) };
 }
 const texteDistance = (m) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`);
 
 function iconeVehicule(c) {
-  const voiture = c.livreur_vehicule === 'voiture';
+  const voiture = enVoiture(c.livreur_vehicule);
   return L.divIcon({
     className: '',
-    html: `<div class="vehicule-carte${voiture ? ' voiture' : ''}">${ico(voiture ? 'car' : 'bike')}</div>`,
+    html: `<div class="vehicule-carte${voiture ? ' voiture' : ''}">${ico(gamme(c.livreur_vehicule).icone)}</div>`,
     iconSize: [40, 40],
     iconAnchor: [20, 20],
   });
@@ -937,11 +960,10 @@ function afficherCourseActive() {
     titre = c.statut === 'recuperee' ? (trajet ? 'Course en cours' : 'Colis en route') : `${qui} arrive`;
     detail = 'Position du véhicule bientôt disponible';
   }
-  const voiture = c.livreur_vehicule === 'voiture';
-  const vehicule = [voiture ? 'Voiture' : 'Moto', c.livreur_modele, c.livreur_plaque].filter(Boolean).map(esc).join(' · ');
+  const vehicule = [gamme(c.livreur_vehicule).vehicule, c.livreur_modele, c.livreur_plaque].filter(Boolean).map(esc).join(' · ');
   const tel = String(c.livreur_tel || '').replace(/\D/g, '');
   el.innerHTML = `
-    <span class="pic-rond">${ico(voiture ? 'car' : 'bike')}</span>
+    <span class="pic-rond">${ico(gamme(c.livreur_vehicule).icone)}</span>
     <div class="suivi-direct-texte">
       <b>${titre}</b>
       <small>${[detail, vehicule].filter(Boolean).join(' · ')}</small>
@@ -1286,7 +1308,7 @@ async function envoyerCommande() {
     majDevis();
 
     toast(course.service === 'trajet'
-      ? `Demande envoyée. Les chauffeurs ${course.vehicule === 'voiture' ? 'en voiture' : 'à moto'} autour de vous sont prévenus.${course.paiement !== 'especes' ? ` Vous paierez avec ${MOYENS[course.paiement].nom} dès qu'un chauffeur accepte.` : ''}`
+      ? `Demande envoyée. Les chauffeurs ${course.vehicule === 'confort' ? 'Confort' : course.vehicule === 'voiture' ? 'Éco' : 'à moto'} autour de vous sont prévenus.${course.paiement !== 'especes' ? ` Vous paierez avec ${MOYENS[course.paiement].nom} dès qu'un chauffeur accepte.` : ''}`
       : course.paiement !== 'especes'
         ? `Commande envoyée. Dès qu'un livreur accepte, vous paierez avec ${MOYENS[course.paiement].nom}.`
         : 'Commande envoyée. Les livreurs disponibles sont prévenus.');

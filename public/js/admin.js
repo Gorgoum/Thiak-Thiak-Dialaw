@@ -24,7 +24,7 @@ async function chargerLivreurs() {
   document.getElementById('livreurs').innerHTML = `
     <tr><th>Nom</th><th>Actions</th><th>Téléphone</th><th>État</th><th>Livrées</th><th>Note</th></tr>
     ${livreurs.map((x) => `<tr>
-      <td><b>${esc(x.nom)}</b><br><span class="meta">${ico(x.vehicule === 'voiture' ? 'car' : 'bike', 'ic-sm')} ${x.vehicule === 'voiture' ? 'Voiture' : 'Moto'}${x.plaque ? ' · ' + esc(x.plaque) : ''}</span></td>
+      <td><b>${esc(x.nom)}</b><br><span class="meta">${ico(gamme(x.vehicule).icone, 'ic-sm')} ${gamme(x.vehicule).vehicule}${x.plaque ? ' · ' + esc(x.plaque) : ''}</span></td>
       <td class="actions-ligne">${x.actif
         ? `<button data-livreur="${x.id}" data-actif="0">${ico('power', 'ic-sm')} Désactiver</button>`
         : `<button class="jaune" data-livreur="${x.id}" data-actif="1">${ico('check', 'ic-sm')} Valider</button>`}
@@ -190,8 +190,9 @@ function fenetreCompte(role, u = null) {
   const v = u || {};
   const champsVehicule = role === 'admin' ? '' : `
     <label>Véhicule<select name="vehicule">
-      <option value="moto" ${v.vehicule !== 'voiture' ? 'selected' : ''}>Moto (Jakarta)</option>
-      <option value="voiture" ${v.vehicule === 'voiture' ? 'selected' : ''}>Voiture (taxi / clando)</option>
+      <option value="moto" ${!enVoiture(v.vehicule) ? 'selected' : ''}>Moto (Jakarta)</option>
+      <option value="voiture" ${v.vehicule === 'voiture' ? 'selected' : ''}>Voiture Éco (taxi / clando)</option>
+      <option value="confort" ${v.vehicule === 'confort' ? 'selected' : ''}>Voiture Confort (climatisée)</option>
     </select></label>
     <div class="grille-2">
       ${champ('Plaque d\'immatriculation', 'plaque', v.plaque, 'maxlength="20" autocomplete="off" placeholder="DK-1234-AB"')}
@@ -324,7 +325,7 @@ async function chargerTransactions() {
     <tr><th>Date</th><th>Course</th><th>Chauffeur</th><th>Paiement</th><th class="nombre">Payé client</th><th class="nombre">Frais Wave / OM</th><th class="nombre">Chauffeur</th><th class="nombre">Plateforme</th></tr>
     ${t.lignes.map((x) => `<tr>
       <td>${dateCourte(x.cree_le)}</td>
-      <td>n° ${x.course_id ?? '–'}<br><span class="meta">${x.service === 'trajet' ? (x.vehicule === 'voiture' ? 'Trajet voiture' : 'Trajet moto') : x.type === 'achat' ? 'Achats' : 'Colis'}</span></td>
+      <td>n° ${x.course_id ?? '–'}<br><span class="meta">${x.service === 'trajet' ? ('Trajet ' + gamme(x.vehicule).nom) : x.type === 'achat' ? 'Achats' : 'Colis'}</span></td>
       <td>${esc(x.livreur)}</td>
       <td>${NOMS_PAIEMENT[x.paiement] || esc(x.paiement || '')}</td>
       <td class="nombre">${fcfa(x.prix)}</td>

@@ -9,7 +9,7 @@ import { envoyer } from '../push.js';
 import * as argent from '../argent.js';
 import { CATEGORIES } from '../lieux.js';
 
-const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture', 'rayon_arrivee_m', 'frais_service', 'frais_achat_pct', 'frais_achat_min', 'frais_wave_pct', 'frais_om_pct'];
+const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture', 'coef_confort', 'rayon_arrivee_m', 'frais_service', 'frais_achat_pct', 'frais_achat_min', 'frais_wave_pct', 'frais_om_pct'];
 
 export function enregistrer(r) {
   enregistrerGestion(r);
@@ -168,7 +168,7 @@ async function lireCompte(c, b, { id = 0, pinObligatoire = true } = {}) {
 /** Véhicule d'un chauffeur : moto (par défaut) ou voiture, plaque et modèle. */
 async function majVehicule(c, id, b) {
   await c.db.query('UPDATE utilisateurs SET vehicule = $2, plaque = $3, modele = $4 WHERE id = $1', [
-    Number(id), b.vehicule === 'voiture' ? 'voiture' : 'moto',
+    Number(id), ['voiture', 'confort'].includes(b.vehicule) ? b.vehicule : 'moto',
     String(b.plaque || '').trim().toUpperCase().slice(0, 20) || null, String(b.modele || '').trim().slice(0, 40) || null,
   ]);
 }

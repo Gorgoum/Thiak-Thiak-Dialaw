@@ -222,3 +222,12 @@ function surveillerMiseAJour(peutRecharger) {
   setInterval(verifier, 60 * 1000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') verifier(); });
 }
+
+// Gammes de trajet : moto (Jakarta), voiture (« Éco » : taxi, clando), confort (voiture climatisée)
+const GAMMES = {
+  moto: { nom: 'Moto', icone: 'bike', vehicule: 'Moto' },
+  voiture: { nom: 'Éco', icone: 'car-taxi-front', vehicule: 'Voiture' },
+  confort: { nom: 'Confort', icone: 'car', vehicule: 'Voiture climatisée' },
+};
+const gamme = (v) => GAMMES[v] || GAMMES.moto;
+const enVoiture = (v) => v === 'voiture' || v === 'confort';
