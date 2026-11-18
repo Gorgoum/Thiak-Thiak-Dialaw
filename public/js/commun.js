@@ -231,3 +231,15 @@ const GAMMES = {
 };
 const gamme = (v) => GAMMES[v] || GAMMES.moto;
 const enVoiture = (v) => v === 'voiture' || v === 'confort';
+
+// Page et scripts de versions différentes (onglet restauré depuis la mémoire du téléphone) : on recharge une fois,
+// sinon le script de la page peut chercher un bouton qui n'existe pas encore dans l'ancienne page.
+(() => {
+  const m = document.querySelector('meta[name="version-app"]');
+  if (!m || m.content === VERSION_APP) return;
+  try {
+    if (sessionStorage.getItem('tt_recharge_version') === VERSION_APP) return; // déjà essayé : pas de boucle
+    sessionStorage.setItem('tt_recharge_version', VERSION_APP);
+  } catch { /* navigation privée */ }
+  location.reload();
+})();

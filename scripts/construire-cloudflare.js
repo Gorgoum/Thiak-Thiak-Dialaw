@@ -37,6 +37,11 @@ const versionApp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
 fs.writeFileSync(path.join(sortie, 'version.json'), JSON.stringify({ version: versionApp }) + '\n');
 const communJs = path.join(sortie, 'js', 'commun.js');
 fs.writeFileSync(communJs, fs.readFileSync(communJs, 'utf8').replace("'__VERSION_APP__'", `'${versionApp}'`));
+// même version dans chaque page : une page restaurée depuis la mémoire du téléphone se recharge si elle ne correspond plus aux scripts
+for (const h of ['index.html', 'livreur.html', 'admin.html', 'position.html']) {
+  const p = path.join(sortie, h);
+  if (fs.existsSync(p)) fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace('__VERSION_APP__', versionApp));
+}
 // en-têtes de sécurité et de cache des fichiers statiques
 fs.writeFileSync(path.join(sortie, '_headers'), `/*
   X-Content-Type-Options: nosniff
@@ -47,6 +52,16 @@ fs.writeFileSync(path.join(sortie, '_headers'), `/*
 /sw.js
   Cache-Control: no-cache
 /version.json
+  Cache-Control: no-store
+/
+  Cache-Control: no-store
+/index.html
+  Cache-Control: no-store
+/livreur.html
+  Cache-Control: no-store
+/admin.html
+  Cache-Control: no-store
+/position.html
   Cache-Control: no-store
 /js/*
   Cache-Control: no-cache
