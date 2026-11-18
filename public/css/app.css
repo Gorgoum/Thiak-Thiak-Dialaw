@@ -1065,22 +1065,31 @@ body.service-trajet [data-pour="livraison"] { display: none !important; }
 .vehicule-carte.voiture::after { color: var(--accent, #ff7a1a); }
 @keyframes pulsation-vehicule { 0% { transform: scale(.7); opacity: .7; } 100% { transform: scale(1.5); opacity: 0; } }
 
-.course-active { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 12px 14px; border-radius: 18px; background: var(--surface); border: 2px solid var(--brand, #0a2a62); box-shadow: var(--shadow-md); animation: entre 240ms cubic-bezier(.2, .8, .2, 1); }
-.course-active.arrive { border-color: #16a34a; background: #f0fdf4; }
-.course-active .pic-rond { flex: none; }
-.course-active-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.course-active-texte b { font-size: 1.02rem; line-height: 1.25; }
-.course-active-texte small { color: var(--ink-3); font-size: .84rem; overflow: hidden; text-overflow: ellipsis; }
-.course-active-actions { flex: none; display: flex; align-items: center; gap: 6px; }
-.course-active-actions .btn-rond { width: 42px; height: 42px; }
-.course-active-actions .btn { min-height: 42px; padding-inline: 10px; }
+.suivi-direct { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 12px 14px; border-radius: 18px; background: var(--surface); border: 2px solid var(--brand, #0a2a62); box-shadow: var(--shadow-md); animation: entre 240ms cubic-bezier(.2, .8, .2, 1); }
+.suivi-direct.arrive { border-color: #16a34a; background: #f0fdf4; }
+.suivi-direct .pic-rond { flex: none; }
+.suivi-direct-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.suivi-direct-texte b { font-size: 1.02rem; line-height: 1.25; }
+.suivi-direct-texte small { color: var(--ink-3); font-size: .84rem; overflow: hidden; text-overflow: ellipsis; }
+.suivi-direct-actions { flex: none; display: flex; align-items: center; gap: 6px; }
+.suivi-direct-actions .btn-rond { width: 42px; height: 42px; }
+.suivi-direct-actions .btn { min-height: 42px; padding-inline: 10px; }
 .ligne-info.approche { color: var(--brand, #0a2a62); font-weight: 600; }
 @media (max-width: 420px) {
-  .course-active { flex-wrap: wrap; }
-  .course-active-actions { width: 100%; justify-content: flex-end; }
+  .suivi-direct { flex-wrap: wrap; }
+  .suivi-direct-actions { width: 100%; justify-content: flex-end; }
 }
 @media (prefers-color-scheme: dark) {
-  .course-active.arrive { background: rgba(22, 163, 74, .12); }
+  .suivi-direct.arrive { background: rgba(22, 163, 74, .12); }
 }
 body.course-en-cours #aide-carte { display: none; }
-.course-active-actions a.btn-rond { display: grid; place-items: center; color: inherit; text-decoration: none; }
+.suivi-direct-actions a.btn-rond { display: grid; place-items: center; color: inherit; text-decoration: none; }
+
+/* Petits téléphones : le nom ne passe plus sous le bouton « Appeler » */
+.personne .qui b { overflow-wrap: anywhere; line-height: 1.25; }
+.personne a.bouton { flex: none; }
+@media (max-width: 360px) {
+  .personne { flex-wrap: wrap; }
+  .personne .qui { flex: 1 1 100%; }
+  .personne a.bouton { flex: 1 1 100%; justify-content: center; }
+}

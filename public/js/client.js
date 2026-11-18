@@ -629,12 +629,13 @@ function majVehicules() {
 function recadrerSurVehicule(c) {
   if (!carte || !enRoute(c)) return;
   const cible = cibleCourse(c);
+  carte.invalidateSize(); // la carte a pu changer de taille (bandeau, rotation, plein écran)
   carte.fitBounds([[c.livreur_lat, c.livreur_lng], [cible.lat, cible.lng]], { padding: [60, 60], maxZoom: 17 });
 }
 
 /** Bandeau sur l'écran principal : qui arrive, dans combien de temps, avec quel véhicule. */
 function afficherCourseActive() {
-  const el = $('course-active');
+  const el = $('suivi-direct');
   const c = courseSuivie;
   document.body.classList.toggle('course-en-cours', !!c);
   if (!c) { el.hidden = true; el.innerHTML = ''; return; }
@@ -662,11 +663,11 @@ function afficherCourseActive() {
   const tel = String(c.livreur_tel || '').replace(/\D/g, '');
   el.innerHTML = `
     <span class="pic-rond">${ico(voiture ? 'car' : 'bike')}</span>
-    <div class="course-active-texte">
+    <div class="suivi-direct-texte">
       <b>${titre}</b>
       <small>${[detail, vehicule].filter(Boolean).join(' · ')}</small>
     </div>
-    <div class="course-active-actions">
+    <div class="suivi-direct-actions">
       ${tel ? `<a class="btn-rond" href="tel:${tel}" aria-label="Appeler">${ico('phone')}</a>` : ''}
       <button type="button" class="btn-rond" data-voir aria-label="Voir sur la carte">${ico('locate-fixed')}</button>
       <button type="button" class="btn btn-ghost" data-details>Détails</button>
@@ -674,7 +675,7 @@ function afficherCourseActive() {
   el.classList.toggle('arrive', !!(c.statut === 'acceptee' && c.arrive_le));
   el.hidden = false;
 }
-$('course-active').addEventListener('click', (e) => {
+$('suivi-direct').addEventListener('click', (e) => {
   if (e.target.closest('[data-details]')) { ouvrirTiroir(); chargerListe(); return; }
   if (e.target.closest('[data-voir]') && courseSuivie) {
     $('bloc-carte').scrollIntoView({ behavior: 'smooth', block: 'start' });
