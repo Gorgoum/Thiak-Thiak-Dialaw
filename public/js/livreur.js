@@ -1,5 +1,7 @@
 let suiviPosition = null;
 let dernierEnvoi = 0;
+let enCourse = false; // pendant une course, le client suit la moto / la voiture en direct
+let derniereEnvoyee = null;
 
 function bip() {
   try {
@@ -23,9 +25,14 @@ function envoyerPosition(p) {
   maPosition = { lat: p.coords.latitude, lng: p.coords.longitude };
   majPositionSurCarte();
   Guidage.majPosition(maPosition);
-  if (Date.now() - dernierEnvoi < 30000) return; // envoi au serveur au plus toutes les 30 s
+  // envoi au serveur : toutes les 5 s pendant une course (le client voit le véhicule bouger), sinon toutes les 30 s
+  const ecart = Date.now() - dernierEnvoi;
+  if (ecart < (enCourse ? 5000 : 30000)) return;
+  // à l'arrêt pendant une course, inutile de renvoyer la même position plus d'une fois par 30 s
+  if (enCourse && derniereEnvoyee && ecart < 30000 && distanceM(derniereEnvoyee, maPosition) < 8) return;
   dernierEnvoi = Date.now();
-  api('POST', '/api/livreur/position', { lat: p.coords.latitude, lng: p.coords.longitude }).catch(() => {});
+  derniereEnvoyee = maPosition;
+  api('POST', '/api/livreur/position', maPosition).then((r) => { enCourse = !!(r && r.en_course); }).catch(() => {});
 }
 
 // =========================================================================
@@ -321,6 +328,9 @@ document.getElementById('app').addEventListener('click', async (e) => {
     if (b.dataset.accepter) {
       b.disabled = true;
       await api('POST', `/api/livreur/courses/${b.dataset.accepter}/accepter`);
+      // position envoyée tout de suite : le client voit aussitôt où est son chauffeur
+      enCourse = true; dernierEnvoi = 0; derniereEnvoyee = null;
+      if (maPosition) envoyerPosition({ coords: { latitude: maPosition.lat, longitude: maPosition.lng } });
       toast('Course acceptée ! Le guidage vers le départ démarre.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (b.dataset.etape) {

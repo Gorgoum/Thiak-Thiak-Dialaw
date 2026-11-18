@@ -506,6 +506,7 @@ function carteCourse(c) {
   if (!paye && (['en_attente', 'attente_paiement'].includes(c.statut) || (c.statut === 'acceptee' && enLigne))) {
     actions.push(`<button class="danger" data-annuler="${code}">${ico('circle-x', 'ic-sm')} Annuler</button>`);
   }
+  if (enRoute(c)) actions.push(`<button data-voir-carte="${c.id}">${ico('map-pin', 'ic-sm')} Voir sur la carte</button>`);
   if (enCours) actions.push(`<button data-partager="${code}">${ico('share-2', 'ic-sm')} Partager le suivi</button>`);
   if (!enCours) actions.push(`<button class="btn-ghost" data-retirer="${code}">${ico('trash-2', 'ic-sm')} Retirer</button>`);
   let notation = '';
@@ -538,6 +539,7 @@ function carteCourse(c) {
       ${c.livreur_nom && ['acceptee', 'recuperee'].includes(c.statut) ? blocPersonne(c.livreur_nom, c.livreur_tel, c.service === 'trajet' ? 'Votre chauffeur' : 'Votre livreur') : ''}
       ${c.livreur_nom && c.service === 'trajet' && ['acceptee', 'recuperee'].includes(c.statut)
         ? `<div class="vehicule-chauffeur">${ico(c.livreur_vehicule === 'voiture' ? 'car' : 'bike', 'ic-sm')} ${c.livreur_vehicule === 'voiture' ? 'Voiture' : 'Moto'}${c.livreur_modele ? ' · ' + esc(c.livreur_modele) : ''}${c.livreur_plaque ? ' · ' + esc(c.livreur_plaque) : ''}</div>` : ''}
+      ${enRoute(c) && !(c.statut === 'acceptee' && c.arrive_le) ? `<div class="ligne-info approche" data-approche="${c.id}">${texteApproche(c)}</div>` : ''}
       ${c.statut === 'acceptee' && c.arrive_le ? `<div class="ligne-info chauffeur-arrive">${ico('map-pin', 'ic-sm')} ${c.service === 'trajet' ? 'Votre chauffeur est arrivé au point de départ.' : 'Le livreur est arrivé au point de départ.'}</div>` : ''}
       <div class="meta" style="margin-top:8px">${dateCourte(c.cree_le)} · ${Number(c.distance_km).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km</div>
       ${notation}
@@ -546,13 +548,166 @@ function carteCourse(c) {
 }
 
 let derniereListe = [];
+
+// =========================================================================
+// Le chauffeur / livreur en direct sur la carte (comme une appli de VTC)
+// =========================================================================
+const vehicules = new Map(); // id de course → { marqueur, ligne, anim }
+let courseSuivie = null;     // course affichée dans le bandeau « course en cours »
+let dejaCadre = null;        // id de la course déjà recadrée (on ne recadre qu'une fois, puis le client est libre)
+
+const enRoute = (c) => ['acceptee', 'recuperee'].includes(c.statut) && c.livreur_lat != null && c.livreur_lng != null;
+/** Le chauffeur va d'abord au départ (A), puis à l'arrivée (B) une fois le passager à bord / le colis récupéré. */
+const cibleCourse = (c) => (c.statut === 'recuperee'
+  ? { lat: c.arrivee_lat, lng: c.arrivee_lng }
+  : { lat: c.depart_lat, lng: c.depart_lng });
+
+/** Distance et durée estimées (à vol d'oiseau, corrigées pour les routes). */
+function approche(c) {
+  const d = distanceM({ lat: c.livreur_lat, lng: c.livreur_lng }, cibleCourse(c)) * 1.3;
+  const vitesse = c.livreur_vehicule === 'voiture' ? 22 : 25; // km/h en moyenne à Yène
+  return { m: d, min: Math.max(1, Math.round((d / 1000 / vitesse) * 60)) };
+}
+const texteDistance = (m) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`);
+
+function iconeVehicule(c) {
+  const voiture = c.livreur_vehicule === 'voiture';
+  return L.divIcon({
+    className: '',
+    html: `<div class="vehicule-carte${voiture ? ' voiture' : ''}">${ico(voiture ? 'car' : 'bike')}</div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+  });
+}
+
+/** Déplace le marqueur en douceur jusqu'à la nouvelle position (au lieu d'un saut). */
+function glisser(v, vers) {
+  if (v.anim) cancelAnimationFrame(v.anim);
+  const de = v.marqueur.getLatLng();
+  const t0 = performance.now();
+  const pas = (t) => {
+    const k = Math.min(1, (t - t0) / 1200);
+    v.marqueur.setLatLng([de.lat + (vers.lat - de.lat) * k, de.lng + (vers.lng - de.lng) * k]);
+    if (k < 1) v.anim = requestAnimationFrame(pas);
+  };
+  v.anim = requestAnimationFrame(pas);
+}
+
+/** Affiche / met à jour / retire les véhicules des courses en cours. */
+function majVehicules() {
+  if (!carte) return;
+  const actives = derniereListe.filter(enRoute);
+  const ids = new Set(actives.map((c) => c.id));
+  for (const [id, v] of vehicules) {
+    if (!ids.has(id)) { v.marqueur.remove(); v.ligne.remove(); vehicules.delete(id); }
+  }
+  for (const c of actives) {
+    const pos = { lat: Number(c.livreur_lat), lng: Number(c.livreur_lng) };
+    const cible = cibleCourse(c);
+    let v = vehicules.get(c.id);
+    if (!v) {
+      v = {
+        marqueur: L.marker(pos, { icon: iconeVehicule(c), zIndexOffset: 2000, interactive: false }).addTo(carte),
+        ligne: L.polyline([pos, cible], { color: '#0a2a62', weight: 3, opacity: 0.55, dashArray: '6 8', interactive: false }).addTo(carte),
+      };
+      vehicules.set(c.id, v);
+    } else {
+      v.marqueur.setIcon(iconeVehicule(c));
+      glisser(v, pos);
+    }
+    v.ligne.setLatLngs([pos, cible]);
+  }
+  courseSuivie = actives[0] || derniereListe.find((c) => c.statut === 'acceptee' || c.statut === 'recuperee') || null;
+  afficherCourseActive();
+  // première apparition du véhicule : on cadre la carte sur lui et sur le point où il va
+  if (courseSuivie && enRoute(courseSuivie) && dejaCadre !== courseSuivie.id + courseSuivie.statut) {
+    dejaCadre = courseSuivie.id + courseSuivie.statut;
+    recadrerSurVehicule(courseSuivie);
+  }
+}
+
+function recadrerSurVehicule(c) {
+  if (!carte || !enRoute(c)) return;
+  const cible = cibleCourse(c);
+  carte.fitBounds([[c.livreur_lat, c.livreur_lng], [cible.lat, cible.lng]], { padding: [60, 60], maxZoom: 17 });
+}
+
+/** Bandeau sur l'écran principal : qui arrive, dans combien de temps, avec quel véhicule. */
+function afficherCourseActive() {
+  const el = $('course-active');
+  const c = courseSuivie;
+  document.body.classList.toggle('course-en-cours', !!c);
+  if (!c) { el.hidden = true; el.innerHTML = ''; return; }
+  const trajet = c.service === 'trajet';
+  const qui = esc(c.livreur_nom || (trajet ? 'Votre chauffeur' : 'Votre livreur'));
+  let titre;
+  let detail = '';
+  if (c.statut === 'acceptee' && c.arrive_le) {
+    titre = trajet ? `${qui} est arrivé, il vous attend` : `${qui} est arrivé au point de départ`;
+  } else if (enRoute(c)) {
+    const a = approche(c);
+    if (c.statut === 'acceptee') {
+      titre = a.m < 80 ? `${qui} est tout près` : `${qui} arrive dans ${a.min} min`;
+      detail = `À ${texteDistance(a.m)} de vous`;
+    } else {
+      titre = trajet ? `Arrivée dans ${a.min} min` : `Livraison dans ${a.min} min`;
+      detail = `Encore ${texteDistance(a.m)}`;
+    }
+  } else {
+    titre = c.statut === 'recuperee' ? (trajet ? 'Course en cours' : 'Colis en route') : `${qui} arrive`;
+    detail = 'Position du véhicule bientôt disponible';
+  }
+  const voiture = c.livreur_vehicule === 'voiture';
+  const vehicule = [voiture ? 'Voiture' : 'Moto', c.livreur_modele, c.livreur_plaque].filter(Boolean).map(esc).join(' · ');
+  const tel = String(c.livreur_tel || '').replace(/\D/g, '');
+  el.innerHTML = `
+    <span class="pic-rond">${ico(voiture ? 'car' : 'bike')}</span>
+    <div class="course-active-texte">
+      <b>${titre}</b>
+      <small>${[detail, vehicule].filter(Boolean).join(' · ')}</small>
+    </div>
+    <div class="course-active-actions">
+      ${tel ? `<a class="btn-rond" href="tel:${tel}" aria-label="Appeler">${ico('phone')}</a>` : ''}
+      <button type="button" class="btn-rond" data-voir aria-label="Voir sur la carte">${ico('locate-fixed')}</button>
+      <button type="button" class="btn btn-ghost" data-details>Détails</button>
+    </div>`;
+  el.classList.toggle('arrive', !!(c.statut === 'acceptee' && c.arrive_le));
+  el.hidden = false;
+}
+$('course-active').addEventListener('click', (e) => {
+  if (e.target.closest('[data-details]')) { ouvrirTiroir(); chargerListe(); return; }
+  if (e.target.closest('[data-voir]') && courseSuivie) {
+    $('bloc-carte').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    recadrerSurVehicule(courseSuivie);
+  }
+});
+
+/** Nouvelle position envoyée par le téléphone du chauffeur (toutes les 5 s environ). */
+function positionVehicule(p) {
+  const c = derniereListe.find((x) => x.id === p.course_id);
+  if (!c) return;
+  c.livreur_lat = p.lat;
+  c.livreur_lng = p.lng;
+  majVehicules();
+  // la ligne « à X m » de la carte de suivi, si « Mes courses » est ouvert
+  const ligne = document.querySelector(`[data-approche="${c.id}"]`);
+  if (ligne) ligne.innerHTML = texteApproche(c);
+}
+
+function texteApproche(c) {
+  if (!enRoute(c)) return '';
+  const a = approche(c);
+  const ou = c.statut === 'recuperee' ? 'de l\'arrivée' : 'du départ';
+  return `${ico('navigation', 'ic-sm')} ${c.service === 'trajet' ? 'Chauffeur' : 'Livreur'} à ${texteDistance(a.m)} ${ou} · environ ${a.min} min`;
+}
+
 /** Code de suivi d'une course de ce téléphone, à partir de son numéro (les mises à jour en direct n'envoient que le numéro). */
 const codeDeCourse = (id) => (derniereListe.find((x) => x.id === id) || {}).suivi_token;
 
 async function chargerListe() {
   const codes = lireCodes();
   const bouton = $('ouvrir-suivi');
-  if (!codes.length) { bouton.hidden = true; $('liste').innerHTML = '<p class="vide">Aucune livraison pour le moment.</p>'; return; }
+  if (!codes.length) { bouton.hidden = true; derniereListe = []; majVehicules(); $('liste').innerHTML = '<p class="vide">Aucune livraison pour le moment.</p>'; return; }
   try {
     const liste = await api('GET', '/api/courses/suivi?codes=' + codes.map(encodeURIComponent).join(','));
     derniereListe = liste;
@@ -563,6 +718,7 @@ async function chargerListe() {
     $('nb-actives').hidden = !actives;
     $('nb-actives').textContent = actives;
     $('liste').innerHTML = liste.length ? liste.map(carteCourse).join('') : '<p class="vide">Aucune livraison pour le moment.</p>';
+    majVehicules();
   } catch (e) { toast(e.message, true); }
 }
 
@@ -581,6 +737,11 @@ $('liste').addEventListener('click', async (e) => {
       const lien = lienSuivi(b.dataset.partager);
       if (navigator.share) await navigator.share({ title: 'Suivi de ma livraison', url: lien }).catch(() => {});
       else { await navigator.clipboard.writeText(lien).catch(() => {}); toast('Lien de suivi copié'); }
+      return;
+    } else if (b.dataset.voirCarte) {
+      const c = derniereListe.find((x) => x.id === Number(b.dataset.voirCarte));
+      fermerTiroir();
+      if (c) { $('bloc-carte').scrollIntoView({ behavior: 'smooth', block: 'start' }); recadrerSurVehicule(c); }
       return;
     } else if (b.dataset.payer) {
       reprendrePaiement(b.dataset.payer);
@@ -992,6 +1153,7 @@ chargerListe().then(() => {
 });
 
 socket = io({ auth: { suivi: lireCodes() } });
+socket.on('livreur:position', positionVehicule);
 socket.on('course:maj', (c) => {
   if (c.statut === 'acceptee' && c.arrive_le && Date.now() - new Date(c.arrive_le).getTime() < 60000) {
     toast(c.service === 'trajet' ? 'Votre chauffeur est arrivé !' : 'Le livreur est arrivé au point de départ.');

@@ -34,7 +34,12 @@ export function enregistrer(r) {
     const { lat, lng } = await lireCorps(req);
     if (!pointValide({ lat, lng })) throw new HttpErreur(400, 'Position invalide');
     await c.db.query(`UPDATE utilisateurs SET lat = $2, lng = $3, position_maj = ${MAINTENANT} WHERE id = $1`, [c.user.id, Number(lat), Number(lng)]);
-    return json({ ok: true });
+    // le client voit sa moto / sa voiture arriver en direct (seulement pendant la course)
+    const enCours = (await c.db.query("SELECT id, suivi_token FROM courses WHERE livreur_id = $1 AND statut IN ('acceptee', 'recuperee')", [c.user.id])).rows;
+    if (enCours.length) {
+      for (const x of enCours) c.io.to('suivi:' + x.suivi_token).emit('livreur:position', { course_id: x.id, lat: Number(lat), lng: Number(lng) });
+    }
+    return json({ ok: true, en_course: enCours.length > 0 });
   });
 
   // Courses en attente, sans le téléphone du client (révélé seulement après acceptation)

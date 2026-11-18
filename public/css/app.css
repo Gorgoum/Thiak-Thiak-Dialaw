@@ -1054,3 +1054,33 @@ body.service-trajet [data-pour="livraison"] { display: none !important; }
   .fiche-pied { position: sticky; bottom: 0; z-index: 5; background: var(--surface); padding: 10px 0 calc(6px + env(safe-area-inset-bottom)); margin-bottom: -6px; }
   body.fiche-ouverte .volet-carte #map { height: clamp(200px, 30vh, 320px); }
 }
+
+/* =========================================================================
+   Chauffeur / livreur en direct : véhicule sur la carte et bandeau « course en cours »
+   ========================================================================= */
+.vehicule-carte { position: relative; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--brand, #0a2a62); color: #fff; border: 3px solid #fff; box-shadow: 0 4px 14px rgba(10, 42, 98, .45); }
+.vehicule-carte.voiture { background: var(--accent, #ff7a1a); box-shadow: 0 4px 14px rgba(255, 122, 26, .45); }
+.vehicule-carte .ic { width: 20px; height: 20px; }
+.vehicule-carte::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; border: 2px solid currentColor; color: var(--brand, #0a2a62); opacity: 0; animation: pulsation-vehicule 2s ease-out infinite; }
+.vehicule-carte.voiture::after { color: var(--accent, #ff7a1a); }
+@keyframes pulsation-vehicule { 0% { transform: scale(.7); opacity: .7; } 100% { transform: scale(1.5); opacity: 0; } }
+
+.course-active { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 12px 14px; border-radius: 18px; background: var(--surface); border: 2px solid var(--brand, #0a2a62); box-shadow: var(--shadow-md); animation: entre 240ms cubic-bezier(.2, .8, .2, 1); }
+.course-active.arrive { border-color: #16a34a; background: #f0fdf4; }
+.course-active .pic-rond { flex: none; }
+.course-active-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.course-active-texte b { font-size: 1.02rem; line-height: 1.25; }
+.course-active-texte small { color: var(--ink-3); font-size: .84rem; overflow: hidden; text-overflow: ellipsis; }
+.course-active-actions { flex: none; display: flex; align-items: center; gap: 6px; }
+.course-active-actions .btn-rond { width: 42px; height: 42px; }
+.course-active-actions .btn { min-height: 42px; padding-inline: 10px; }
+.ligne-info.approche { color: var(--brand, #0a2a62); font-weight: 600; }
+@media (max-width: 420px) {
+  .course-active { flex-wrap: wrap; }
+  .course-active-actions { width: 100%; justify-content: flex-end; }
+}
+@media (prefers-color-scheme: dark) {
+  .course-active.arrive { background: rgba(22, 163, 74, .12); }
+}
+body.course-en-cours #aide-carte { display: none; }
+.course-active-actions a.btn-rond { display: grid; place-items: center; color: inherit; text-decoration: none; }

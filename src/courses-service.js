@@ -10,7 +10,9 @@ const COLONNES = `c.id, c.client_nom, c.client_tel, c.livreur_id, c.type, c.desc
   c.service, c.vehicule, c.arrive_le`;
 
 const SELECT_COURSE = `
-  SELECT ${COLONNES}, l.nom AS livreur_nom, l.telephone AS livreur_tel, l.vehicule AS livreur_vehicule, l.plaque AS livreur_plaque, l.modele AS livreur_modele
+  SELECT ${COLONNES}, l.nom AS livreur_nom, l.telephone AS livreur_tel, l.vehicule AS livreur_vehicule, l.plaque AS livreur_plaque, l.modele AS livreur_modele,
+         CASE WHEN c.statut IN ('acceptee', 'recuperee') THEN l.lat END AS livreur_lat,
+         CASE WHEN c.statut IN ('acceptee', 'recuperee') THEN l.lng END AS livreur_lng
   FROM courses c
   LEFT JOIN utilisateurs l ON l.id = c.livreur_id`;
 

@@ -31,7 +31,11 @@ router.post('/position', a(async (req, res) => {
   const { lat, lng } = req.body || {};
   if (!pointValide({ lat, lng })) return res.status(400).json({ erreur: 'Position invalide' });
   await query('UPDATE utilisateurs SET lat = $2, lng = $3, position_maj = now() WHERE id = $1', [req.user.id, lat, lng]);
-  res.json({ ok: true });
+  // le client voit sa moto / sa voiture arriver en direct (seulement pendant la course)
+  const enCours = (await query("SELECT id, suivi_token FROM courses WHERE livreur_id = $1 AND statut IN ('acceptee', 'recuperee')", [req.user.id])).rows;
+  const io = req.app.get('io');
+  for (const x of enCours) io.to('suivi:' + x.suivi_token).emit('livreur:position', { course_id: x.id, lat: Number(lat), lng: Number(lng) });
+  res.json({ ok: true, en_course: enCours.length > 0 });
 }));
 
 // Courses en attente, sans le téléphone du client (révélé seulement après acceptation)
