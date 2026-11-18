@@ -5,10 +5,11 @@ import { parametres, distanceKm } from './tarifs.js';
 const COLONNES = `c.id, c.client_nom, c.client_tel, c.livreur_id, c.type, c.description, c.montant_achat,
   c.depart_lat, c.depart_lng, c.depart_repere, c.arrivee_lat, c.arrivee_lng, c.arrivee_repere,
   c.destinataire_nom, c.destinataire_tel, c.distance_km, c.prix, c.paiement, c.paiement_statut, c.montant_du, c.paye_le,
-  c.statut, c.note, c.cree_le, c.acceptee_le, c.recuperee_le, c.livree_le, c.annulee_le`;
+  c.statut, c.note, c.cree_le, c.acceptee_le, c.recuperee_le, c.livree_le, c.annulee_le,
+  c.service, c.vehicule, c.arrive_le`;
 
 export const SELECT_COURSE = `
-  SELECT ${COLONNES}, l.nom AS livreur_nom, l.telephone AS livreur_tel
+  SELECT ${COLONNES}, l.nom AS livreur_nom, l.telephone AS livreur_tel, l.vehicule AS livreur_vehicule, l.plaque AS livreur_plaque, l.modele AS livreur_modele
   FROM courses c
   LEFT JOIN utilisateurs l ON l.id = c.livreur_id`;
 
@@ -20,12 +21,15 @@ const fcfa = (n) => Number(n).toLocaleString('fr-FR') + ' FCFA';
 
 export async function notifierNouvelleCourse(c, course) {
   const p = await parametres(c.db);
-  const r = await c.db.query(`SELECT id, lat, lng FROM utilisateurs WHERE role = 'livreur' AND actif = 1 AND disponible = 1`);
+  const r = await c.db.query(`SELECT id, lat, lng, vehicule FROM utilisateurs WHERE role = 'livreur' AND actif = 1 AND disponible = 1`);
   const depart = { lat: course.depart_lat, lng: course.depart_lng };
-  const cibles = r.rows.filter((l) => l.lat == null || distanceKm(depart, l) <= (p.rayon_km || 10)).map((l) => l.id);
+  const trajet = course.service === 'trajet';
+  const cibles = r.rows
+    .filter((l) => !trajet || (l.vehicule || 'moto') === course.vehicule) // un trajet en voiture → les voitures seulement
+    .filter((l) => l.lat == null || distanceKm(depart, l) <= (p.rayon_km || 10)).map((l) => l.id);
   c.io.to(['livreurs', 'admins']).emit('courses:changement');
   await envoyer(c, cibles, {
-    titre: `Nouvelle course · ${fcfa(course.prix)}`,
+    titre: `${trajet ? `Nouveau trajet en ${course.vehicule}` : 'Nouvelle livraison'} · ${fcfa(course.prix)}`,
     corps: `${course.depart_repere} → ${course.arrivee_repere}`,
     url: '/livreur.html',
     tag: 'course-' + course.id,
@@ -34,10 +38,12 @@ export async function notifierNouvelleCourse(c, course) {
 }
 
 const MESSAGES_CLIENT = {
-  acceptee: (x) => `${x.livreur_nom} a accepté votre livraison et arrive au point de départ.`,
-  recuperee: () => 'Votre colis a été récupéré, il est en route.',
-  livree: () => 'Livraison terminée. Merci d\'avoir utilisé Yobalema Yène !',
-  en_attente: () => 'Le livreur s\'est désisté, nous cherchons un autre livreur.',
+  acceptee: (x) => (x.service === 'trajet'
+    ? `${x.livreur_nom} a accepté votre course et arrive vous chercher${x.livreur_plaque ? ` (${x.livreur_modele || x.vehicule}, ${x.livreur_plaque})` : ''}.`
+    : `${x.livreur_nom} a accepté votre livraison et arrive au point de départ.`),
+  recuperee: (x) => (x.service === 'trajet' ? 'Bonne route ! Votre course a commencé.' : 'Votre colis a été récupéré, il est en route.'),
+  livree: (x) => (x.service === 'trajet' ? 'Vous êtes arrivé. Merci d\'avoir voyagé avec Yobalema Yène !' : 'Livraison terminée. Merci d\'avoir utilisé Yobalema Yène !'),
+  en_attente: (x) => (x.service === 'trajet' ? 'Le chauffeur s\'est désisté, nous cherchons un autre chauffeur.' : 'Le livreur s\'est désisté, nous cherchons un autre livreur.'),
 };
 
 export async function diffuserMaj(c, id, { notifierClient = true, message = null, paiementRecu = false, titre = null, suffixe = '', urgent = false } = {}) {

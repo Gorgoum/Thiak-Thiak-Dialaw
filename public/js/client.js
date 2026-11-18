@@ -439,8 +439,9 @@ async function majDevis(recadrer = false) {
     dernierDevis = d;
     erreurDevis = null;
     detail.classList.remove('alerte');
-    const achat = form.type.value === 'achat';
-    prix.textContent = fcfa(d.prix);
+    const achat = !estTrajet() && form.type.value === 'achat';
+    prix.textContent = fcfa(prixCourse(d));
+    afficherVehicule();
     detail.textContent = `${d.distance_km.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`
       + `${d.minutes ? ` · ${d.minutes} min` : ''} · ${achat ? 'achats en plus · ' : ''}${paiementsEnLigne.length ? 'Wave, Orange Money ou espèces' : 'espèces à la livraison'}`;
     const pts = dessinerTrace(d);
@@ -500,16 +501,19 @@ function carteCourse(c) {
   if (c.paiement_statut === 'paye') attente += `<div class="ligne-info paiement-ok">${ico('circle-check', 'ic-sm')} Payé par ${moyen}</div>`;
   return `
     <article class="course">
-      <div class="haut">${badge(c.statut)}<span class="prix-course">${fcfa(c.prix)}</span></div>
-      ${frise(c.statut)}
+      <div class="haut">${badge(c.statut, c.service)}<span class="prix-course">${fcfa(c.prix)}</span></div>
+      ${frise(c.statut, c.service)}
       <div class="trajet">
         <div>${esc(c.depart_repere)}</div>
         <div>${esc(c.arrivee_repere)}</div>
       </div>
-      <div class="ligne-info">${ico(c.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${esc(c.description)}</div>
+      <div class="ligne-info">${ico(c.service === 'trajet' ? (c.vehicule === 'voiture' ? 'car' : 'bike') : c.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${esc(c.description)}</div>
       ${c.type === 'achat' && c.montant_achat ? `<div class="ligne-info">${ico('banknote', 'ic-sm')} Budget achats : ${fcfa(c.montant_achat)}</div>` : ''}
       ${attente}
-      ${c.livreur_nom && ['acceptee', 'recuperee'].includes(c.statut) ? blocPersonne(c.livreur_nom, c.livreur_tel, 'Votre livreur') : ''}
+      ${c.livreur_nom && ['acceptee', 'recuperee'].includes(c.statut) ? blocPersonne(c.livreur_nom, c.livreur_tel, c.service === 'trajet' ? 'Votre chauffeur' : 'Votre livreur') : ''}
+      ${c.livreur_nom && c.service === 'trajet' && ['acceptee', 'recuperee'].includes(c.statut)
+        ? `<div class="vehicule-chauffeur">${ico(c.livreur_vehicule === 'voiture' ? 'car' : 'bike', 'ic-sm')} ${c.livreur_vehicule === 'voiture' ? 'Voiture' : 'Moto'}${c.livreur_modele ? ' · ' + esc(c.livreur_modele) : ''}${c.livreur_plaque ? ' · ' + esc(c.livreur_plaque) : ''}</div>` : ''}
+      ${c.statut === 'acceptee' && c.arrive_le ? `<div class="ligne-info chauffeur-arrive">${ico('map-pin', 'ic-sm')} ${c.service === 'trajet' ? 'Votre chauffeur est arrivé au point de départ.' : 'Le livreur est arrivé au point de départ.'}</div>` : ''}
       <div class="meta" style="margin-top:8px">${dateCourte(c.cree_le)} · ${Number(c.distance_km).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km</div>
       ${notation}
       ${actions.length ? `<div class="actions">${actions.join('')}</div>` : ''}
@@ -728,7 +732,7 @@ function manque(n) {
     if (erreurDevis) return { label: 'Hors zone', faire: () => toast(erreurDevis, true) };
     if (!dernierDevis) return { label: 'Calcul du prix…', faire: () => {} };
   }
-  if (n === 3 && !form.description.value.trim()) {
+  if (n === 3 && !estTrajet() && !form.description.value.trim()) {
     return { label: 'Faites un choix', faire: () => toast('Touchez ce qu\'il faut livrer, par exemple « Colis ».') };
   }
   if (n === 4) {
@@ -842,7 +846,9 @@ function ouvrirConfirmation() {
     if (!form[t + '_repere'].value.trim()) form[t + '_repere'].value = 'Point placé sur la carte';
   });
   const d = dernierDevis;
-  const achat = form.type.value === 'achat';
+  const trajet = estTrajet();
+  const vehicule = form.vehicule.value === 'voiture' ? 'voiture' : 'moto';
+  const achat = !trajet && form.type.value === 'achat';
   const budget = achat ? Number(form.montant_achat.value) || 0 : 0;
   const tel = form.client_tel.value.replace(/\D/g, '').slice(-9);
   const destNom = form.destinataire_nom.value.trim();
@@ -850,16 +856,18 @@ function ouvrirConfirmation() {
   const km = d.distance_km.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
   const remis = destNom || destTel
     ? `Remis à ${esc(destNom || 'destinataire')}${destTel ? ` · ${esc(telAffiche(destTel))}` : ''}`
-    : 'Vous recevez la livraison';
+    : (trajet ? 'Vous êtes le passager' : 'Vous recevez la livraison');
   $('conf-contenu').innerHTML = `
-    <div class="conf-total"><span>Prix de la course</span><b>${fcfa(d.prix)}</b></div>
+    <div class="conf-total"><span>Prix de la course</span><b>${fcfa(prixCourse(d))}</b></div>
     ${htmlChoixPaiement()}
     <div class="trajet" style="margin:8px 0 6px">
       <div>${esc(form.depart_repere.value)}</div>
       <div>${esc(form.arrivee_repere.value)}</div>
     </div>
     <div class="conf-ligne">${ico('route')}<div>${km} km${d.minutes ? ` · environ ${d.minutes} min` : ''}</div></div>
-    <div class="conf-ligne">${ico(achat ? 'shopping-bag' : 'package')}<div>${esc(form.description.value.trim())}<small>${achat ? 'Acheter pour moi' : 'Livrer un colis'}</small></div></div>
+    ${trajet
+      ? `<div class="conf-ligne">${ico(vehicule === 'voiture' ? 'car' : 'bike')}<div>Trajet en ${vehicule}${form.note_trajet.value.trim() ? ` · ${esc(form.note_trajet.value.trim())}` : ''}<small>${vehicule === 'voiture' ? 'Jusqu\'à 4 personnes' : '1 personne'}</small></div></div>`
+      : `<div class="conf-ligne">${ico(achat ? 'shopping-bag' : 'package')}<div>${esc(form.description.value.trim())}<small>${achat ? 'Acheter pour moi' : 'Livrer un colis'}</small></div></div>`}
     ${achat && budget ? `<div class="conf-ligne">${ico('banknote')}<div>Achats : environ ${fcfa(budget)}<small>Avancés par le livreur, à lui rembourser sur présentation du ticket</small></div></div>` : ''}
     <div class="conf-ligne">${ico('user')}<div>${esc(form.client_nom.value.trim())} · ${esc(telAffiche(tel))}<small>${remis}</small></div></div>`;
   $('conf-contenu').querySelectorAll('input[name=paiement]').forEach((r) => { r.onchange = majBoutonConfirmation; });
@@ -916,7 +924,7 @@ function htmlChoixPaiement() {
 
 function majBoutonConfirmation() {
   const m = moyenChoisi();
-  const prix = fcfa(dernierDevis.prix);
+  const prix = fcfa(prixCourse());
   // paiement en ligne : rien n'est débité maintenant, le client paie quand un livreur a accepté
   $('conf-envoyer').innerHTML = m === 'especes' ? `Confirmer · ${prix}` : `Commander · ${prix}`;
 }
@@ -1066,6 +1074,8 @@ async function reprendrePaiement(code) {
 async function envoyerCommande() {
   const d = Object.fromEntries(new FormData(form));
   d.paiement = moyenChoisi();
+  d.service = estTrajet() ? 'trajet' : 'livraison';
+  if (d.service === 'trajet') d.description = d.note_trajet || '';
   Stock.set(CLE_PAIEMENT, d.paiement);
   // Pas de question d'alertes ici : pour le paiement, c'est la page Nangu qui la pose et qui envoie
   // « Paiement reçu » (sinon le client aurait deux questions et deux alertes). Nos propres alertes
@@ -1115,7 +1125,9 @@ async function envoyerCommande() {
       return;
     }
     fermerConfirmation();
-    toast(course.paiement !== 'especes'
+    toast(course.service === 'trajet'
+      ? `Demande envoyée. Les chauffeurs ${course.vehicule === 'voiture' ? 'en voiture' : 'à moto'} autour de vous sont prévenus.${course.paiement !== 'especes' ? ` Vous paierez avec ${MOYENS[course.paiement].nom} dès qu'un chauffeur accepte.` : ''}`
+      : course.paiement !== 'especes'
       ? `Commande envoyée. Dès qu'un livreur accepte, vous paierez avec ${MOYENS[course.paiement].nom}. Gardez cette page ouverte.`
       : 'Commande envoyée. Les livreurs disponibles sont prévenus.');
     await chargerListe();
@@ -1185,6 +1197,47 @@ function initCarte() {
   });
 }
 
+// =========================================================================
+// Service : envoyer un colis, ou me déplacer (trajet à moto ou en voiture)
+// =========================================================================
+const CLE_SERVICE = 'tt_service';
+const estTrajet = () => !!(form.service && form.service.value === 'trajet');
+/** Prix de la course selon le service et le véhicule choisis (le calcul renvoie les deux prix). */
+function prixCourse(d = dernierDevis) {
+  if (!d) return 0;
+  return estTrajet() && form.vehicule.value === 'voiture' ? (d.prix_voiture || d.prix) : d.prix;
+}
+function afficherVehicule() {
+  document.querySelectorAll('.carte-vehicule').forEach((b) => b.classList.toggle('choisi', b.dataset.vehicule === form.vehicule.value));
+  if ($('prix-moto')) $('prix-moto').textContent = dernierDevis ? fcfa(dernierDevis.prix_moto || dernierDevis.prix) : '— FCFA';
+  if ($('prix-voiture')) $('prix-voiture').textContent = dernierDevis ? fcfa(dernierDevis.prix_voiture || dernierDevis.prix) : '— FCFA';
+}
+function majService() {
+  document.body.classList.toggle('service-trajet', estTrajet());
+  Stock.set(CLE_SERVICE, estTrajet() ? 'trajet' : 'livraison');
+  afficherVehicule();
+  if (dernierDevis) $('resume-prix').textContent = fcfa(prixCourse());
+  majChoixGPS();
+  majBouton();
+}
+document.querySelectorAll('input[name=service]').forEach((r) => r.addEventListener('change', majService));
+// Moto ou voiture : un toucher choisit et on avance tout seul
+$('choix-vehicule').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-vehicule]');
+  if (!b) return;
+  form.vehicule.value = b.dataset.vehicule;
+  afficherVehicule();
+  if (dernierDevis) $('resume-prix').textContent = fcfa(prixCourse());
+  majBouton();
+  if (etape === 3) {
+    clearTimeout(minuterieAvance);
+    minuterieAvance = setTimeout(() => { if (etape === 3) apresChoixLivraison(); }, 450);
+  }
+});
+// le dernier service utilisé est repris
+if (Stock.get(CLE_SERVICE) === 'trajet') { const r = document.querySelector('input[name=service][value=trajet]'); if (r) r.checked = true; }
+majService();
+
 initCarte();
 chargerConfig();
 afficherCoordonnees();
@@ -1232,8 +1285,14 @@ socket = io({ auth: { suivi: lireCodes() } });
 socket.on('position:recue', positionRecue);
 socket.on('connect', () => Object.values(attentes).forEach((a) => socket.emit('attendre-position', a.code)));
 socket.on('course:maj', (c) => {
+  if (c.statut === 'acceptee' && c.arrive_le && Date.now() - new Date(c.arrive_le).getTime() < 60000) {
+    toast(c.service === 'trajet' ? 'Votre chauffeur est arrivé !' : 'Le livreur est arrivé au point de départ.');
+    chargerListe();
+    return;
+  }
+  const trajet = c.service === 'trajet';
   const messages = {
-    acceptee: `${c.livreur_nom} a accepté votre livraison`,
+    acceptee: trajet ? `${c.livreur_nom} a accepté votre course et arrive vous chercher` : `${c.livreur_nom} a accepté votre livraison`,
     recuperee: 'Votre colis a été récupéré, il est en route',
     livree: 'Livraison terminée',
     en_attente: 'Le livreur s\'est désisté, recherche d\'un autre livreur…',

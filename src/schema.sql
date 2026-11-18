@@ -141,3 +141,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS un_mouvement_course ON mouvements(course_id) W
 
 -- Au-delà de ce montant dû à la plateforme, le livreur ne peut plus accepter de course (0 = pas de plafond)
 INSERT INTO parametres (cle, valeur) VALUES ('plafond_dette', '5000') ON CONFLICT (cle) DO NOTHING;
+
+-- Transport de personnes (comme un service de VTC) en plus des livraisons de colis.
+-- service : 'livraison' (colis) ou 'trajet' (passager) ; vehicule : 'moto' ou 'voiture'.
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS service TEXT NOT NULL DEFAULT 'livraison';
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS vehicule TEXT NOT NULL DEFAULT 'moto';
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS arrive_le TIMESTAMPTZ;   -- chauffeur arrivé au point de départ
+-- véhicule du chauffeur / livreur (renseigné par l'admin)
+ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS vehicule TEXT NOT NULL DEFAULT 'moto';
+ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS plaque TEXT;
+ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS modele TEXT;
+-- prix d'un trajet en voiture = prix moto × ce coefficient
+INSERT INTO parametres (cle, valeur) VALUES ('coef_voiture', '2') ON CONFLICT (cle) DO NOTHING;

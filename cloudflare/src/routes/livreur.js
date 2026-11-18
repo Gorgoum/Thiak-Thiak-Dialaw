@@ -11,7 +11,7 @@ import * as argent from '../argent.js';
 /** Livreur connecté ET validé par l'admin. */
 async function livreur(req, c) {
   await exiger(req, c, 'livreur');
-  const u = (await c.db.query('SELECT id, actif, lat, lng FROM utilisateurs WHERE id = $1', [c.user.id])).rows[0];
+  const u = (await c.db.query('SELECT id, actif, lat, lng, vehicule FROM utilisateurs WHERE id = $1', [c.user.id])).rows[0];
   if (!u) throw new HttpErreur(401, 'Compte introuvable');
   if (!u.actif) throw new HttpErreur(403, 'Votre compte livreur attend la validation de l\'administrateur');
   return u;
@@ -42,8 +42,9 @@ export function enregistrer(r) {
     const moi = await livreur(req, c);
     const res = await c.db.query(
       `SELECT id, type, description, montant_achat, depart_lat, depart_lng, depart_repere,
-              arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le
-       FROM courses WHERE statut = 'en_attente' ORDER BY cree_le DESC LIMIT 50`
+              arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule
+       FROM courses WHERE statut = 'en_attente' AND (service = 'livraison' OR vehicule = $1) ORDER BY cree_le DESC LIMIT 50`,
+      [moi.vehicule || 'moto'] // un trajet en voiture n'est proposé qu'aux voitures
     );
     const p = await parametres(c.db);
     const liste = res.rows.map((x) => ({
@@ -81,7 +82,11 @@ export function enregistrer(r) {
   });
 
   r.post('/api/livreur/courses/:id/accepter', async (req, c) => {
-    await livreur(req, c);
+    const moi = await livreur(req, c);
+    const demande = (await c.db.query('SELECT service, vehicule FROM courses WHERE id = $1', [Number(c.params.id)])).rows[0];
+    if (demande && demande.service === 'trajet' && demande.vehicule !== (moi.vehicule || 'moto')) {
+      throw new HttpErreur(409, `Ce trajet demande une ${demande.vehicule}.`);
+    }
     const b = await argent.bloque(c, c.user.id);
     if (b) {
       throw new HttpErreur(403, `Vous devez ${Math.abs(b.solde).toLocaleString('fr-FR')} FCFA à la plateforme (plafond ${b.plafond.toLocaleString('fr-FR')} FCFA). Reversez-les pour accepter de nouvelles courses.`);
@@ -114,6 +119,23 @@ export function enregistrer(r) {
       return json(await lireCourse(c, id));
     }
     return json(await diffuserMaj(c, id));
+  });
+
+  // « Je suis arrivé » au point de départ : le client est prévenu (passager : « votre chauffeur est là »)
+  r.post('/api/livreur/courses/:id/arrive', async (req, c) => {
+    await livreur(req, c);
+    const id = Number(c.params.id);
+    const res = await c.db.query(
+      `UPDATE courses SET arrive_le = ${MAINTENANT} WHERE id = $1 AND livreur_id = $2 AND statut = 'acceptee' RETURNING id, service`,
+      [id, c.user.id]
+    );
+    if (!res.rows.length) throw new HttpErreur(409, 'Action impossible à ce stade de la course');
+    const trajet = res.rows[0].service === 'trajet';
+    return json(await diffuserMaj(c, id, {
+      titre: trajet ? 'Votre chauffeur est là' : 'Le livreur est arrivé',
+      message: trajet ? 'Votre chauffeur est arrivé au point de départ.' : 'Le livreur est arrivé au point de départ pour récupérer le colis.',
+      urgent: true,
+    }));
   });
 
   // Transitions autorisées : acceptee → recuperee → livree

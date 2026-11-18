@@ -970,3 +970,37 @@ p.alerte-paiement.ok { display: flex; gap: 8px; align-items: flex-start; text-al
 @media (prefers-color-scheme: dark) { .attente-client { background: #2b1d07; border-color: #5c3d0c; } }
 .ligne-info.alerte-payer { display: block; line-height: 1.4; }
 .ligne-info.alerte-payer .ic { vertical-align: -3px; margin-right: 4px; }
+
+/* =========================================================================
+   Transport de personnes : choix du service et du véhicule
+   ========================================================================= */
+/* textes propres à un service : affichés seulement pour celui-là */
+body:not(.service-trajet) [data-pour="trajet"],
+body.service-trajet [data-pour="livraison"] { display: none !important; }
+.progression em { font-style: normal; }
+
+.choix-service { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 18px; padding: 5px; border-radius: 16px; background: var(--surface-2); border: 1px solid var(--line); }
+.choix-service label { margin: 0; position: relative; }
+.choix-service input { position: absolute; opacity: 0; pointer-events: none; }
+.choix-service span {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 8px;
+  border-radius: 12px; font-weight: 700; font-size: 1rem; color: var(--ink-2); cursor: pointer; text-align: center;
+  transition: background var(--transition), color var(--transition), box-shadow var(--transition);
+}
+.choix-service input:checked + span { background: var(--brand); color: #fff; box-shadow: var(--shadow-sm); }
+.choix-service input:focus-visible + span { outline: 3px solid color-mix(in srgb, var(--brand-600) 45%, transparent); }
+
+.choix-vehicule { display: grid; gap: 10px; margin-bottom: 16px; }
+.carte-vehicule {
+  justify-content: flex-start; gap: 14px; text-align: left; white-space: normal; min-height: 76px; padding: 12px 14px;
+  border-radius: 16px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm);
+}
+.carte-vehicule .pic-rond { width: 48px; height: 48px; }
+.carte-vehicule-texte { flex: 1; min-width: 0; }
+.carte-vehicule-texte b { display: block; font-size: 1.08rem; }
+.carte-vehicule-texte small { display: block; color: var(--ink-3); font-size: .86rem; font-weight: 400; margin-top: 2px; }
+.prix-vehicule { font-size: 1.1rem; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.carte-vehicule.choisi { border-color: var(--brand); background: var(--brand-50); box-shadow: inset 0 0 0 1px var(--brand); }
+.carte-vehicule.choisi .pic-rond { background: var(--brand); color: #fff; }
+.vehicule-chauffeur { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 3px 10px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); font-size: .82rem; font-weight: 600; color: var(--ink-2); }
+.chauffeur-arrive { padding: 10px 12px; border-radius: 12px; background: var(--brand-50); border: 1px solid var(--brand-100); font-weight: 600; }

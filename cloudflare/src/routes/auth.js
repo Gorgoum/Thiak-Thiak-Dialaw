@@ -2,7 +2,7 @@
 import { HttpErreur, json, lireCorps } from '../outils.js';
 import { normaliserTel, signer, exiger, hacherPin, verifierPin, limiter, effacerLimite } from '../securite.js';
 
-const vuePublique = (u) => ({ id: u.id, nom: u.nom, telephone: u.telephone, role: u.role, actif: u.actif, disponible: u.disponible });
+const vuePublique = (u) => ({ id: u.id, nom: u.nom, telephone: u.telephone, role: u.role, actif: u.actif, disponible: u.disponible, vehicule: u.vehicule || 'moto', plaque: u.plaque || null, modele: u.modele || null });
 const MAX_ECHECS = 5;
 const BLOCAGE_MS = 15 * 60 * 1000;
 

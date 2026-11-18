@@ -10,7 +10,7 @@ const paiements = require('../paiements');
 
 // Tout livreur doit être connecté ET validé par l'admin
 router.use(exiger('livreur'), a(async (req, res, next) => {
-  const u = (await query('SELECT id, actif, lat, lng FROM utilisateurs WHERE id = $1', [req.user.id])).rows[0];
+  const u = (await query('SELECT id, actif, lat, lng, vehicule FROM utilisateurs WHERE id = $1', [req.user.id])).rows[0];
   if (!u) return res.status(401).json({ erreur: 'Compte introuvable' });
   if (!u.actif) return res.status(403).json({ erreur: 'Votre compte livreur attend la validation de l\'administrateur' });
   req.livreur = u;
@@ -38,8 +38,9 @@ router.post('/position', a(async (req, res) => {
 router.get('/courses-disponibles', a(async (req, res) => {
   const r = await query(
     `SELECT id, type, description, montant_achat, depart_lat, depart_lng, depart_repere,
-            arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le
-     FROM courses WHERE statut = 'en_attente' ORDER BY cree_le DESC LIMIT 50`
+            arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule
+     FROM courses WHERE statut = 'en_attente' AND (service = 'livraison' OR vehicule = $1) ORDER BY cree_le DESC LIMIT 50`,
+    [req.livreur.vehicule || 'moto'] // un trajet en voiture n'est proposé qu'aux voitures
   );
   const moi = req.livreur;
   const p = await parametres();
@@ -74,6 +75,10 @@ router.get('/gains', a(async (req, res) => {
 router.get('/argent', a(async (req, res) => res.json(await argent.argentLivreur(req.user.id))));
 
 router.post('/courses/:id/accepter', a(async (req, res) => {
+  const demande = (await query('SELECT service, vehicule FROM courses WHERE id = $1', [req.params.id])).rows[0];
+  if (demande && demande.service === 'trajet' && demande.vehicule !== (req.livreur.vehicule || 'moto')) {
+    return res.status(409).json({ erreur: `Ce trajet demande une ${demande.vehicule}.` });
+  }
   const b = await argent.bloque(req.user.id);
   if (b) {
     return res.status(403).json({
@@ -108,6 +113,21 @@ router.post('/courses/:id/accepter', a(async (req, res) => {
     return res.json(await lireCourse(req.params.id));
   }
   res.json(await diffuserMaj(io, req.params.id));
+}));
+
+// « Je suis arrivé » au point de départ : le client est prévenu (passager : « votre chauffeur est là »)
+router.post('/courses/:id/arrive', a(async (req, res) => {
+  const r = await query(
+    `UPDATE courses SET arrive_le = now() WHERE id = $1 AND livreur_id = $2 AND statut = 'acceptee' RETURNING id, service`,
+    [req.params.id, req.user.id]
+  );
+  if (!r.rows.length) return res.status(409).json({ erreur: 'Action impossible à ce stade de la course' });
+  const trajet = r.rows[0].service === 'trajet';
+  res.json(await diffuserMaj(req.app.get('io'), req.params.id, {
+    titre: trajet ? 'Votre chauffeur est là' : 'Le livreur est arrivé',
+    message: trajet ? 'Votre chauffeur est arrivé au point de départ.' : 'Le livreur est arrivé au point de départ pour récupérer le colis.',
+    urgent: true,
+  }));
 }));
 
 // Transitions autorisées : acceptee → recuperee → livree

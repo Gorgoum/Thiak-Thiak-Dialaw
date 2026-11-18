@@ -9,7 +9,7 @@ import { envoyer } from '../push.js';
 import * as argent from '../argent.js';
 import { CATEGORIES } from '../lieux.js';
 
-const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette'];
+const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture'];
 
 export function enregistrer(r) {
   enregistrerGestion(r);
@@ -42,7 +42,7 @@ export function enregistrer(r) {
   r.get('/api/admin/livreurs', async (req, c) => {
     await exigerAdmin(req, c);
     const res = await c.db.query(
-      `SELECT u.id, u.nom, u.telephone, u.actif, u.disponible, u.position_maj, u.cree_le,
+      `SELECT u.id, u.nom, u.telephone, u.actif, u.disponible, u.position_maj, u.cree_le, u.vehicule, u.plaque, u.modele,
               coalesce(s.nb_livrees, 0) AS nb_livrees, s.note_moyenne
        FROM utilisateurs u
        LEFT JOIN (
@@ -160,26 +160,38 @@ async function lireCompte(c, b, { id = 0, pinObligatoire = true } = {}) {
   return { nom, tel, pin };
 }
 
+/** Véhicule d'un chauffeur : moto (par défaut) ou voiture, plaque et modèle. */
+async function majVehicule(c, id, b) {
+  await c.db.query('UPDATE utilisateurs SET vehicule = $2, plaque = $3, modele = $4 WHERE id = $1', [
+    Number(id), b.vehicule === 'voiture' ? 'voiture' : 'moto',
+    String(b.plaque || '').trim().toUpperCase().slice(0, 20) || null, String(b.modele || '').trim().slice(0, 40) || null,
+  ]);
+}
+
 async function creerCompte(req, c, role) {
-  const v = await lireCompte(c, await lireCorps(req));
+  const corps = await lireCorps(req);
+  const v = await lireCompte(c, corps);
   const r = await c.db.query(
     `INSERT INTO utilisateurs (nom, telephone, pin_hash, role, actif) VALUES ($1, $2, $3, $4, 1)
      RETURNING id, nom, telephone, role, actif`,
     [v.nom, v.tel, await hacherPin(v.pin), role]
   );
+  if (role === 'livreur') await majVehicule(c, r.rows[0].id, corps);
   c.io.to('admins').emit('livreurs:changement');
   return json(r.rows[0], 201);
 }
 
 async function modifierCompte(req, c, role) {
   const id = Number(c.params.id);
-  const v = await lireCompte(c, await lireCorps(req), { id, pinObligatoire: false });
+  const corps = await lireCorps(req);
+  const v = await lireCompte(c, corps, { id, pinObligatoire: false });
   const r = v.pin
     ? await c.db.query(`UPDATE utilisateurs SET nom = $2, telephone = $3, pin_hash = $4 WHERE id = $1 AND role = '${role}' RETURNING id, nom, telephone`,
       [id, v.nom, v.tel, await hacherPin(v.pin)])
     : await c.db.query(`UPDATE utilisateurs SET nom = $2, telephone = $3 WHERE id = $1 AND role = '${role}' RETURNING id, nom, telephone`,
       [id, v.nom, v.tel]);
   if (!r.rows.length) throw new HttpErreur(404, 'Compte introuvable');
+  if (role === 'livreur') await majVehicule(c, id, corps);
   c.io.to('admins').emit('livreurs:changement');
   return json(r.rows[0]);
 }

@@ -23,10 +23,10 @@ const blocPersonne = (nom, tel, role) => `
     ${tel ? `<a class="bouton" href="tel:+221${esc(tel)}">${ico('phone', 'ic-sm')} Appeler</a>` : ''}
   </div>`;
 /** Frise des 4 étapes d'une course : faites, en cours, à venir */
-function frise(statut) {
+function frise(statut, service = 'livraison') {
   if (statut === 'annulee') return '';
   const ordre = ['en_attente', 'acceptee', 'recuperee', 'livree'];
-  const noms = ['Demandée', 'Acceptée', 'Récupérée', 'Livrée'];
+  const noms = service === 'trajet' ? ['Demandée', 'Acceptée', 'En route', 'Arrivé'] : ['Demandée', 'Acceptée', 'Récupérée', 'Livrée'];
   const i = ordre.indexOf(statut);
   return `<ol class="frise">${noms.map((n, k) => {
     const cls = k <= i ? 'fait' : (k === i + 1 ? 'encours' : '');
@@ -58,7 +58,16 @@ const STATUTS = {
   livree: 'Livrée',
   annulee: 'Annulée',
 };
-const badge = (s) => `<span class="badge b-${s}">${STATUTS[s] || s}</span>`;
+// libellés pour un trajet de passager (transport de personnes)
+const STATUTS_TRAJET = {
+  attente_paiement: 'En attente de paiement',
+  en_attente: 'En attente d\'un chauffeur',
+  acceptee: 'Chauffeur en route',
+  recuperee: 'Course en cours',
+  livree: 'Arrivé',
+  annulee: 'Annulée',
+};
+const badge = (s, service = 'livraison') => `<span class="badge b-${s}">${(service === 'trajet' ? STATUTS_TRAJET : STATUTS)[s] || s}</span>`;
 
 async function api(methode, url, corps) {
   const token = Stock.get(CLE_TOKEN());

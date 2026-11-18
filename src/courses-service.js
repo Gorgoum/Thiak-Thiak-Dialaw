@@ -6,10 +6,11 @@ const { parametres, distanceKm } = require('./tarifs');
 const COLONNES = `c.id, c.client_nom, c.client_tel, c.livreur_id, c.type, c.description, c.montant_achat,
   c.depart_lat, c.depart_lng, c.depart_repere, c.arrivee_lat, c.arrivee_lng, c.arrivee_repere,
   c.destinataire_nom, c.destinataire_tel, c.distance_km, c.prix, c.paiement, c.paiement_statut, c.montant_du, c.paye_le, c.statut, c.note,
-  c.cree_le, c.acceptee_le, c.recuperee_le, c.livree_le, c.annulee_le`;
+  c.cree_le, c.acceptee_le, c.recuperee_le, c.livree_le, c.annulee_le,
+  c.service, c.vehicule, c.arrive_le`;
 
 const SELECT_COURSE = `
-  SELECT ${COLONNES}, l.nom AS livreur_nom, l.telephone AS livreur_tel
+  SELECT ${COLONNES}, l.nom AS livreur_nom, l.telephone AS livreur_tel, l.vehicule AS livreur_vehicule, l.plaque AS livreur_plaque, l.modele AS livreur_modele
   FROM courses c
   LEFT JOIN utilisateurs l ON l.id = c.livreur_id`;
 
@@ -23,15 +24,17 @@ const fcfa = (n) => Number(n).toLocaleString('fr-FR') + ' FCFA';
 /** Prévient les livreurs disponibles dans le rayon (ou sans position connue) d'une nouvelle course. */
 async function notifierNouvelleCourse(io, course) {
   const p = await parametres();
-  const r = await query(`SELECT id, lat, lng FROM utilisateurs WHERE role = 'livreur' AND actif AND disponible`);
+  const r = await query(`SELECT id, lat, lng, vehicule FROM utilisateurs WHERE role = 'livreur' AND actif AND disponible`);
   const depart = { lat: course.depart_lat, lng: course.depart_lng };
+  const trajet = course.service === 'trajet';
   const cibles = r.rows
+    .filter((l) => !trajet || (l.vehicule || 'moto') === course.vehicule) // un trajet en voiture → les voitures seulement
     .filter((l) => l.lat == null || distanceKm(depart, l) <= (p.rayon_km || 10))
     .map((l) => l.id);
 
   io.to(['livreurs', 'admins']).emit('courses:changement');
   await push.envoyer(cibles, {
-    titre: `Nouvelle course · ${fcfa(course.prix)}`,
+    titre: `${trajet ? `Nouveau trajet en ${course.vehicule}` : 'Nouvelle livraison'} · ${fcfa(course.prix)}`,
     corps: `${course.depart_repere} → ${course.arrivee_repere}`,
     url: '/livreur.html',
     tag: 'course-' + course.id,
@@ -40,10 +43,12 @@ async function notifierNouvelleCourse(io, course) {
 }
 
 const MESSAGES_CLIENT = {
-  acceptee: (c) => `${c.livreur_nom} a accepté votre livraison et arrive au point de départ.`,
-  recuperee: () => 'Votre colis a été récupéré, il est en route.',
-  livree: () => 'Livraison terminée. Merci d\'avoir utilisé Yobalema Yène !',
-  en_attente: () => 'Le livreur s\'est désisté, nous cherchons un autre livreur.',
+  acceptee: (c) => (c.service === 'trajet'
+    ? `${c.livreur_nom} a accepté votre course et arrive vous chercher${c.livreur_plaque ? ` (${c.livreur_modele || c.vehicule}, ${c.livreur_plaque})` : ''}.`
+    : `${c.livreur_nom} a accepté votre livraison et arrive au point de départ.`),
+  recuperee: (c) => (c.service === 'trajet' ? 'Bonne route ! Votre course a commencé.' : 'Votre colis a été récupéré, il est en route.'),
+  livree: (c) => (c.service === 'trajet' ? 'Vous êtes arrivé. Merci d\'avoir voyagé avec Yobalema Yène !' : 'Livraison terminée. Merci d\'avoir utilisé Yobalema Yène !'),
+  en_attente: (c) => (c.service === 'trajet' ? 'Le chauffeur s\'est désisté, nous cherchons un autre chauffeur.' : 'Le livreur s\'est désisté, nous cherchons un autre livreur.'),
 };
 
 /** Diffuse un changement de statut au client (salle de suivi), au livreur, aux autres livreurs et aux admins. */

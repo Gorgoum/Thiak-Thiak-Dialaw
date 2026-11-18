@@ -5,6 +5,7 @@ const { normaliserTel, signer, exiger, a } = require('../auth');
 
 const vuePublique = (u) => ({
   id: u.id, nom: u.nom, telephone: u.telephone, role: u.role, actif: u.actif, disponible: u.disponible,
+  vehicule: u.vehicule || 'moto', plaque: u.plaque || null, modele: u.modele || null,
 });
 
 // Anti force brute sur le PIN : 5 échecs → blocage 15 minutes par numéro

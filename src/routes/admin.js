@@ -39,7 +39,7 @@ router.get('/stats', a(async (req, res) => {
 
 router.get('/livreurs', a(async (req, res) => {
   const r = await query(
-    `SELECT u.id, u.nom, u.telephone, u.actif, u.disponible, u.position_maj, u.cree_le,
+    `SELECT u.id, u.nom, u.telephone, u.actif, u.disponible, u.position_maj, u.cree_le, u.vehicule, u.plaque, u.modele,
             coalesce(s.nb_livrees, 0)::int AS nb_livrees, s.note_moyenne
      FROM utilisateurs u
      LEFT JOIN (
@@ -136,7 +136,7 @@ router.delete('/lieux/:id', a(async (req, res) => {
   res.json({ ok: true });
 }));
 
-const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette'];
+const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture'];
 
 router.get('/parametres', a(async (req, res) => res.json(await parametres())));
 
@@ -203,6 +203,14 @@ async function lireCompte(b, { id = null, pinObligatoire = true } = {}) {
   return { nom, tel, pin };
 }
 
+/** Véhicule d'un chauffeur : moto (par défaut) ou voiture, plaque et modèle. */
+async function majVehicule(id, b) {
+  await query('UPDATE utilisateurs SET vehicule = $2, plaque = $3, modele = $4 WHERE id = $1', [
+    id, b.vehicule === 'voiture' ? 'voiture' : 'moto',
+    String(b.plaque || '').trim().toUpperCase().slice(0, 20) || null, String(b.modele || '').trim().slice(0, 40) || null,
+  ]);
+}
+
 async function creerCompte(req, res, role) {
   const v = await lireCompte(req.body || {});
   if (v.erreur) return res.status(400).json({ erreur: v.erreur });
@@ -211,6 +219,7 @@ async function creerCompte(req, res, role) {
      RETURNING id, nom, telephone, role, actif`,
     [v.nom, v.tel, await bcrypt.hash(v.pin, 10), role]
   );
+  if (role === 'livreur') await majVehicule(r.rows[0].id, req.body || {});
   req.app.get('io').to('admins').emit('livreurs:changement');
   res.status(201).json(r.rows[0]);
 }
@@ -224,6 +233,7 @@ async function modifierCompte(req, res, role) {
     : await query(`UPDATE utilisateurs SET nom = $2, telephone = $3 WHERE id = $1 AND role = '${role}' RETURNING id, nom, telephone`,
       [req.params.id, v.nom, v.tel]);
   if (!r.rows.length) return res.status(404).json({ erreur: 'Compte introuvable' });
+  if (role === 'livreur') await majVehicule(req.params.id, req.body || {});
   req.app.get('io').to('admins').emit('livreurs:changement');
   res.json(r.rows[0]);
 }

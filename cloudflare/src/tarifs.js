@@ -67,7 +67,9 @@ export async function devis(c, depart, arrivee) {
   }
   const brut = p.prix_base + km * p.prix_km;
   const prix = Math.max(p.prix_min, Math.ceil(brut / 100) * 100);
-  return { distance_km: Math.round(km * 100) / 100, prix, minutes, trace, source };
+  // trajet en voiture : prix moto × coefficient (réglable par l'admin), arrondi à la centaine
+  const prixVoiture = Math.ceil((prix * (p.coef_voiture || 2)) / 100) * 100;
+  return { distance_km: Math.round(km * 100) / 100, prix, prix_moto: prix, prix_voiture: prixVoiture, minutes, trace, source };
 }
 
 export function pointValide(pt) {

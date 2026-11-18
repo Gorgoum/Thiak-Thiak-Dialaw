@@ -31,7 +31,7 @@
     </a>
     <button type="button" id="ouvrir-suivi" class="btn btn-ghost" hidden>
       <svg class="ic" aria-hidden="true"><use href="/icons.svg#list"></use></svg>
-      <span>Mes livraisons</span>
+      <span>Mes courses</span>
       <span class="pastille" id="nb-actives" hidden></span>
     </button>
   </header>
@@ -61,7 +61,7 @@
         <span class="pic-rond"><svg class="ic" aria-hidden="true"><use href="/icons.svg#bell"></use></svg></span>
         <div class="bandeau-alertes-texte">
           <b>Activez les notifications</b>
-          <small>Vous saurez quand votre paiement est reçu, quand le livreur arrive et quand le colis est livré.</small>
+          <small>Vous saurez quand votre chauffeur ou votre livreur arrive, et quand votre paiement est reçu.</small>
           <div class="bandeau-alertes-actions">
             <button type="button" class="btn btn-primaire" id="alertes-activer">Activer</button>
             <button type="button" class="btn btn-ghost" id="alertes-plus-tard">Plus tard</button>
@@ -69,17 +69,24 @@
         </div>
       </div>
 
+      <div class="choix-service" role="radiogroup" aria-label="Que voulez-vous faire ?">
+        <label><input type="radio" name="service" value="livraison" form="f-course" checked>
+          <span><svg class="ic" aria-hidden="true"><use href="/icons.svg#package"></use></svg>Envoyer un colis</span></label>
+        <label><input type="radio" name="service" value="trajet" form="f-course">
+          <span><svg class="ic" aria-hidden="true"><use href="/icons.svg#bike"></use></svg>Me déplacer</span></label>
+      </div>
+
       <ol class="progression" id="progression" aria-label="Étapes de la commande">
         <li data-aller="1"><span>1</span>Départ</li>
         <li data-aller="2"><span>2</span>Arrivée</li>
-        <li data-aller="3"><span>3</span>Colis</li>
+        <li data-aller="3"><span>3</span><em data-pour="livraison">Colis</em><em data-pour="trajet">Véhicule</em></li>
         <li data-aller="4"><span>4</span>Vous</li>
       </ol>
 
       <form id="f-course" novalidate>
         <!-- 1. Départ -->
         <div class="ecran etape-trajet" data-etape="1" data-type="depart">
-          <h2 class="question"><span class="puce puce-a">A</span>D'où part le colis ?</h2>
+          <h2 class="question"><span class="puce puce-a">A</span><span data-pour="livraison">D'où part le colis ?</span><span data-pour="trajet">Où êtes-vous ?</span></h2>
           <p class="note-gps" id="note-depart" hidden></p>
           <div class="gros-choix">
             <button type="button" class="gros-bouton" data-gps="depart">
@@ -109,10 +116,10 @@
 
         <!-- 2. Arrivée -->
         <div class="ecran etape-trajet" data-etape="2" data-type="arrivee" hidden>
-          <h2 class="question"><span class="puce puce-b">B</span>Où faut-il livrer ?</h2>
+          <h2 class="question"><span class="puce puce-b">B</span><span data-pour="livraison">Où faut-il livrer ?</span><span data-pour="trajet">Où allez-vous ?</span></h2>
           <p class="note-gps" id="note-arrivee" hidden></p>
           <div class="gros-choix">
-            <button type="button" class="gros-bouton" data-gps="arrivee">
+            <button type="button" class="gros-bouton" data-gps="arrivee" data-pour="livraison">
               <span class="pic-rond"><svg class="ic"><use href="/icons.svg#house"></use></svg></span>
               <span><b>Chez moi, ici</b><small>Prendre ma position</small></span>
             </button>
@@ -120,7 +127,7 @@
               <span class="pic-rond"><svg class="ic"><use href="/icons.svg#pointer"></use></svg></span>
               <span><b>Toucher la carte</b><small>Montrer l'endroit sur la carte</small></span>
             </button>
-            <button type="button" class="gros-bouton" data-demander="arrivee">
+            <button type="button" class="gros-bouton" data-demander="arrivee" data-pour="livraison">
               <span class="pic-rond"><svg class="ic"><use href="/icons.svg#send"></use></svg></span>
               <span><b>Demander au destinataire</b><small>Il envoie sa position par un lien</small></span>
             </button>
@@ -145,6 +152,26 @@
 
         <!-- 3. Quoi -->
         <div class="ecran" data-etape="3" hidden>
+          <div data-pour="trajet">
+            <h2 class="question">Moto ou voiture ?</h2>
+            <input type="hidden" name="vehicule" value="moto">
+            <div class="choix-vehicule" id="choix-vehicule">
+              <button type="button" class="carte-vehicule" data-vehicule="moto">
+                <span class="pic-rond"><svg class="ic"><use href="/icons.svg#bike"></use></svg></span>
+                <span class="carte-vehicule-texte"><b>Moto</b><small>1 personne · le plus rapide</small></span>
+                <b class="prix-vehicule" id="prix-moto">— FCFA</b>
+              </button>
+              <button type="button" class="carte-vehicule" data-vehicule="voiture">
+                <span class="pic-rond"><svg class="ic"><use href="/icons.svg#car"></use></svg></span>
+                <span class="carte-vehicule-texte"><b>Voiture</b><small>Jusqu'à 4 personnes · confortable</small></span>
+                <b class="prix-vehicule" id="prix-voiture">— FCFA</b>
+              </button>
+            </div>
+            <label class="champ">Un mot pour le chauffeur (facultatif)
+              <input name="note_trajet" maxlength="200" placeholder="Ex : 2 personnes, un bagage">
+            </label>
+          </div>
+          <div data-pour="livraison">
           <h2 class="question">Que faut-il livrer ?</h2>
           <div class="segment grand" role="radiogroup" aria-label="Type de service">
             <label><input type="radio" name="type" value="colis" checked><span><svg class="ic"><use href="/icons.svg#package"></use></svg>Livrer un colis</span></label>
@@ -158,6 +185,7 @@
             <input name="montant_achat" type="number" inputmode="numeric" min="0" step="50" placeholder="5 000">
             <small>Le livreur paie pour vous, vous le remboursez à la livraison.</small>
           </label>
+          </div>
         </div>
 
         <!-- 4. Vous -->
@@ -177,7 +205,7 @@
               <input name="client_nom" maxlength="100" autocomplete="name" placeholder="Ex : Awa Diop">
             </label>
           </div>
-          <details class="replier" id="bloc-destinataire">
+          <details class="replier" id="bloc-destinataire" data-pour="livraison">
             <summary><svg class="ic ic-sm"><use href="/icons.svg#chevron-down"></use></svg>C'est pour une autre personne</summary>
             <label class="champ">Son nom
               <input name="destinataire_nom" maxlength="100">
@@ -226,7 +254,7 @@
     <div class="tiroir-fond" data-fermer></div>
     <aside class="tiroir-panneau" role="dialog" aria-modal="true" aria-labelledby="titre-tiroir">
       <header>
-        <h2 id="titre-tiroir">Mes livraisons</h2>
+        <h2 id="titre-tiroir">Mes courses</h2>
         <button type="button" class="btn-rond" data-fermer aria-label="Fermer"><svg class="ic"><use href="/icons.svg#x"></use></svg></button>
       </header>
       <div class="contenu">

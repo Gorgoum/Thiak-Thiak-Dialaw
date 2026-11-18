@@ -28,11 +28,15 @@ export function enregistrer(r) {
     if (distanceKm(b.depart, b.arrivee) < 0.03) throw new HttpErreur(400, 'Le départ et l\'arrivée sont au même endroit');
     const departRepere = texte(b.depart_repere);
     const arriveeRepere = texte(b.arrivee_repere);
-    const description = texte(b.description, 500);
+    // service : livraison d'un colis, ou trajet d'une personne (moto ou voiture)
+    const service = b.service === 'trajet' ? 'trajet' : 'livraison';
+    const vehicule = service === 'trajet' && b.vehicule === 'voiture' ? 'voiture' : 'moto';
+    const note = texte(b.description, 200);
+    const description = service === 'trajet' ? `Trajet en ${vehicule}${note ? ' · ' + note : ''}` : texte(b.description, 500);
     if (!departRepere || !arriveeRepere) throw new HttpErreur(400, 'Indiquez un repère pour le départ et l\'arrivée');
     if (!description) throw new HttpErreur(400, 'Décrivez ce qu\'il faut livrer');
 
-    const type = b.type === 'achat' ? 'achat' : 'colis';
+    const type = service === 'livraison' && b.type === 'achat' ? 'achat' : 'colis';
     const montantAchat = type === 'achat' ? Math.max(0, Math.round(Number(b.montant_achat) || 0)) : 0;
     let destTel = null;
     if (b.destinataire_tel) {
@@ -55,13 +59,13 @@ export function enregistrer(r) {
     const ins = await c.db.query(
       `INSERT INTO courses (client_nom, client_tel, suivi_token, type, description, montant_achat,
          depart_lat, depart_lng, depart_repere, arrivee_lat, arrivee_lng, arrivee_repere,
-         destinataire_nom, destinataire_tel, distance_km, prix, paiement, paiement_statut, statut)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id`,
+         destinataire_nom, destinataire_tel, distance_km, prix, paiement, paiement_statut, statut, service, vehicule)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`,
       [clientNom, clientTel, code, type, description, montantAchat,
         Number(b.depart.lat), Number(b.depart.lng), departRepere, Number(b.arrivee.lat), Number(b.arrivee.lng), arriveeRepere,
-        texte(b.destinataire_nom, 100) || null, destTel, d.distance_km, d.prix,
+        texte(b.destinataire_nom, 100) || null, destTel, d.distance_km, service === 'trajet' && vehicule === 'voiture' ? d.prix_voiture : d.prix,
         // paiement en ligne : rien à payer tant qu'aucun livreur n'a accepté (le paiement est créé à l'acceptation)
-        paiement, enLigne ? 'en_attente' : 'a_la_livraison', 'en_attente']
+        paiement, enLigne ? 'en_attente' : 'a_la_livraison', 'en_attente', service, vehicule]
     );
     const id = ins.rows[0].id;
     const course = await lireCourse(c, id);

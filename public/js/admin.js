@@ -24,7 +24,7 @@ async function chargerLivreurs() {
   document.getElementById('livreurs').innerHTML = `
     <tr><th>Nom</th><th>Actions</th><th>Téléphone</th><th>État</th><th>Livrées</th><th>Note</th></tr>
     ${livreurs.map((x) => `<tr>
-      <td><b>${esc(x.nom)}</b></td>
+      <td><b>${esc(x.nom)}</b><br><span class="meta">${ico(x.vehicule === 'voiture' ? 'car' : 'bike', 'ic-sm')} ${x.vehicule === 'voiture' ? 'Voiture' : 'Moto'}${x.plaque ? ' · ' + esc(x.plaque) : ''}</span></td>
       <td class="actions-ligne">${x.actif
         ? `<button data-livreur="${x.id}" data-actif="0">${ico('power', 'ic-sm')} Désactiver</button>`
         : `<button class="jaune" data-livreur="${x.id}" data-actif="1">${ico('check', 'ic-sm')} Valider</button>`}
@@ -46,7 +46,7 @@ async function chargerCourses() {
       <td>${x.id}</td>
       <td><button data-gerer-course="${x.id}">${ico('settings', 'ic-sm')} Gérer</button></td>
       <td>${dateCourte(x.cree_le)}</td>
-      <td>${badge(x.statut)}</td>
+      <td>${badge(x.statut, x.service)}</td>
       <td><div class="trajet" style="margin:0"><div>${esc(x.depart_repere)}</div><div>${esc(x.arrivee_repere)}</div></div><span class="meta">${ico(x.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${esc(x.description)}</span></td>
       <td>${esc(x.client_nom)}<br>${lienTel(x.client_tel)}</td>
       <td>${x.livreur_nom ? `${esc(x.livreur_nom)}<br>${lienTel(x.livreur_tel)}` : '–'}</td>
@@ -186,7 +186,18 @@ const champsCompte = (u = {}) => `
 function fenetreCompte(role, u = null) {
   const qui = role === 'admin' ? 'administrateur' : 'livreur';
   const route = role === 'admin' ? '/api/admin/admins' : '/api/admin/livreurs';
-  ouvrirFenetre(u ? `Modifier le ${qui}` : `Ajouter un ${qui}`, champsCompte(u || {}), async (d) => {
+  // chauffeur / livreur : son véhicule (il ne reçoit que les trajets de son type de véhicule)
+  const v = u || {};
+  const champsVehicule = role === 'admin' ? '' : `
+    <label>Véhicule<select name="vehicule">
+      <option value="moto" ${v.vehicule !== 'voiture' ? 'selected' : ''}>Moto (Jakarta)</option>
+      <option value="voiture" ${v.vehicule === 'voiture' ? 'selected' : ''}>Voiture (taxi / clando)</option>
+    </select></label>
+    <div class="grille-2">
+      ${champ('Plaque d\'immatriculation', 'plaque', v.plaque, 'maxlength="20" autocomplete="off" placeholder="DK-1234-AB"')}
+      ${champ('Modèle et couleur', 'modele', v.modele, 'maxlength="40" autocomplete="off" placeholder="Ex : TVS bleue"')}
+    </div>`;
+  ouvrirFenetre(u ? `Modifier le ${qui}` : `Ajouter un ${qui}`, champsCompte(u || {}) + champsVehicule, async (d) => {
     if (u) await api('PUT', `${route}/${u.id}`, d);
     else await api('POST', route, d);
     toast(u ? 'Modifications enregistrées' : `${d.nom} ajouté. Donnez-lui son numéro et son code PIN pour se connecter.`);
@@ -225,7 +236,7 @@ function fenetreCourse(x) {
   if (!enCours) actions.push(`<button type="button" class="danger" data-action="supprimer">${ico('trash-2', 'ic-sm')} Supprimer définitivement</button>`);
 
   ouvrirFenetre(`Course n° ${x.id}`, `
-    <p class="meta" style="margin:0 0 12px">${badge(x.statut)} · ${dateCourte(x.cree_le)} · ${Number(x.distance_km).toLocaleString('fr-FR')} km
+    <p class="meta" style="margin:0 0 12px">${badge(x.statut, x.service)} · ${dateCourte(x.cree_le)} · ${Number(x.distance_km).toLocaleString('fr-FR')} km
       ${enLigne ? '' : ' · espèces à la livraison'}</p>
     <div class="actions-course">${blocPaiement}${actions.join('')}</div>
     <h3 class="sous-titre-fenetre">Modifier les informations</h3>

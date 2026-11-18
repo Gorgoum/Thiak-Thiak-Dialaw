@@ -188,7 +188,9 @@ function trajet(c) {
     <div>${esc(c.depart_repere)}</div>
     <div>${esc(c.arrivee_repere)}</div>
   </div>
-  <div class="ligne-info">${ico(c.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${c.type === 'achat' ? '<b>Achat :</b> ' : ''}${esc(c.description)}</div>
+  ${c.service === 'trajet'
+    ? `<div class="ligne-info">${ico(c.vehicule === 'voiture' ? 'car' : 'bike', 'ic-sm')} <b>Passager</b> · ${esc(c.description)}</div>`
+    : `<div class="ligne-info">${ico(c.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${c.type === 'achat' ? '<b>Achat :</b> ' : ''}${esc(c.description)}</div>`}
   ${c.type === 'achat' && c.montant_achat ? `<div class="meta">Avance estimée : ${fcfa(c.montant_achat)} (remboursée par le client)</div>` : ''}`;
 }
 
@@ -211,11 +213,11 @@ function carteActive(c) {
       ? `<div class="devis paye-en-ligne" style="margin-top:10px">${ico('circle-check')} Course déjà payée par ${moyen} : <b>rien à encaisser</b></div>`
       : `<div class="devis" style="margin-top:10px">À encaisser : <span class="prix">${fcfa(aEncaisser)}</span>${detailEncaisser}</div>`;
   return `
-    <div class="card course-active">
-      <h2>Course en cours ${badge(c.statut)}</h2>
-      ${frise(c.statut)}
+    <div class="card course-active" data-service="${c.service || 'livraison'}">
+      <h2>Course en cours ${badge(c.statut, c.service)}</h2>
+      ${frise(c.statut, c.service)}
       ${trajet(c)}
-      ${blocPersonne(c.client_nom, c.client_tel, c.destinataire_nom || c.destinataire_tel ? 'Client' : 'Client · reçoit la livraison')}
+      ${blocPersonne(c.client_nom, c.client_tel, c.service === 'trajet' ? 'Passager' : c.destinataire_nom || c.destinataire_tel ? 'Client' : 'Client · reçoit la livraison')}
       ${c.destinataire_nom || c.destinataire_tel ? blocPersonne(c.destinataire_nom || 'Destinataire', c.destinataire_tel, 'Destinataire') : ''}
       ${blocEncaisser}
       <div class="actions">
@@ -224,9 +226,11 @@ function carteActive(c) {
       <a class="lien-secondaire" data-nav="${cible[0]},${cible[1]}" ${lienItineraire(cible[0], cible[1], maPosition)}>Ouvrir dans une autre application GPS</a>
       <div class="actions">
         ${versDepart
-          ? `<button class="jaune grand" data-etape="recuperee" data-id="${c.id}" ${attendPaiement ? 'disabled' : ''}>${ico('package')} J'ai récupéré le colis</button>
-             <button class="danger" data-etape="liberer" data-id="${c.id}">Me désister</button>`
-          : `<button class="jaune grand" data-etape="livree" data-id="${c.id}">${ico('circle-check')} Livraison terminée</button>`}
+          ? (c.service === 'trajet' && !c.arrive_le
+            ? `<button class="jaune grand" data-etape="arrive" data-id="${c.id}">${ico('map-pin')} Je suis arrivé</button>`
+            : `<button class="jaune grand" data-etape="recuperee" data-id="${c.id}" ${attendPaiement ? 'disabled' : ''}>${ico(c.service === 'trajet' ? 'user' : 'package')} ${c.service === 'trajet' ? 'Passager à bord' : 'J\'ai récupéré le colis'}</button>`)
+            + `<button class="danger" data-etape="liberer" data-id="${c.id}">Me désister</button>`
+          : `<button class="jaune grand" data-etape="livree" data-id="${c.id}">${ico('circle-check')} ${c.service === 'trajet' ? 'Arrivé à destination' : 'Livraison terminée'}</button>`}
       </div>
     </div>`;
 }
@@ -272,7 +276,7 @@ async function chargerTout() {
         <div class="course">
           <div class="haut"><span class="meta">${dateCourte(c.cree_le)} · ${Number(c.distance_km).toLocaleString('fr-FR')} km
             ${c.distance_moi_km != null ? ` · à ${c.distance_moi_km.toLocaleString('fr-FR')} km de vous` : ''}</span>
-            <span class="prix-course">${fcfa(c.prix)}${c.paiement_statut === 'paye' ? `<br><span class="badge b-livree">Payé en ligne</span>` : c.paiement !== 'especes' ? `<br><span class="badge b-acceptee">${c.paiement === 'wave' ? 'Wave' : 'Orange Money'} à l'acceptation</span>` : ''}</span></div>
+            <span class="prix-course">${fcfa(c.prix)}${c.service === 'trajet' ? `<br><span class="badge b-acceptee">${ico(c.vehicule === 'voiture' ? 'car' : 'bike', 'ic-sm')} Trajet · ${c.vehicule === 'voiture' ? 'Voiture' : 'Moto'}</span>` : ''}${c.paiement_statut === 'paye' ? `<br><span class="badge b-livree">Payé en ligne</span>` : c.paiement !== 'especes' ? `<br><span class="badge b-acceptee">${c.paiement === 'wave' ? 'Wave' : 'Orange Money'} à l'acceptation</span>` : ''}</span></div>
           ${trajet(c)}
           <div class="actions">
             <a class="bouton" data-nav="${c.depart_lat},${c.depart_lng}" ${lienItineraire(c.depart_lat, c.depart_lng, maPosition)}>${ico('map', 'ic-sm')} Voir le départ</a>
@@ -289,7 +293,7 @@ async function chargerTout() {
     document.getElementById('historique').innerHTML = hist.length
       ? hist.map((c) => `
         <div class="course">
-          <div class="haut">${badge(c.statut)}<span class="prix-course">${fcfa(c.prix)}</span></div>
+          <div class="haut">${badge(c.statut, c.service)}<span class="prix-course">${fcfa(c.prix)}</span></div>
           <div class="meta">${dateCourte(c.livree_le || c.cree_le)} · ${esc(c.depart_repere)} → ${esc(c.arrivee_repere)}
           ${c.note ? ` · ${'★'.repeat(c.note)}` : ''}</div>
         </div>`).join('')
@@ -320,8 +324,14 @@ document.getElementById('app').addEventListener('click', async (e) => {
       toast('Course acceptée ! Le guidage vers le départ démarre.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (b.dataset.etape) {
-      const msgs = { recuperee: 'Confirmer que vous avez récupéré le colis ?', livree: 'Confirmer la livraison et l\'encaissement ?', liberer: 'Rendre cette course aux autres livreurs ?' };
-      if (!confirm(msgs[b.dataset.etape])) return;
+      const carte = b.closest('.course-active');
+      const trajet = !!(carte && carte.dataset.service === 'trajet');
+      const msgs = {
+        recuperee: trajet ? 'Le passager est-il à bord ?' : 'Confirmer que vous avez récupéré le colis ?',
+        livree: trajet ? 'Confirmer l\'arrivée à destination et l\'encaissement ?' : 'Confirmer la livraison et l\'encaissement ?',
+        liberer: 'Rendre cette course aux autres livreurs ?',
+      };
+      if (msgs[b.dataset.etape] && !confirm(msgs[b.dataset.etape])) return;
       await api('POST', `/api/livreur/courses/${b.dataset.id}/${b.dataset.etape}`);
     } else return;
     chargerTout();
@@ -333,6 +343,8 @@ function afficherApp(u) {
   document.getElementById('deco').hidden = false;
   document.getElementById('deco').onclick = deconnexion;
   document.querySelectorAll('.nom').forEach((n) => { n.textContent = u.nom; });
+  const ligneVehicule = document.querySelector('.bonjour small.meta');
+  if (ligneVehicule) ligneVehicule.textContent = [u.vehicule === 'voiture' ? 'Chauffeur · Voiture' : 'Chauffeur · Moto', u.modele, u.plaque].filter(Boolean).join(' · ');
   const av = document.getElementById('avatar');
   if (av) av.textContent = initiales(u.nom);
 
