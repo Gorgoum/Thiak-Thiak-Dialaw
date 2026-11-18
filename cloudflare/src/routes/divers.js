@@ -2,7 +2,7 @@
 import { HttpErreur, json, lireCorps, adresseIp, codeAleatoire } from '../outils.js';
 import { MAINTENANT } from '../db.js';
 import { limiter } from '../securite.js';
-import { pointValide } from '../tarifs.js';
+import { pointValide, parametres } from '../tarifs.js';
 import * as nangu from '../nangu.js';
 
 const DUREE_VALIDITE_H = 24;
@@ -17,7 +17,13 @@ async function lirePosition(c, code) {
 }
 
 export function enregistrer(r) {
-  r.get('/api/config', async (req, c) => json({ paiement_en_ligne: nangu.fournisseurs(c.env), paiement_test: nangu.actif(c.env) && nangu.modeTest(c.env) }));
+  r.get('/api/config', async (req, c) => {
+    const p = await parametres(c.db);
+    return json({
+      paiement_en_ligne: nangu.fournisseurs(c.env), paiement_test: nangu.actif(c.env) && nangu.modeTest(c.env),
+      frais_achat_pct: Number(p.frais_achat_pct) || 0, frais_achat_min: Number(p.frais_achat_min) || 0,
+    });
+  });
 
   r.get('/api/push/cle', async (req, c) => json({ cle: c.env.VAPID_PUBLIC_KEY || null }));
 

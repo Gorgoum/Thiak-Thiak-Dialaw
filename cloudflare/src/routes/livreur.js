@@ -2,7 +2,7 @@
 import { HttpErreur, json, lireCorps } from '../outils.js';
 import { MAINTENANT, DEBUT_JOUR } from '../db.js';
 import { exiger } from '../securite.js';
-import { distanceKm, pointValide, parametres, messageSurPlace } from '../tarifs.js';
+import { distanceKm, pointValide, parametres, messageSurPlace, partage } from '../tarifs.js';
 import { SELECT_COURSE, notifierNouvelleCourse, diffuserMaj, lireCourse } from '../courses-service.js';
 import * as paiements from '../paiements.js';
 import { apprendreDeLaCourse } from '../lieux.js';
@@ -128,13 +128,14 @@ export function enregistrer(r) {
     const moi = await livreur(req, c);
     const res = await c.db.query(
       `SELECT id, type, description, montant_achat, depart_lat, depart_lng, depart_repere,
-              arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule
+              arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule, frais_service, frais_achat
        FROM courses WHERE statut = 'en_attente' AND (service = 'livraison' OR vehicule = $1) ORDER BY cree_le DESC LIMIT 50`,
       [moi.vehicule || 'moto'] // un trajet en voiture n'est proposé qu'aux voitures
     );
     const p = await parametres(c.db);
     const liste = res.rows.map((x) => ({
       ...x,
+      part_livreur: partage(x, p).part_livreur, // ce que gagnera le chauffeur
       distance_moi_km: moi.lat != null
         ? Math.round(distanceKm(moi, { lat: x.depart_lat, lng: x.depart_lng }) * (p.facteur_route || 1) * 10) / 10
         : null,
@@ -152,7 +153,7 @@ export function enregistrer(r) {
     await livreur(req, c);
     const p = await parametres(c.db);
     const g = (await c.db.query(
-      `SELECT count(*) AS nb, coalesce(sum(prix), 0) AS total
+      `SELECT count(*) AS nb, coalesce(sum(prix - frais_service - frais_achat), 0) AS total
        FROM courses WHERE livreur_id = $1 AND statut = 'livree' AND livree_le >= ${DEBUT_JOUR}`,
       [c.user.id]
     )).rows[0];

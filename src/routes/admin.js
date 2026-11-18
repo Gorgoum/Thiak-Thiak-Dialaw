@@ -4,6 +4,7 @@ const { query } = require('../db');
 const { exiger, a } = require('../auth');
 const { parametres } = require('../tarifs');
 const { SELECT_COURSE } = require('../courses-service');
+const argent = require('../argent');
 
 router.use(exiger('admin'));
 // Un admin retiré perd l'accès tout de suite, même si son jeton n'a pas expiré
@@ -30,9 +31,14 @@ router.get('/stats', a(async (req, res) => {
             count(*)::int AS total
      FROM utilisateurs WHERE role = 'livreur'`
   )).rows[0];
+  await argent.inscrireCoursesLivrees();
+  const g = (await query(
+    `SELECT coalesce(sum(coalesce(gain_plateforme, commission)), 0)::int AS gain, coalesce(sum(coalesce(frais_paiement, 0)), 0)::int AS frais
+     FROM mouvements WHERE type = 'course' AND cree_le >= date_trunc('day', now())`
+  )).rows[0];
   res.json({
     ...c,
-    commission_jour: Math.round((c.ca_jour * (p.commission_pct || 0)) / 100),
+    commission_jour: g.gain, gain_jour: g.gain, frais_paiement_jour: g.frais,
     livreurs: l,
   });
 }));
@@ -136,7 +142,7 @@ router.delete('/lieux/:id', a(async (req, res) => {
   res.json({ ok: true });
 }));
 
-const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture', 'rayon_arrivee_m'];
+const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture', 'rayon_arrivee_m', 'frais_service', 'frais_achat_pct', 'frais_achat_min', 'frais_wave_pct', 'frais_om_pct'];
 
 router.get('/parametres', a(async (req, res) => res.json(await parametres())));
 
@@ -159,7 +165,6 @@ router.put('/parametres', a(async (req, res) => {
 // =========================================================================
 const bcrypt = require('bcryptjs');
 const { normaliserTel } = require('../auth');
-const argent = require('../argent');
 
 // =========================================================================
 // Argent des livreurs : soldes, historique, règlements, export
@@ -176,6 +181,14 @@ router.post('/livreurs/:id/reglements', a(async (req, res) => {
     if (e.status) return res.status(e.status).json({ erreur: e.message });
     throw e;
   }
+}));
+// Transactions du mois : ?mois=2026-11 (mois en cours par défaut)
+router.get('/transactions', a(async (req, res) => {
+  const m = /^\d{4}-\d{2}$/.test(String(req.query.mois || '')) ? req.query.mois : new Date().toISOString().slice(0, 7);
+  const [an, mo] = m.split('-').map(Number);
+  const du = new Date(Date.UTC(an, mo - 1, 1)).toISOString();
+  const au = new Date(Date.UTC(an, mo, 1)).toISOString();
+  res.json({ mois: m, ...(await argent.transactions({ du, au })) });
 }));
 // Export Excel (CSV) : ?mois=2026-11 (mois en cours par défaut)
 router.get('/mouvements.csv', a(async (req, res) => {

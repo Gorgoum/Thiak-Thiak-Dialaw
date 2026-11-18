@@ -31,9 +31,15 @@ app.post('/webhooks/nangu', express.raw({ type: '*/*', limit: '200kb' }), async 
 app.use(express.json({ limit: '100kb' }));
 
 // Ce que la page client doit savoir (moyens de paiement en ligne disponibles)
-app.get('/api/config', (req, res) => {
-  const nangu = require('./nangu');
-  res.json({ paiement_en_ligne: nangu.fournisseurs(), paiement_test: nangu.actif() && nangu.modeTest() });
+app.get('/api/config', async (req, res, next) => {
+  try {
+    const nangu = require('./nangu');
+    const p = await require('./tarifs').parametres();
+    res.json({
+      paiement_en_ligne: nangu.fournisseurs(), paiement_test: nangu.actif() && nangu.modeTest(),
+      frais_achat_pct: Number(p.frais_achat_pct) || 0, frais_achat_min: Number(p.frais_achat_min) || 0,
+    });
+  } catch (e) { next(e); }
 });
 // Retour après paiement : Nangu ajoute ?payment_id=…&status=… ; on ramène le client sur le suivi de sa course
 // (le paiement lui-même est toujours vérifié côté serveur, jamais d'après ce retour).

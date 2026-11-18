@@ -35,6 +35,37 @@ export function messageSurPlace({ position, cible, repere, rayon, precision, ver
   return `Vous êtes à ${loin} ${ou}${repere ? ` (« ${repere} »)` : ''}. Rapprochez-vous à moins de ${rayon} m, puis réessayez.`;
 }
 
+
+/** Frais d'achat (« Acheter pour moi ») : un % des achats, avec un minimum. 0 si le % est à 0. */
+export function fraisAchat(montantAchat, p) {
+  const pct = Number(p.frais_achat_pct) || 0;
+  if (!pct) return 0;
+  return Math.max(Number(p.frais_achat_min) || 0, Math.round(((Number(montantAchat) || 0) * pct) / 100));
+}
+
+/**
+ * Partage de l'argent d'une course terminée.
+ *  - prix payé par le client = prix de la course + frais de service + frais d'achat
+ *  - part du chauffeur = prix de la course − commission (les frais Wave ne la touchent pas)
+ *  - gain de la plateforme = commission + frais de service + frais d'achat − frais Wave / Orange Money
+ */
+export function partage(course, p) {
+  const prix = Number(course.prix) || 0;
+  const fraisPlateforme = (Number(course.frais_service) || 0) + (Number(course.frais_achat) || 0);
+  const base = Math.max(0, prix - fraisPlateforme);
+  const commission = Math.round((base * (Number(p.commission_pct) || 0)) / 100);
+  const enLigne = course.paiement !== 'especes' && course.paiement_statut === 'paye';
+  const pct = course.paiement === 'orange_money' ? p.frais_om_pct : p.frais_wave_pct;
+  const fraisPaiement = enLigne ? Math.round((prix * (pct ?? 1)) / 100) : 0;
+  return {
+    prix, base, commission, en_ligne: enLigne,
+    frais_plateforme: fraisPlateforme,
+    frais_paiement: fraisPaiement,
+    part_livreur: base - commission,
+    gain_plateforme: commission + fraisPlateforme - fraisPaiement,
+  };
+}
+
 export const CENTRE_YENE = { lat: 14.632, lng: -17.165 };
 
 function horsZone(point, p, nom) {
@@ -85,7 +116,9 @@ export async function devis(c, depart, arrivee) {
   const prix = Math.max(p.prix_min, Math.ceil(brut / 100) * 100);
   // trajet en voiture : prix moto × coefficient (réglable par l'admin), arrondi à la centaine
   const prixVoiture = Math.ceil((prix * (p.coef_voiture || 2)) / 100) * 100;
-  return { distance_km: Math.round(km * 100) / 100, prix, prix_moto: prix, prix_voiture: prixVoiture, minutes, trace, source };
+  // frais de service : un montant fixe par commande, gardé par la plateforme (inclus dans le prix affiché)
+  const fsrv = Math.max(0, Math.round(Number(p.frais_service) || 0));
+  return { distance_km: Math.round(km * 100) / 100, prix: prix + fsrv, prix_moto: prix + fsrv, prix_voiture: prixVoiture + fsrv, frais_service: fsrv, minutes, trace, source };
 }
 
 export function pointValide(pt) {

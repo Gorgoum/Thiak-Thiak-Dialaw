@@ -268,6 +268,9 @@ function carteActive(c) {
   let detailEncaisser = '';
   if (payeEnLigne && achats) detailEncaisser = `<br><small>Course déjà payée par ${moyen} · seulement les achats (montant réel du ticket)</small>`;
   else if (c.type === 'achat') detailEncaisser = `<br><small>course ${fcfa(c.prix)} + achats (montant réel du ticket)</small>`;
+  // en espèces : les frais de service et d'achat sont encaissés avec la course, puis reversés à la plateforme
+  const fraisYob = (Number(c.frais_service) || 0) + (Number(c.frais_achat) || 0);
+  if (!payeEnLigne && fraisYob) detailEncaisser += `<br><small>dont ${fcfa(fraisYob)} de frais Yobalema, à reverser avec la commission</small>`;
   // course à payer en ligne, pas encore payée : le client paie maintenant (10 minutes au plus)
   const attendPaiement = c.paiement !== 'especes' && !payeEnLigne;
   const blocEncaisser = attendPaiement
@@ -337,7 +340,7 @@ async function chargerTout() {
         <div class="course">
           <div class="haut"><span class="meta">${dateCourte(c.cree_le)} · ${Number(c.distance_km).toLocaleString('fr-FR')} km
             ${c.distance_moi_km != null ? ` · à ${c.distance_moi_km.toLocaleString('fr-FR')} km de vous` : ''}</span>
-            <span class="prix-course">${fcfa(c.prix)}${c.service === 'trajet' ? `<br><span class="badge b-acceptee">${ico(c.vehicule === 'voiture' ? 'car' : 'bike', 'ic-sm')} Trajet · ${c.vehicule === 'voiture' ? 'Voiture' : 'Moto'}</span>` : ''}${c.paiement_statut === 'paye' ? `<br><span class="badge b-livree">Payé en ligne</span>` : c.paiement !== 'especes' ? `<br><span class="badge b-acceptee">${c.paiement === 'wave' ? 'Wave' : 'Orange Money'} à l'acceptation</span>` : ''}</span></div>
+            <span class="prix-course">${fcfa(c.prix)}${c.part_livreur != null ? `<br><small class="part-livreur">vous gagnez ${fcfa(c.part_livreur)}</small>` : ''}${c.service === 'trajet' ? `<br><span class="badge b-acceptee">${ico(c.vehicule === 'voiture' ? 'car' : 'bike', 'ic-sm')} Trajet · ${c.vehicule === 'voiture' ? 'Voiture' : 'Moto'}</span>` : ''}${c.paiement_statut === 'paye' ? `<br><span class="badge b-livree">Payé en ligne</span>` : c.paiement !== 'especes' ? `<br><span class="badge b-acceptee">${c.paiement === 'wave' ? 'Wave' : 'Orange Money'} à l'acceptation</span>` : ''}</span></div>
           ${trajet(c)}
           <div class="actions">
             <a class="bouton" data-nav="${c.depart_lat},${c.depart_lng}" ${lienItineraire(c.depart_lat, c.depart_lng, maPosition)}>${ico('map', 'ic-sm')} Voir le départ</a>

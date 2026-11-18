@@ -7,7 +7,7 @@ async function chargerStats() {
     [s.en_cours, 'en cours de livraison'],
     [s.livrees_jour, 'livrées aujourd\'hui'],
     [fcfa(s.ca_jour), 'chiffre du jour'],
-    [fcfa(s.commission_jour), 'commission du jour'],
+    [fcfa(s.gain_jour ?? s.commission_jour), 'gain de la plateforme aujourd\'hui (après frais Wave)'],
     [`${s.livreurs.disponibles} / ${s.livreurs.total}`, 'livreurs disponibles'],
     [s.livreurs.a_valider, 'livreurs à valider'],
     [s.note_moyenne ?? '–', 'note moyenne'],
@@ -307,7 +307,35 @@ async function chargerParams() {
   for (const [k, v] of Object.entries(p)) if (f[k]) f[k].value = v;
 }
 
-const toutCharger = () => Promise.all([chargerStats(), chargerLivreurs(), chargerCourses(), chargerAdmins(), chargerSoldes()]).catch((e) => toast(e.message, true));
+// ---------- Ce que gagne la plateforme : une ligne par course terminée ----------
+const NOMS_PAIEMENT = { wave: 'Wave', orange_money: 'Orange Money', especes: 'Espèces' };
+document.getElementById('mois-transactions').value = new Date().toISOString().slice(0, 7);
+async function chargerTransactions() {
+  const mois = document.getElementById('mois-transactions').value;
+  const t = await api('GET', '/api/admin/transactions?mois=' + encodeURIComponent(mois));
+  const s = t.totaux;
+  document.getElementById('totaux-transactions').innerHTML = [
+    [fcfa(s.encaisse), `payé par les clients (${s.nb} course${s.nb > 1 ? 's' : ''})`],
+    [fcfa(s.frais_paiement), 'frais Wave / Orange Money'],
+    [fcfa(s.part_livreurs), 'part des chauffeurs'],
+    [fcfa(s.gain_plateforme), 'gain de la plateforme'],
+  ].map(([v, l], i) => `<div class="stat ${i === 3 ? 'stat-gain' : ''}"><div class="v">${esc(v)}</div><div class="l">${l}</div></div>`).join('');
+  document.getElementById('transactions').innerHTML = t.lignes.length ? `
+    <tr><th>Date</th><th>Course</th><th>Chauffeur</th><th>Paiement</th><th class="nombre">Payé client</th><th class="nombre">Frais Wave / OM</th><th class="nombre">Chauffeur</th><th class="nombre">Plateforme</th></tr>
+    ${t.lignes.map((x) => `<tr>
+      <td>${dateCourte(x.cree_le)}</td>
+      <td>n° ${x.course_id ?? '–'}<br><span class="meta">${x.service === 'trajet' ? (x.vehicule === 'voiture' ? 'Trajet voiture' : 'Trajet moto') : x.type === 'achat' ? 'Achats' : 'Colis'}</span></td>
+      <td>${esc(x.livreur)}</td>
+      <td>${NOMS_PAIEMENT[x.paiement] || esc(x.paiement || '')}</td>
+      <td class="nombre">${fcfa(x.prix)}</td>
+      <td class="nombre">${x.frais_paiement ? '−' + fcfa(x.frais_paiement) : '–'}</td>
+      <td class="nombre">${fcfa(x.part_livreur)}</td>
+      <td class="nombre"><b>${fcfa(x.gain_plateforme)}</b><br><span class="meta">${fcfa(x.commission)} commission${x.frais_plateforme ? ` + ${fcfa(x.frais_plateforme)} frais` : ''}</span></td>
+    </tr>`).join('')}` : '<tr><td class="vide">Aucune course terminée ce mois-ci.</td></tr>';
+}
+document.getElementById('mois-transactions').addEventListener('change', () => chargerTransactions().catch((e) => toast(e.message, true)));
+
+const toutCharger = () => Promise.all([chargerStats(), chargerLivreurs(), chargerCourses(), chargerAdmins(), chargerSoldes(), chargerTransactions()]).catch((e) => toast(e.message, true));
 
 document.getElementById('livreurs').addEventListener('click', async (e) => {
   const b = e.target.closest('button');

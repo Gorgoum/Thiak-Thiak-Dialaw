@@ -464,7 +464,14 @@ const estTrajet = () => choix !== 'colis';
 /** Prix de la course selon le choix (le calcul renvoie le prix moto et le prix voiture). */
 function prixCourse(d = dernierDevis) {
   if (!d) return 0;
-  return choix === 'voiture' ? (d.prix_voiture || d.prix) : d.prix;
+  return (choix === 'voiture' ? (d.prix_voiture || d.prix) : d.prix) + fraisAchatClient();
+}
+/** Frais d'achat (« Acheter pour moi ») : même calcul que le serveur. */
+function fraisAchatClient() {
+  if (choix !== 'colis' || form.type.value !== 'achat') return 0;
+  const pct = Number(reglagesFrais.frais_achat_pct) || 0;
+  if (!pct) return 0;
+  return Math.max(Number(reglagesFrais.frais_achat_min) || 0, Math.round(((Number(form.montant_achat.value) || 0) * pct) / 100));
 }
 const OPTIONS = [
   { id: 'moto', icone: 'bike', nom: 'Moto', detail: '1 personne · le plus rapide', prix: (d) => d.prix_moto || d.prix },
@@ -507,9 +514,13 @@ function majCommander() {
   const m = moyenChoisi();
   $('btn-commander').innerHTML = `<span>Commander</span><small>${fcfa(prixCourse())}</small>`;
   const qui = estTrajet() ? 'un chauffeur' : 'un livreur';
-  $('fiche-note').textContent = m === 'especes'
+  const fsrv = (dernierDevis && dernierDevis.frais_service) || 0;
+  const fa = fraisAchatClient();
+  const detail = [fsrv ? `${fcfa(fsrv)} de frais de service` : '', fa ? `${fcfa(fa)} de frais d'achat` : ''].filter(Boolean).join(' et ');
+  $('fiche-note').textContent = (m === 'especes'
     ? (estTrajet() ? 'Vous payez le chauffeur à l\'arrivée.' : 'Vous payez le livreur à la livraison.')
-    : `Rien à payer maintenant : vous paierez avec ${MOYENS[m].nom} quand ${qui} aura accepté.`;
+    : `Rien à payer maintenant : vous paierez avec ${MOYENS[m].nom} quand ${qui} aura accepté.`)
+    + (detail ? ` Prix tout compris (dont ${detail})${fa ? ', achats en plus' : ''}.` : '');
 }
 
 /** Moyen de paiement : une petite liste, le dernier choix est gardé. */
@@ -540,17 +551,20 @@ $('choix-rapides').addEventListener('click', (e) => {
     form.type.value = form.type.value === 'achat' ? 'colis' : 'achat';
     form.description.value = '';
     afficherChoixRapides();
+    majCommander();
     form.description.focus();
     return;
   }
   form.type.value = 'colis';
   form.description.value = b.dataset.mot;
+  majCommander();
   form.description.classList.remove('erreur');
   afficherChoixRapides();
 });
 form.addEventListener('input', (e) => {
   e.target.classList.remove('erreur');
   if (e.target.name === 'description') afficherChoixRapides();
+  if (e.target.name === 'montant_achat' && !$('fiche').hidden) majCommander(); // frais d'achat recalculés
 });
 
 // ---------- Vous : demandé une seule fois, ensuite résumé sur une ligne ----------
@@ -945,6 +959,7 @@ $('liste').addEventListener('click', async (e) => {
 // Moyens de paiement (Nangu : Wave / Orange Money, ou espèces)
 // =========================================================================
 let paiementsEnLigne = [];  // fournisseurs disponibles, lus sur /api/config
+let reglagesFrais = { frais_achat_pct: 0, frais_achat_min: 0 }; // frais d'achat (« Acheter pour moi »), lus sur /api/config
 let paiementTest = false;
 /** Lit les moyens de paiement disponibles ; recommence si le réseau a échoué. */
 let configChargee = null;
@@ -953,6 +968,7 @@ function chargerConfig() {
     configChargee = api('GET', '/api/config').then((cfg) => {
       paiementsEnLigne = cfg.paiement_en_ligne || [];
       paiementTest = !!cfg.paiement_test;
+      reglagesFrais = { frais_achat_pct: cfg.frais_achat_pct || 0, frais_achat_min: cfg.frais_achat_min || 0 };
     }).catch(() => { configChargee = null; });
   }
   return configChargee;

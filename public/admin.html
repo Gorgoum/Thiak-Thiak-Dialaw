@@ -40,6 +40,14 @@
       </div>
 
       <div class="card">
+        <h2>Ce que gagne la plateforme</h2>
+        <p class="aide">Pour chaque course terminée : ce qu'a payé le client, les frais prélevés par Wave ou Orange Money, la part du chauffeur et le gain de la plateforme (commission + frais de service et d'achat − frais Wave / Orange Money). La part du chauffeur n'est jamais touchée par les frais Wave.</p>
+        <div class="export-ligne"><label>Mois<input type="month" id="mois-transactions"></label></div>
+        <div class="stats" id="totaux-transactions"></div>
+        <div class="defile"><table class="tableau" id="transactions"></table></div>
+      </div>
+
+      <div class="card">
         <h2>Courses</h2>
         <div class="onglets" id="filtres">
           <button data-statut="" class="actif">Toutes</button>
@@ -113,6 +121,11 @@
             <label>Zone de service autour de Yène (km)<input name="zone_km" type="number" min="1" step="1"></label>
             <label>Plafond de dette d'un livreur (FCFA, 0 = aucun)<input name="plafond_dette" type="number" min="0" step="500"></label>
             <label>Trajet en voiture : prix moto × (coefficient)<input name="coef_voiture" type="number" min="1" step="0.1"></label>
+            <label>Frais de service par commande (FCFA, payés par le client, gardés par la plateforme)<input name="frais_service" type="number" min="0" step="50" value="100"></label>
+            <label>Frais d'achat « Acheter pour moi » (% des achats, 0 = aucun)<input name="frais_achat_pct" type="number" min="0" max="50" step="0.5" value="5"></label>
+            <label>Frais d'achat minimum (FCFA)<input name="frais_achat_min" type="number" min="0" step="50" value="200"></label>
+            <label>Frais Wave prélevés sur chaque paiement (%)<input name="frais_wave_pct" type="number" min="0" max="10" step="0.1" value="1"></label>
+            <label>Frais Orange Money prélevés sur chaque paiement (%)<input name="frais_om_pct" type="number" min="0" max="10" step="0.1" value="1"></label>
             <label>Rayon d'arrivée : distance max. au client pour « Je suis arrivé » (m, 0 = pas de contrôle)<input name="rayon_arrivee_m" type="number" min="0" step="10" value="200"></label>
           </div>
           <button class="primaire">Enregistrer</button>

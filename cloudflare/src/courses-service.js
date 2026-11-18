@@ -6,7 +6,7 @@ const COLONNES = `c.id, c.client_nom, c.client_tel, c.livreur_id, c.type, c.desc
   c.depart_lat, c.depart_lng, c.depart_repere, c.arrivee_lat, c.arrivee_lng, c.arrivee_repere,
   c.destinataire_nom, c.destinataire_tel, c.distance_km, c.prix, c.paiement, c.paiement_statut, c.montant_du, c.paye_le,
   c.statut, c.note, c.cree_le, c.acceptee_le, c.recuperee_le, c.livree_le, c.annulee_le,
-  c.service, c.vehicule, c.arrive_le`;
+  c.service, c.vehicule, c.arrive_le, c.frais_service, c.frais_achat`;
 
 export const SELECT_COURSE = `
   SELECT ${COLONNES}, l.nom AS livreur_nom, l.telephone AS livreur_tel, l.vehicule AS livreur_vehicule, l.plaque AS livreur_plaque, l.modele AS livreur_modele,

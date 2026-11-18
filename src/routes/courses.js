@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const router = require('express').Router();
 const { query } = require('../db');
 const { normaliserTel, a } = require('../auth');
-const { devis, pointValide, distanceKm } = require('../tarifs');
+const { devis, pointValide, distanceKm, fraisAchat, parametres } = require('../tarifs');
 const { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj } = require('../courses-service');
 const nangu = require('../nangu');
 const paiements = require('../paiements');
@@ -75,17 +75,18 @@ router.post('/', a(async (req, res) => {
   const enLigne = paiement !== 'especes';
 
   const d = await devis(b.depart, b.arrivee);
+  const fAchat = type === 'achat' ? fraisAchat(montantAchat, await parametres()) : 0;
   const code = nouveauCode();
   const r = await query(
     `INSERT INTO courses (client_nom, client_tel, suivi_token, type, description, montant_achat,
        depart_lat, depart_lng, depart_repere, arrivee_lat, arrivee_lng, arrivee_repere,
-       destinataire_nom, destinataire_tel, distance_km, prix, paiement, paiement_statut, statut, service, vehicule)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`,
+       destinataire_nom, destinataire_tel, distance_km, prix, paiement, paiement_statut, statut, service, vehicule, frais_service, frais_achat)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING id`,
     [clientNom, clientTel, code, type, description, montantAchat,
       b.depart.lat, b.depart.lng, departRepere, b.arrivee.lat, b.arrivee.lng, arriveeRepere,
-      texte(b.destinataire_nom, 100) || null, destTel, d.distance_km, service === 'trajet' && vehicule === 'voiture' ? d.prix_voiture : d.prix,
+      texte(b.destinataire_nom, 100) || null, destTel, d.distance_km, (service === 'trajet' && vehicule === 'voiture' ? d.prix_voiture : d.prix) + fAchat,
       // paiement en ligne : rien à payer tant qu'aucun livreur n'a accepté (le paiement est créé à l'acceptation)
-      paiement, enLigne ? 'en_attente' : 'a_la_livraison', 'en_attente', service, vehicule]
+      paiement, enLigne ? 'en_attente' : 'a_la_livraison', 'en_attente', service, vehicule, d.frais_service || 0, fAchat]
   );
   const id = r.rows[0].id;
   const course = await lireCourse(id);

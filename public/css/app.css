@@ -1119,3 +1119,11 @@ body.course-en-cours #aide-carte { display: none; }
 .btn-commander small { font-size: .82rem; font-weight: 600; opacity: .9; }
 .precision .actions > * { white-space: normal; text-align: center; line-height: 1.2; padding-block: 8px; }
 @media (max-width: 400px) { .precision .actions { grid-template-columns: 1fr; } .precision.attente-pos .actions { grid-template-columns: 1fr 1fr; } }
+
+/* Admin : ce que gagne la plateforme */
+.tableau td.nombre, .tableau th.nombre { text-align: right; white-space: nowrap; }
+.stat.stat-gain { background: var(--brand-50); border-color: var(--brand-100); }
+.stat.stat-gain .v { color: var(--brand); }
+#totaux-transactions { margin: 12px 0; }
+.part-livreur { color: #15803d; font-weight: 700; font-size: .8rem; }
+#transactions .nombre { text-align: right !important; }

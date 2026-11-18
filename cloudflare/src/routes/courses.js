@@ -2,7 +2,7 @@
 import { HttpErreur, json, lireCorps, texte, adresseIp, codeAleatoire } from '../outils.js';
 import { MAINTENANT } from '../db.js';
 import { normaliserTel, limiter } from '../securite.js';
-import { devis, pointValide, distanceKm } from '../tarifs.js';
+import { devis, pointValide, distanceKm, fraisAchat, parametres } from '../tarifs.js';
 import { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj } from '../courses-service.js';
 import * as nangu from '../nangu.js';
 import * as paiements from '../paiements.js';
@@ -55,17 +55,18 @@ export function enregistrer(r) {
     const enLigne = paiement !== 'especes';
 
     const d = await devis(c, b.depart, b.arrivee); // le prix est toujours recalculé côté serveur
+    const fAchat = type === 'achat' ? fraisAchat(montantAchat, await parametres(c.db)) : 0;
     const code = codeAleatoire(16);
     const ins = await c.db.query(
       `INSERT INTO courses (client_nom, client_tel, suivi_token, type, description, montant_achat,
          depart_lat, depart_lng, depart_repere, arrivee_lat, arrivee_lng, arrivee_repere,
-         destinataire_nom, destinataire_tel, distance_km, prix, paiement, paiement_statut, statut, service, vehicule)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`,
+         destinataire_nom, destinataire_tel, distance_km, prix, paiement, paiement_statut, statut, service, vehicule, frais_service, frais_achat)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING id`,
       [clientNom, clientTel, code, type, description, montantAchat,
         Number(b.depart.lat), Number(b.depart.lng), departRepere, Number(b.arrivee.lat), Number(b.arrivee.lng), arriveeRepere,
-        texte(b.destinataire_nom, 100) || null, destTel, d.distance_km, service === 'trajet' && vehicule === 'voiture' ? d.prix_voiture : d.prix,
+        texte(b.destinataire_nom, 100) || null, destTel, d.distance_km, (service === 'trajet' && vehicule === 'voiture' ? d.prix_voiture : d.prix) + fAchat,
         // paiement en ligne : rien à payer tant qu'aucun livreur n'a accepté (le paiement est créé à l'acceptation)
-        paiement, enLigne ? 'en_attente' : 'a_la_livraison', 'en_attente', service, vehicule]
+        paiement, enLigne ? 'en_attente' : 'a_la_livraison', 'en_attente', service, vehicule, d.frais_service || 0, fAchat]
     );
     const id = ins.rows[0].id;
     const course = await lireCourse(c, id);

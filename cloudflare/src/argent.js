@@ -2,21 +2,21 @@
 // montant > 0 : la plateforme doit cet argent au livreur (sa part d'une course payée en ligne)
 // montant < 0 : le livreur doit cet argent à la plateforme (commission d'une course en espèces)
 import { MAINTENANT, DEBUT_JOUR } from './db.js';
-import { parametres } from './tarifs.js';
+import { parametres, partage } from './tarifs.js';
 import { HttpErreur } from './outils.js';
 
 const NOMS_MOYENS = { wave: 'Wave', orange_money: 'Orange Money', especes: 'espèces' };
 
-export function mouvementDeCourse(course, pct) {
-  const prix = Number(course.prix) || 0;
-  const commission = Math.round((prix * (pct || 0)) / 100);
-  const enLigne = course.paiement !== 'especes' && course.paiement_statut === 'paye';
+export function mouvementDeCourse(course, p) {
+  const x = partage(course, p);
+  const fraisTxt = x.frais_plateforme ? ` + ${x.frais_plateforme.toLocaleString('fr-FR')} FCFA de frais` : '';
   return {
-    montant: enLigne ? prix - commission : -commission,
-    commission,
-    libelle: enLigne
+    ...x,
+    // en ligne : la plateforme doit sa part au chauffeur ; en espèces : il doit la commission et les frais
+    montant: x.en_ligne ? x.part_livreur : -(x.commission + x.frais_plateforme),
+    libelle: x.en_ligne
       ? `Course n° ${course.id} payée par ${NOMS_MOYENS[course.paiement] || course.paiement} : votre part`
-      : `Course n° ${course.id} en espèces : commission à reverser`,
+      : `Course n° ${course.id} en espèces : commission${fraisTxt} à reverser`,
   };
 }
 
@@ -24,7 +24,7 @@ export function mouvementDeCourse(course, pct) {
 export async function inscrireCoursesLivrees(c, courseId = null) {
   const p = await parametres(c.db);
   const r = await c.db.query(
-    `SELECT co.id, co.livreur_id, co.prix, co.paiement, co.paiement_statut, co.livree_le
+    `SELECT co.id, co.livreur_id, co.prix, co.paiement, co.paiement_statut, co.livree_le, co.frais_service, co.frais_achat
      FROM courses co
      WHERE co.statut = 'livree' AND co.livreur_id IS NOT NULL
        AND NOT EXISTS (SELECT 1 FROM mouvements m WHERE m.course_id = co.id AND m.type = 'course')
@@ -32,11 +32,13 @@ export async function inscrireCoursesLivrees(c, courseId = null) {
     courseId ? [Number(courseId)] : []
   );
   for (const course of r.rows) {
-    const m = mouvementDeCourse(course, p.commission_pct);
+    const m = mouvementDeCourse(course, p);
     await c.db.query(
-      `INSERT OR IGNORE INTO mouvements (livreur_id, course_id, type, montant, prix, commission, paiement, libelle, cree_le)
-       VALUES ($1, $2, 'course', $3, $4, $5, $6, $7, coalesce($8, ${MAINTENANT}))`,
-      [course.livreur_id, course.id, m.montant, course.prix, m.commission, course.paiement, m.libelle, course.livree_le]
+      `INSERT OR IGNORE INTO mouvements (livreur_id, course_id, type, montant, prix, commission, paiement, libelle, cree_le,
+         frais_plateforme, frais_paiement, part_livreur, gain_plateforme)
+       VALUES ($1, $2, 'course', $3, $4, $5, $6, $7, coalesce($8, ${MAINTENANT}), $9, $10, $11, $12)`,
+      [course.livreur_id, course.id, m.montant, course.prix, m.commission, course.paiement, m.libelle, course.livree_le,
+        m.frais_plateforme, m.frais_paiement, m.part_livreur, m.gain_plateforme]
     );
   }
 }
@@ -59,7 +61,7 @@ export async function argentLivreur(c, livreurId) {
   const s = await solde(c, livreurId);
   const p = await parametres(c.db);
   const jour = (await c.db.query(
-    `SELECT count(*) AS nb, coalesce(sum(prix - commission), 0) AS part,
+    `SELECT count(*) AS nb, coalesce(sum(coalesce(part_livreur, prix - commission)), 0) AS part,
             coalesce(sum(CASE WHEN paiement = 'especes' THEN prix ELSE 0 END), 0) AS especes
      FROM mouvements WHERE livreur_id = $1 AND type = 'course' AND cree_le >= ${DEBUT_JOUR}`,
     [livreurId]
@@ -120,10 +122,38 @@ export async function enregistrerReglement(c, livreurId, { montant, reference, a
   return { solde: await solde(c, id), sens: plateformePaie ? 'paye_au_livreur' : 'recu_du_livreur' };
 }
 
+/** Transactions d'une période : une ligne par course terminée, avec ce qu'ont gagné le chauffeur et la plateforme. */
+export async function transactions(c, { du, au }) {
+  await inscrireCoursesLivrees(c);
+  const lignes = (await c.db.query(
+    `SELECT m.cree_le, m.course_id, u.nom AS livreur, m.paiement, m.prix, m.commission,
+            coalesce(m.frais_plateforme, 0) AS frais_plateforme, coalesce(m.frais_paiement, 0) AS frais_paiement,
+            coalesce(m.part_livreur, m.prix - m.commission) AS part_livreur,
+            coalesce(m.gain_plateforme, m.commission) AS gain_plateforme,
+            co.service, co.vehicule, co.type
+     FROM mouvements m JOIN utilisateurs u ON u.id = m.livreur_id LEFT JOIN courses co ON co.id = m.course_id
+     WHERE m.type = 'course' AND m.cree_le >= $1 AND m.cree_le < $2 ORDER BY m.cree_le DESC`,
+    [du, au]
+  )).rows.map((x) => ({
+    ...x,
+    prix: Number(x.prix), commission: Number(x.commission), frais_plateforme: Number(x.frais_plateforme),
+    frais_paiement: Number(x.frais_paiement), part_livreur: Number(x.part_livreur), gain_plateforme: Number(x.gain_plateforme),
+  }));
+  const somme = (k) => lignes.reduce((s, x) => s + x[k], 0);
+  return {
+    lignes,
+    totaux: {
+      nb: lignes.length, encaisse: somme('prix'), frais_paiement: somme('frais_paiement'), part_livreurs: somme('part_livreur'),
+      commission: somme('commission'), frais_plateforme: somme('frais_plateforme'), gain_plateforme: somme('gain_plateforme'),
+    },
+  };
+}
+
 export async function exportCsv(c, { du, au }) {
   await inscrireCoursesLivrees(c);
   const r = await c.db.query(
-    `SELECT m.cree_le, u.nom AS livreur, m.type, m.course_id, m.paiement, m.prix, m.commission, m.montant, m.libelle, m.reference
+    `SELECT m.cree_le, u.nom AS livreur, m.type, m.course_id, m.paiement, m.prix, m.commission, m.montant, m.libelle, m.reference,
+            m.frais_plateforme, m.frais_paiement, m.part_livreur, m.gain_plateforme
      FROM mouvements m JOIN utilisateurs u ON u.id = m.livreur_id
      WHERE m.cree_le >= $1 AND m.cree_le < $2 ORDER BY m.cree_le`,
     [du, au]
@@ -132,7 +162,12 @@ export async function exportCsv(c, { du, au }) {
     const t = v == null ? '' : String(v);
     return /[";\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
   };
-  const lignes = [['Date', 'Livreur', 'Type', 'Course', 'Paiement', 'Prix', 'Commission', 'Montant (+ dû au livreur / − dû à la plateforme)', 'Libellé', 'Référence']];
-  for (const x of r.rows) lignes.push([x.cree_le, x.livreur, x.type, x.course_id, x.paiement, x.prix, x.commission, x.montant, x.libelle, x.reference]);
+  const lignes = [['Date', 'Livreur', 'Type', 'Course', 'Paiement', 'Payé par le client', 'Frais Wave / OM', 'Part du chauffeur', 'Commission', 'Frais de service et d\'achat', 'Gain de la plateforme', 'Solde (+ dû au livreur / − dû à la plateforme)', 'Libellé', 'Référence']];
+  for (const x of r.rows) {
+    const course = x.type === 'course';
+    lignes.push([x.cree_le, x.livreur, x.type, x.course_id, x.paiement, x.prix,
+      course ? (x.frais_paiement ?? 0) : '', course ? (x.part_livreur ?? (x.prix - x.commission)) : '', x.commission,
+      course ? (x.frais_plateforme ?? 0) : '', course ? (x.gain_plateforme ?? x.commission) : '', x.montant, x.libelle, x.reference]);
+  }
   return '﻿' + lignes.map((l) => l.map(cel).join(';')).join('\r\n');
 }

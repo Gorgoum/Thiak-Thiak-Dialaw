@@ -9,7 +9,7 @@ import { envoyer } from '../push.js';
 import * as argent from '../argent.js';
 import { CATEGORIES } from '../lieux.js';
 
-const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture', 'rayon_arrivee_m'];
+const CLES = ['prix_base', 'prix_km', 'prix_min', 'facteur_route', 'commission_pct', 'rayon_km', 'zone_km', 'plafond_dette', 'coef_voiture', 'rayon_arrivee_m', 'frais_service', 'frais_achat_pct', 'frais_achat_min', 'frais_wave_pct', 'frais_om_pct'];
 
 export function enregistrer(r) {
   enregistrerGestion(r);
@@ -32,9 +32,14 @@ export function enregistrer(r) {
        FROM utilisateurs WHERE role = 'livreur'`
     )).rows[0];
     const ca = Number(s.ca_jour);
+    await argent.inscrireCoursesLivrees(c);
+    const g = (await c.db.query(
+      `SELECT coalesce(sum(coalesce(gain_plateforme, commission)), 0) AS gain, coalesce(sum(coalesce(frais_paiement, 0)), 0) AS frais
+       FROM mouvements WHERE type = 'course' AND cree_le >= ${DEBUT_JOUR}`
+    )).rows[0];
     return json({
       en_attente: Number(s.en_attente), en_cours: Number(s.en_cours), livrees_jour: Number(s.livrees_jour),
-      ca_jour: ca, note_moyenne: s.note_moyenne, commission_jour: Math.round((ca * (p.commission_pct || 0)) / 100),
+      ca_jour: ca, note_moyenne: s.note_moyenne, commission_jour: Number(g.gain), gain_jour: Number(g.gain), frais_paiement_jour: Number(g.frais),
       livreurs: { disponibles: Number(l.disponibles), a_valider: Number(l.a_valider), total: Number(l.total) },
     });
   });
@@ -213,6 +218,16 @@ export function enregistrerGestion(r) {
     const res = await argent.enregistrerReglement(c, c.params.id, { montant: b.montant, reference: b.reference, adminId: u.id });
     c.io.to('user:' + Number(c.params.id)).emit('argent:maj', res);
     return json(res, 201);
+  });
+  // Transactions du mois : ?mois=2026-11 (mois en cours par défaut)
+  r.get('/api/admin/transactions', async (req, c) => {
+    await exigerAdmin(req, c);
+    const q = c.url.searchParams.get('mois') || '';
+    const m = /^\d{4}-\d{2}$/.test(q) ? q : new Date().toISOString().slice(0, 7);
+    const [an, mo] = m.split('-').map(Number);
+    const du = new Date(Date.UTC(an, mo - 1, 1)).toISOString();
+    const au = new Date(Date.UTC(an, mo, 1)).toISOString();
+    return json({ mois: m, ...(await argent.transactions(c, { du, au })) });
   });
   r.get('/api/admin/mouvements.csv', async (req, c) => {
     await exigerAdmin(req, c);

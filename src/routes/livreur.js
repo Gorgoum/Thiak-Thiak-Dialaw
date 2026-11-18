@@ -2,7 +2,7 @@
 const router = require('express').Router();
 const { query } = require('../db');
 const { exiger, a } = require('../auth');
-const { distanceKm, pointValide, parametres, messageSurPlace } = require('../tarifs');
+const { distanceKm, pointValide, parametres, messageSurPlace, partage } = require('../tarifs');
 const { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj } = require('../courses-service');
 const { apprendreDeLaCourse } = require('../lieux');
 const argent = require('../argent');
@@ -43,7 +43,7 @@ router.post('/position', a(async (req, res) => {
 router.get('/courses-disponibles', a(async (req, res) => {
   const r = await query(
     `SELECT id, type, description, montant_achat, depart_lat, depart_lng, depart_repere,
-            arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule
+            arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule, frais_service, frais_achat
      FROM courses WHERE statut = 'en_attente' AND (service = 'livraison' OR vehicule = $1) ORDER BY cree_le DESC LIMIT 50`,
     [req.livreur.vehicule || 'moto'] // un trajet en voiture n'est proposé qu'aux voitures
   );
@@ -51,6 +51,7 @@ router.get('/courses-disponibles', a(async (req, res) => {
   const p = await parametres();
   const liste = r.rows.map((c) => ({
     ...c,
+    part_livreur: partage(c, p).part_livreur, // ce que gagnera le chauffeur
     distance_moi_km: moi.lat != null
       ? Math.round(distanceKm(moi, { lat: c.depart_lat, lng: c.depart_lng }) * (p.facteur_route || 1) * 10) / 10
       : null,
@@ -67,7 +68,7 @@ router.get('/mes-courses', a(async (req, res) => {
 router.get('/gains', a(async (req, res) => {
   const p = await parametres();
   const r = await query(
-    `SELECT count(*)::int AS nb, coalesce(sum(prix), 0)::int AS total
+    `SELECT count(*)::int AS nb, coalesce(sum(prix - frais_service - frais_achat), 0)::int AS total
      FROM courses WHERE livreur_id = $1 AND statut = 'livree' AND livree_le >= date_trunc('day', now())`,
     [req.user.id]
   );

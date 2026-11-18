@@ -153,3 +153,17 @@ ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS plaque TEXT;
 ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS modele TEXT;
 -- prix d'un trajet en voiture = prix moto × ce coefficient
 INSERT INTO parametres (cle, valeur) VALUES ('coef_voiture', '2') ON CONFLICT (cle) DO NOTHING;
+
+-- Frais gardés par la plateforme et partage de chaque course.
+-- prix (courses) = ce que paie le client = prix de la course + frais de service + frais d'achat.
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS frais_service INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS frais_achat INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE mouvements ADD COLUMN IF NOT EXISTS frais_plateforme INTEGER;
+ALTER TABLE mouvements ADD COLUMN IF NOT EXISTS frais_paiement INTEGER;
+ALTER TABLE mouvements ADD COLUMN IF NOT EXISTS part_livreur INTEGER;
+ALTER TABLE mouvements ADD COLUMN IF NOT EXISTS gain_plateforme INTEGER;
+INSERT INTO parametres (cle, valeur) VALUES ('frais_service', '100') ON CONFLICT (cle) DO NOTHING;
+INSERT INTO parametres (cle, valeur) VALUES ('frais_achat_pct', '5') ON CONFLICT (cle) DO NOTHING;
+INSERT INTO parametres (cle, valeur) VALUES ('frais_achat_min', '200') ON CONFLICT (cle) DO NOTHING;
+INSERT INTO parametres (cle, valeur) VALUES ('frais_wave_pct', '1') ON CONFLICT (cle) DO NOTHING;
+INSERT INTO parametres (cle, valeur) VALUES ('frais_om_pct', '1') ON CONFLICT (cle) DO NOTHING;
