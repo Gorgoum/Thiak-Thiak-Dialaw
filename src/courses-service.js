@@ -42,7 +42,7 @@ async function notifierNouvelleCourse(io, course) {
 const MESSAGES_CLIENT = {
   acceptee: (c) => `${c.livreur_nom} a accepté votre livraison et arrive au point de départ.`,
   recuperee: () => 'Votre colis a été récupéré, il est en route.',
-  livree: () => 'Livraison terminée. Merci d\'avoir utilisé Thiak Thiak Dialaw !',
+  livree: () => 'Livraison terminée. Merci d\'avoir utilisé Yobalema Yène !',
   en_attente: () => 'Le livreur s\'est désisté, nous cherchons un autre livreur.',
 };
 
@@ -66,7 +66,7 @@ async function diffuserMaj(io, id, { notifierClient = true, message = null, paie
       tag: 'suivi-' + c.id,
       urgent: true,
     } : {
-      titre: titre || 'Thiak Thiak Dialaw',
+      titre: titre || 'Yobalema Yène',
       corps: msg(c),
       url: '/?suivi=' + prive.suivi_token + suffixe, // suffixe : « &payer=1 » ouvre l'écran de paiement
       tag: 'suivi-' + c.id,

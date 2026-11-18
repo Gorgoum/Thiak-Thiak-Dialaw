@@ -1,7 +1,7 @@
 {
-  "name": "Thiak Thiak Livreur",
+  "name": "Yobalema Livreur",
   "short_name": "TT Livreur",
-  "description": "Espace des livreurs thiak thiak",
+  "description": "Espace des livreurs Yobalema Yène",
   "start_url": "/livreur.html",
   "scope": "/",
   "display": "standalone",

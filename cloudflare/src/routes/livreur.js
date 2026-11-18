@@ -1,4 +1,4 @@
-// Routes côté livreur thiak thiak.
+// Routes côté livreur.
 import { HttpErreur, json, lireCorps } from '../outils.js';
 import { MAINTENANT, DEBUT_JOUR } from '../db.js';
 import { exiger } from '../securite.js';

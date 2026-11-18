@@ -1,4 +1,4 @@
-// Routes côté livreur thiak thiak
+// Routes côté livreur
 const router = require('express').Router();
 const { query } = require('../db');
 const { exiger, a } = require('../auth');

@@ -123,7 +123,7 @@ document.getElementById('btn-export').onclick = async () => {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erreur || 'Export impossible');
     const lien = document.createElement('a');
     lien.href = URL.createObjectURL(await r.blob());
-    lien.download = `thiak-thiak-argent-${mois}.csv`;
+    lien.download = `yobalema-argent-${mois}.csv`;
     lien.click();
     setTimeout(() => URL.revokeObjectURL(lien.href), 2000);
   } catch (err) { toast(err.message, true); }

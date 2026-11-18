@@ -340,7 +340,7 @@ async function demanderPosition(type) {
   choisirMode(type);
 
   const lien = `${location.origin}/position.html?d=${encodeURIComponent(code)}`;
-  const message = `${nom || 'Quelqu\'un'} vous envoie une livraison Thiak Thiak Dialaw. `
+  const message = `${nom || 'Quelqu\'un'} vous envoie une livraison Yobalema Yène. `
     + `Ouvrez ce lien et touchez « Envoyer ma position » pour que le livreur trouve l'endroit : ${lien}`;
   const tel = type === 'arrivee' ? form.destinataire_tel.value.replace(/\D/g, '').slice(-9) : '';
   const telOk = /^7\d{8}$/.test(tel);
@@ -476,7 +476,7 @@ function carteCourse(c) {
   const aPayer = enLigne && !paye && (c.statut === 'attente_paiement' || (c.statut === 'acceptee' && c.paiement_statut === 'en_attente'));
   const actions = [];
   if (aPayer) actions.push(`<button class="btn-primaire" data-payer="${code}">${ico('wallet', 'ic-sm')} Payer ${fcfa(c.montant_du || c.prix)}</button>`);
-  // annulation possible tant que rien n'est payé (une course payée se règle avec Thiak Thiak, qui rembourse)
+  // annulation possible tant que rien n'est payé (une course payée se règle avec Yobalema, qui rembourse)
   if (!paye && (['en_attente', 'attente_paiement'].includes(c.statut) || (c.statut === 'acceptee' && enLigne))) {
     actions.push(`<button class="danger" data-annuler="${code}">${ico('circle-x', 'ic-sm')} Annuler</button>`);
   }

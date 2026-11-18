@@ -100,7 +100,7 @@ export function enregistrer(r) {
     const avant = (await c.db.query('SELECT id, statut, paiement, paiement_statut, livreur_id FROM courses WHERE suivi_token = $1', [c.params.code])).rows[0];
     if (!avant) throw new HttpErreur(404, 'Course introuvable');
     if (avant.paiement_statut === 'paye' && !['livree', 'annulee'].includes(avant.statut)) {
-      throw new HttpErreur(409, 'Cette commande est déjà payée : pour l\'annuler et être remboursé, appelez Thiak Thiak Dialaw.');
+      throw new HttpErreur(409, 'Cette commande est déjà payée : pour l\'annuler et être remboursé, appelez Yobalema Yène.');
     }
     const res = await c.db.query(
       `UPDATE courses SET statut = 'annulee', annulee_le = ${MAINTENANT},

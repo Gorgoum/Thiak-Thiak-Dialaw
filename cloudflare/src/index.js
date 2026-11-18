@@ -1,4 +1,4 @@
-// Thiak Thiak Dialaw sur Cloudflare Workers.
+// Yobalema Yène sur Cloudflare Workers.
 //  - /api/…           : API (même contrat que la version Node)
 //  - /ws              : temps réel (WebSocket → Durable Object « Diffusion »)
 //  - /webhooks/nangu  : confirmation des paiements Wave / Orange Money

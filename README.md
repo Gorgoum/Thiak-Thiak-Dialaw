@@ -1,4 +1,4 @@
-# Thiak Thiak Dialaw
+# Yobalema Yène
 
 Plateforme de livraison à domicile pour la commune de Yène. Le client demande une course d'un point A à un point B sans se déplacer ; les livreurs thiak thiak disponibles autour du départ reçoivent une notification et le premier qui accepte prend la course.
 
@@ -27,7 +27,7 @@ Aucune clé d'API, aucun compte chez un fournisseur. Les seuls coûts réels son
 
 ## En ligne sur Cloudflare (plan gratuit)
 
-Adresse : **https://thiak-thiak-dialaw.thiakthiakdialaw.workers.dev** (compte Cloudflare « Thiak Thiak Dialaw ») (client), `/livreur.html`, `/admin.html`.
+Adresse : **https://thiak-thiak-dialaw.thiakthiakdialaw.workers.dev** (compte Cloudflare « Yobalema Yène ») (client), `/livreur.html`, `/admin.html`.
 
 | Élément | Service Cloudflare |
 |---|---|

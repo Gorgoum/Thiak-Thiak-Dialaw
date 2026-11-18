@@ -97,7 +97,7 @@ io.on('connection', (socket) => {
 
 const PORT = Number(process.env.PORT) || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Thiak Thiak Dialaw démarré sur http://localhost:${PORT}`);
+  console.log(`Yobalema Yène démarré sur http://localhost:${PORT}`);
   console.log(`  Client  : http://localhost:${PORT}/`);
   console.log(`  Livreur : http://localhost:${PORT}/livreur.html`);
   console.log(`  Admin   : http://localhost:${PORT}/admin.html`);

@@ -25,7 +25,7 @@ function horsZone(point, p, nom) {
   const zone = p.zone_km || 15;
   const d = distanceKm(CENTRE_YENE, point);
   if (d <= zone) return null;
-  return `${nom} est hors zone (${Math.round(d)} km de Yène). Thiak Thiak Dialaw livre à Yène et jusqu'à ${zone} km autour.`;
+  return `${nom} est hors zone (${Math.round(d)} km de Yène). Yobalema Yène livre à Yène et jusqu'à ${zone} km autour.`;
 }
 
 const cacheRoutes = new Map(); // propre à chaque instance du Worker, suffisant pour éviter les appels répétés
@@ -35,7 +35,7 @@ async function itineraireRoute(env, depart, arrivee) {
   if (cacheRoutes.has(cle)) return cacheRoutes.get(cle);
   const base = env.OSRM_URL || 'https://routing.openstreetmap.de/routed-car/route/v1/driving/';
   const r = await fetch(`${base}${depart.lng},${depart.lat};${arrivee.lng},${arrivee.lat}?overview=full&geometries=geojson`, {
-    signal: AbortSignal.timeout(5000), headers: { 'User-Agent': 'ThiakThiakDialaw/0.1' },
+    signal: AbortSignal.timeout(5000), headers: { 'User-Agent': 'YobalemaYene/0.1' },
   });
   if (!r.ok) throw new Error('OSRM ' + r.status);
   const j = await r.json();

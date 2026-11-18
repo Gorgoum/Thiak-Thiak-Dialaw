@@ -133,7 +133,7 @@ router.post('/suivi/:code/annuler', a(async (req, res) => {
   const avant = (await query('SELECT id, statut, paiement, paiement_statut, livreur_id FROM courses WHERE suivi_token = $1', [String(req.params.code)])).rows[0];
   if (!avant) return res.status(404).json({ erreur: 'Course introuvable' });
   if (avant.paiement_statut === 'paye' && !['livree', 'annulee'].includes(avant.statut)) {
-    return res.status(409).json({ erreur: 'Cette commande est déjà payée : pour l\'annuler et être remboursé, appelez Thiak Thiak Dialaw.' });
+    return res.status(409).json({ erreur: 'Cette commande est déjà payée : pour l\'annuler et être remboursé, appelez Yobalema Yène.' });
   }
   const r = await query(
     `UPDATE courses SET statut = 'annulee', annulee_le = now(),

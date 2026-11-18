@@ -49,7 +49,7 @@ function creerPaiement(course, fournisseur) {
     reference: `TT-${course.id}`,
     provider: fournisseur,
     customer_phone: course.client_tel,
-    description: `Livraison Thiak Thiak : ${course.depart_repere} → ${course.arrivee_repere}`.slice(0, 200),
+    description: `Livraison Yobalema : ${course.depart_repere} → ${course.arrivee_repere}`.slice(0, 200),
     expires_in: course.expireDans || 30 * 60, // délai pour payer (10 min quand un livreur attend)
     metadata: { course_id: String(course.id) },
     // après le paiement, la page de paiement Nangu ramène le client sur son suivi (https uniquement)

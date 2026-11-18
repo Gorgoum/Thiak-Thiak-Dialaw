@@ -210,7 +210,7 @@ export function enregistrerGestion(r) {
     const du = new Date(Date.UTC(an, mo - 1, 1)).toISOString();
     const au = new Date(Date.UTC(an, mo, 1)).toISOString();
     return new Response(await argent.exportCsv(c, { du, au }), {
-      headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="thiak-thiak-argent-${m}.csv"` },
+      headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="yobalema-argent-${m}.csv"` },
     });
   });
 
@@ -289,7 +289,7 @@ export function enregistrerGestion(r) {
     const course = await lireStatut(c);
     if (FINIES.includes(course.statut)) throw new HttpErreur(400, 'Cette course est déjà terminée');
     await c.db.query(`UPDATE courses SET statut = 'annulee', annulee_le = ${MAINTENANT} WHERE id = $1`, [course.id]);
-    const maj = await diffuserMaj(c, course.id, { message: 'Votre livraison a été annulée par Thiak Thiak Dialaw. Appelez-nous pour plus d\'informations.' });
+    const maj = await diffuserMaj(c, course.id, { message: 'Votre livraison a été annulée par Yobalema Yène. Appelez-nous pour plus d\'informations.' });
     return json({ ...maj, a_rembourser: course.paiement_statut === 'paye' });
   });
 

@@ -184,7 +184,7 @@ router.get('/mouvements.csv', a(async (req, res) => {
   const du = new Date(Date.UTC(an, mo - 1, 1)).toISOString();
   const au = new Date(Date.UTC(an, mo, 1)).toISOString();
   res.set('Content-Type', 'text/csv; charset=utf-8');
-  res.set('Content-Disposition', `attachment; filename="thiak-thiak-argent-${m}.csv"`);
+  res.set('Content-Disposition', `attachment; filename="yobalema-argent-${m}.csv"`);
   res.send(await argent.exportCsv({ du, au }));
 }));
 const { diffuserMaj, notifierNouvelleCourse, lireCourse } = require('../courses-service');
@@ -292,7 +292,7 @@ router.post('/courses/:id/annuler', a(async (req, res) => {
   if (!c) return res.status(404).json({ erreur: 'Course introuvable' });
   if (FINIES.includes(c.statut)) return res.status(400).json({ erreur: 'Cette course est déjà terminée' });
   await query(`UPDATE courses SET statut = 'annulee', annulee_le = now() WHERE id = $1`, [req.params.id]);
-  const course = await diffuserMaj(req.app.get('io'), req.params.id, { message: 'Votre livraison a été annulée par Thiak Thiak Dialaw. Appelez-nous pour plus d\'informations.' });
+  const course = await diffuserMaj(req.app.get('io'), req.params.id, { message: 'Votre livraison a été annulée par Yobalema Yène. Appelez-nous pour plus d\'informations.' });
   res.json({ ...course, a_rembourser: c.paiement_statut === 'paye' });
 }));
 

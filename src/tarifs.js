@@ -25,7 +25,7 @@ function horsZone(point, p, nom) {
   const zone = p.zone_km || 15;
   const d = distanceKm(CENTRE_YENE, point);
   if (d <= zone) return null;
-  return `${nom} est hors zone (${Math.round(d)} km de Yène). Thiak Thiak Dialaw livre à Yène et jusqu'à ${zone} km autour.`;
+  return `${nom} est hors zone (${Math.round(d)} km de Yène). Yobalema Yène livre à Yène et jusqu'à ${zone} km autour.`;
 }
 
 // Itinéraire par la route : OSRM sur OpenStreetMap (serveur public gratuit de la FOSSGIS).
@@ -37,7 +37,7 @@ async function itineraireRoute(depart, arrivee) {
   const cle = [depart.lat, depart.lng, arrivee.lat, arrivee.lng].map((x) => Number(x).toFixed(5)).join(',');
   if (cacheRoutes.has(cle)) return cacheRoutes.get(cle);
   const url = `${OSRM}${depart.lng},${depart.lat};${arrivee.lng},${arrivee.lat}?overview=full&geometries=geojson`;
-  const r = await fetch(url, { signal: AbortSignal.timeout(5000), headers: { 'User-Agent': 'ThiakThiakDialaw/0.1' } });
+  const r = await fetch(url, { signal: AbortSignal.timeout(5000), headers: { 'User-Agent': 'YobalemaYene/0.1' } });
   if (!r.ok) throw new Error('OSRM ' + r.status);
   const j = await r.json();
   if (j.code !== 'Ok' || !j.routes.length) throw new Error('OSRM sans itinéraire');
