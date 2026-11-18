@@ -738,7 +738,10 @@ function carteCourse(c) {
   } else if (aPayer) {
     attente = `<div class="ligne-info alerte-payer">${ico('bell', 'ic-sm')} <b>Un livreur a accepté !</b> Payez maintenant pour qu'il vienne chercher le colis (10 minutes).</div>`;
   }
-  if (c.paiement_statut === 'paye') attente += `<div class="ligne-info paiement-ok">${ico('circle-check', 'ic-sm')} Payé par ${moyen}</div>`;
+  if (c.rembourse_le) attente += `<div class="ligne-info paiement-ok">${ico('undo-2', 'ic-sm')} Remboursé : ${fcfa(c.rembourse_montant)} par ${moyen}</div>`;
+  else if (c.paiement_statut === 'paye' && c.statut === 'annulee') attente += `<div class="ligne-info alerte-payer">${ico('wallet', 'ic-sm')} Payé par ${moyen} : remboursement en cours</div>`;
+  else if (c.paiement_statut === 'paye') attente += `<div class="ligne-info paiement-ok">${ico('circle-check', 'ic-sm')} Payé par ${moyen}</div>`;
+  if (c.statut === 'annulee') attente = `<div class="ligne-info">${ico('info', 'ic-sm')} Nous sommes désolés : aucun${c.service === 'trajet' ? 'e voiture n\'était disponible' : ' livreur n\'était disponible'}.</div>` + attente;
   return `
     <article class="course">
       <div class="haut">${badge(c.statut, c.service)}<span class="prix-course">${fcfa(c.prix)}</span></div>
@@ -1491,6 +1494,9 @@ socket.on('course:maj', (c) => {
     recuperee: trajet ? 'Bonne route ! Votre course a commencé.' : 'Votre colis a été récupéré, il est en route',
     livree: trajet ? 'Vous êtes arrivé. Merci !' : 'Livraison terminée',
     en_attente: trajet ? 'Le chauffeur s\'est désisté, recherche d\'un autre chauffeur…' : 'Le livreur s\'est désisté, recherche d\'un autre livreur…',
+    annulee: c.rembourse_le
+      ? `Nous sommes désolés : votre ${trajet ? 'course' : 'livraison'} est annulée. ${fcfa(c.rembourse_montant)} vous ont été remboursés.`
+      : `Nous sommes désolés : aucun${trajet ? 'e voiture n\'est disponible' : ' livreur n\'est disponible'}, votre ${trajet ? 'course' : 'livraison'} est annulée.${c.paiement_statut === 'paye' ? ' Vous serez remboursé.' : ''}`,
   };
   // paiement tout juste confirmé : ce n'est pas un désistement
   const vientDEtrePaye = c.paye_le && Date.now() - new Date(c.paye_le).getTime() < 60000 && c.paiement_statut === 'paye';

@@ -233,13 +233,37 @@ function fenetreCourse(x) {
         <button type="button" data-action="rapprocher">${ico('refresh-cw', 'ic-sm')} Vérifier auprès de Nangu</button>
         <button type="button" class="ok" data-action="valider-paiement">${ico('check', 'ic-sm')} Valider le paiement manuellement</button>`}
     </div>` : '';
-  if (!finie) actions.push(`<button type="button" class="danger" data-action="annuler">${ico('circle-x', 'ic-sm')} Annuler la course</button>`);
+  // Course payée en ligne et pas livrée : annuler, rembourser dans Wave Business, prévenir le client
+  const montantPaye = x.montant_du || x.prix;
+  const telClient = String(x.client_tel || '').replace(/\D/g, '').slice(-9);
+  const trajetX = x.service === 'trajet';
+  const excuse = `Nous sommes désolés : aucun${trajetX ? 'e voiture n\'est disponible' : ' livreur n\'est disponible'} pour le moment, votre ${trajetX ? 'course' : 'livraison'} est annulée. Votre paiement de ${fcfa(montantPaye)} vous a été remboursé par ${moyen}. Merci de votre compréhension. Yobalema Yène`;
+  const aRembourser = enLigne && x.paiement_statut === 'paye' && !x.rembourse_le && x.statut !== 'livree';
+  const blocRemboursement = x.rembourse_le
+    ? `<div class="bloc-paiement paye"><div><b>${ico('circle-check', 'ic-sm')} Remboursé : ${fcfa(x.rembourse_montant)} par ${moyen}</b><small>le ${dateCourte(x.rembourse_le)}${x.rembourse_ref ? ` · réf. ${esc(x.rembourse_ref)}` : ''}</small></div></div>`
+    : aRembourser ? `
+    <div class="bloc-remboursement">
+      <b>${ico('undo-2', 'ic-sm')} Rembourser le client${x.statut === 'annulee' ? '' : ' et annuler la course'}</b>
+      <ol>
+        <li>Dans <b>${moyen} Business</b>, envoyez <b>${fcfa(montantPaye)}</b> au <b>${telClient ? telAffiche(telClient) : 'client'}</b> (${esc(x.client_nom || '')}).</li>
+        <li>Prévenez le client (le message part aussi en notification sur son téléphone).</li>
+        <li>Confirmez ici : la course est annulée et notée remboursée.</li>
+      </ol>
+      <label class="champ">Message au client<textarea id="message-excuse" rows="4" maxlength="500">${esc(excuse)}</textarea></label>
+      <label class="champ">Référence ${moyen} du remboursement (facultatif)<input id="ref-remboursement" maxlength="80" placeholder="ex. T_AB12CD34"></label>
+      <div class="ligne-action">
+        <a class="bouton whatsapp" id="wa-excuse" target="_blank" rel="noopener" href="https://wa.me/${telClient ? '221' + telClient : ''}?text=${encodeURIComponent(excuse)}">${ico('message-circle', 'ic-sm')} Envoyer par WhatsApp</a>
+        <button type="button" class="ok" data-action="rembourser">${ico('check', 'ic-sm')} C'est remboursé</button>
+      </div>
+    </div>` : '';
+  if (!finie && !aRembourser) actions.push(`<button type="button" class="danger" data-action="annuler">${ico('circle-x', 'ic-sm')} Annuler la course</button>`);
+  if (!finie && aRembourser) actions.push(`<button type="button" class="danger" data-action="annuler">${ico('circle-x', 'ic-sm')} Annuler sans rembourser maintenant</button>`);
   if (!enCours) actions.push(`<button type="button" class="danger" data-action="supprimer">${ico('trash-2', 'ic-sm')} Supprimer définitivement</button>`);
 
   ouvrirFenetre(`Course n° ${x.id}`, `
     <p class="meta" style="margin:0 0 12px">${badge(x.statut, x.service)} · ${dateCourte(x.cree_le)} · ${Number(x.distance_km).toLocaleString('fr-FR')} km
       ${enLigne ? '' : ' · espèces à la livraison'}</p>
-    <div class="actions-course">${blocPaiement}${actions.join('')}</div>
+    <div class="actions-course">${blocPaiement}${blocRemboursement}${actions.join('')}</div>
     <h3 class="sous-titre-fenetre">Modifier les informations</h3>
     ${champ('Départ', 'depart_repere', x.depart_repere, 'required maxlength="300"')}
     ${champ('Arrivée', 'arrivee_repere', x.arrivee_repere, 'required maxlength="300"')}
@@ -256,6 +280,11 @@ function fenetreCourse(x) {
     toutCharger();
   });
 
+  const zoneMessage = document.getElementById('message-excuse');
+  if (zoneMessage) zoneMessage.addEventListener('input', () => {
+    const tel = String(x.client_tel || '').replace(/\D/g, '').slice(-9);
+    document.getElementById('wa-excuse').href = `https://wa.me/${tel ? '221' + tel : ''}?text=${encodeURIComponent(zoneMessage.value)}`;
+  });
   document.querySelector('#fenetre-corps .actions-course').onclick = async (e) => {
     const b = e.target.closest('[data-action]');
     if (!b) return;
@@ -263,7 +292,8 @@ function fenetreCourse(x) {
     const questions = {
       liberer: 'Retirer le livreur et proposer de nouveau cette course aux autres livreurs ?',
       terminer: 'Marquer cette course comme livrée ?',
-      annuler: `Annuler la course n° ${x.id} ? Le client sera prévenu.`,
+      annuler: `Annuler la course n° ${x.id} ? Le client recevra un message d'excuse.`,
+      rembourser: `Avez-vous bien envoyé ${fcfa(x.montant_du || x.prix)} au client dans ${x.paiement === 'orange_money' ? 'Orange Money' : 'Wave'} Business ?\n\nLa course sera annulée, notée remboursée, et le client prévenu.`,
       supprimer: `Supprimer définitivement la course n° ${x.id} ? Elle disparaîtra aussi des statistiques.`,
     };
     if (questions[a] && !confirm(questions[a])) return;
@@ -282,7 +312,13 @@ function fenetreCourse(x) {
         toutCharger();
         return;
       }
-      if (a === 'valider-paiement') {
+      if (a === 'rembourser') {
+        await api('POST', `/api/admin/courses/${x.id}/rembourser`, {
+          reference: document.getElementById('ref-remboursement').value,
+          message: document.getElementById('message-excuse').value,
+        });
+        toast('Remboursement enregistré. Le client est prévenu.');
+      } else if (a === 'valider-paiement') {
         await api('POST', `/api/admin/courses/${x.id}/valider-paiement`, { reference });
         toast('Paiement validé. La course est proposée aux livreurs.');
       } else if (a === 'attribuer') {

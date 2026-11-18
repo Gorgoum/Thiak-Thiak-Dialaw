@@ -1252,3 +1252,15 @@ body.course-en-cours #aide-carte { display: none; }
 .pour-autre summary { display: flex; align-items: center; gap: 8px; }
 .pour-autre-aide { margin: 6px 0 8px; font-size: .84rem; color: var(--ink-3); }
 @media (max-width: 380px) { .btn-options { width: 46px; } .paiement-choix { max-width: 34vw; } }
+
+/* Admin : rembourser le client d'une course payée puis annulée */
+.bloc-remboursement { display: grid; gap: 10px; padding: 12px; border-radius: 12px; background: #fff7ed; border: 1px solid #fed7aa; }
+.bloc-remboursement > b { display: flex; align-items: center; gap: 6px; color: #c2410c; }
+.bloc-remboursement ol { margin: 0; padding-left: 20px; font-size: .88rem; display: grid; gap: 4px; }
+.bloc-remboursement .champ { margin: 0; }
+.bloc-remboursement .whatsapp { background: #25d366; border-color: #25d366; color: #fff; }
+@media (prefers-color-scheme: dark) { .bloc-remboursement { background: rgba(234, 88, 12, .12); border-color: rgba(234, 88, 12, .35); } }
+.bloc-remboursement { min-width: 0; }
+.bloc-remboursement .ligne-action { display: flex; flex-wrap: wrap; gap: 8px; }
+.bloc-remboursement .ligne-action > * { flex: 1 1 150px; min-width: 0; justify-content: center; white-space: normal; text-align: center; }
+.bloc-remboursement textarea { width: 100%; box-sizing: border-box; }

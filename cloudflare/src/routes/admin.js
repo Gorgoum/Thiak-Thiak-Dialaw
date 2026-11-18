@@ -3,7 +3,7 @@ import { HttpErreur, json, lireCorps } from '../outils.js';
 import { DEBUT_JOUR, MAINTENANT } from '../db.js';
 import { exiger, hacherPin, normaliserTel } from '../securite.js';
 import { parametres, pointValide } from '../tarifs.js';
-import { SELECT_COURSE, diffuserMaj, notifierNouvelleCourse, lireCourse } from '../courses-service.js';
+import { SELECT_COURSE, diffuserMaj, notifierNouvelleCourse, lireCourse, messageExcuse } from '../courses-service.js';
 import { rapprocher, validerManuellement, demanderPaiement } from '../paiements.js';
 import { envoyer } from '../push.js';
 import * as argent from '../argent.js';
@@ -76,7 +76,9 @@ export function enregistrer(r) {
     const statut = c.url.searchParams.get('statut');
     // « Paiement en attente » : ancien statut, ou course en ligne pas encore payée (avant ou après l'acceptation)
     const ATTENTE_PAIEMENT = ` WHERE (c.statut = 'attente_paiement' OR (c.paiement <> 'especes' AND c.paiement_statut = 'en_attente' AND c.statut IN ('en_attente', 'acceptee')))`;
-    const res = statut === 'attente_paiement'
+    const res = statut === 'a_rembourser'
+      ? await c.db.query(SELECT_COURSE + " WHERE c.paiement <> 'especes' AND c.paiement_statut = 'paye' AND c.statut = 'annulee' AND c.rembourse_le IS NULL" + ' ORDER BY c.cree_le DESC LIMIT 100')
+      : statut === 'attente_paiement'
       ? await c.db.query(SELECT_COURSE + ATTENTE_PAIEMENT + ' ORDER BY c.cree_le DESC LIMIT 100')
       : statut
         ? await c.db.query(SELECT_COURSE + ' WHERE c.statut = $1 ORDER BY c.cree_le DESC LIMIT 100', [statut])
@@ -315,9 +317,33 @@ export function enregistrerGestion(r) {
     await exigerAdmin(req, c);
     const course = await lireStatut(c);
     if (FINIES.includes(course.statut)) throw new HttpErreur(400, 'Cette course est déjà terminée');
+    const b = await lireCorps(req).catch(() => ({}));
     await c.db.query(`UPDATE courses SET statut = 'annulee', annulee_le = ${MAINTENANT} WHERE id = $1`, [course.id]);
-    const maj = await diffuserMaj(c, course.id, { message: 'Votre livraison a été annulée par Yobalema Yène. Appelez-nous pour plus d\'informations.' });
+    const avant = await lireCourse(c, course.id);
+    const message = String(b.message || '').trim().slice(0, 500) || messageExcuse(avant);
+    const maj = await diffuserMaj(c, course.id, { message, titre: 'Course annulée', urgent: true });
     return json({ ...maj, a_rembourser: course.paiement_statut === 'paye' });
+  });
+
+  // Remboursement fait à la main dans Wave Business / Orange Money : on l'enregistre et on prévient le client
+  r.post('/api/admin/courses/:id/rembourser', async (req, c) => {
+    await exigerAdmin(req, c);
+    const course = await lireCourse(c, Number(c.params.id));
+    if (!course) throw new HttpErreur(404, 'Course introuvable');
+    if (course.paiement === 'especes' || course.paiement_statut !== 'paye') throw new HttpErreur(400, 'Cette course n\'a pas été payée en ligne : rien à rembourser');
+    if (course.rembourse_le) throw new HttpErreur(409, 'Cette course est déjà marquée remboursée');
+    if (course.statut === 'livree') throw new HttpErreur(400, 'Cette course est terminée : elle ne peut pas être remboursée ici');
+    const b = await lireCorps(req).catch(() => ({}));
+    const montant = Math.round(Number(b.montant) || course.montant_du || course.prix);
+    if (!(montant > 0)) throw new HttpErreur(400, 'Montant invalide');
+    await c.db.query(
+      `UPDATE courses SET statut = 'annulee', annulee_le = coalesce(annulee_le, ${MAINTENANT}), rembourse_le = ${MAINTENANT}, rembourse_montant = $2, rembourse_ref = $3 WHERE id = $1`,
+      [course.id, montant, String(b.reference || '').trim().slice(0, 80) || null]
+    );
+    const message = String(b.message || '').trim().slice(0, 500) || messageExcuse(course, montant);
+    const maj = await diffuserMaj(c, course.id, { message, titre: 'Remboursement envoyé', urgent: true });
+    if (course.livreur_id) c.io.to('user:' + course.livreur_id).emit('course:maj', maj);
+    return json(maj);
   });
 
   r.post('/api/admin/courses/:id/liberer', async (req, c) => {

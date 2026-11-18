@@ -167,3 +167,8 @@ INSERT INTO parametres (cle, valeur) VALUES ('frais_achat_pct', '5') ON CONFLICT
 INSERT INTO parametres (cle, valeur) VALUES ('frais_achat_min', '200') ON CONFLICT (cle) DO NOTHING;
 INSERT INTO parametres (cle, valeur) VALUES ('frais_wave_pct', '1') ON CONFLICT (cle) DO NOTHING;
 INSERT INTO parametres (cle, valeur) VALUES ('frais_om_pct', '1') ON CONFLICT (cle) DO NOTHING;
+
+-- Remboursement d'une course payée en ligne puis annulée (fait à la main dans Wave Business / Orange Money).
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS rembourse_le TIMESTAMPTZ;
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS rembourse_montant INTEGER;
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS rembourse_ref TEXT;

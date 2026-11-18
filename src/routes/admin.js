@@ -75,7 +75,9 @@ router.get('/courses', a(async (req, res) => {
   const statut = req.query.statut;
   // « Paiement en attente » : ancien statut, ou course en ligne pas encore payée (avant ou après l'acceptation)
   const ATTENTE_PAIEMENT = ` WHERE (c.statut = 'attente_paiement' OR (c.paiement <> 'especes' AND c.paiement_statut = 'en_attente' AND c.statut IN ('en_attente', 'acceptee')))`;
-  const r = statut === 'attente_paiement'
+  const r = statut === 'a_rembourser'
+    ? await query(SELECT_COURSE + " WHERE c.paiement <> 'especes' AND c.paiement_statut = 'paye' AND c.statut = 'annulee' AND c.rembourse_le IS NULL" + ' ORDER BY c.cree_le DESC LIMIT 100')
+    : statut === 'attente_paiement'
     ? await query(SELECT_COURSE + ATTENTE_PAIEMENT + ' ORDER BY c.cree_le DESC LIMIT 100')
     : statut
       ? await query(SELECT_COURSE + ' WHERE c.statut = $1 ORDER BY c.cree_le DESC LIMIT 100', [statut])
@@ -200,7 +202,7 @@ router.get('/mouvements.csv', a(async (req, res) => {
   res.set('Content-Disposition', `attachment; filename="yobalema-argent-${m}.csv"`);
   res.send(await argent.exportCsv({ du, au }));
 }));
-const { diffuserMaj, notifierNouvelleCourse, lireCourse } = require('../courses-service');
+const { diffuserMaj, notifierNouvelleCourse, lireCourse, messageExcuse } = require('../courses-service');
 const push = require('../push');
 
 /** Vérifie nom, téléphone et PIN (PIN facultatif en modification). Renvoie les valeurs propres. */
@@ -315,8 +317,31 @@ router.post('/courses/:id/annuler', a(async (req, res) => {
   if (!c) return res.status(404).json({ erreur: 'Course introuvable' });
   if (FINIES.includes(c.statut)) return res.status(400).json({ erreur: 'Cette course est déjà terminée' });
   await query(`UPDATE courses SET statut = 'annulee', annulee_le = now() WHERE id = $1`, [req.params.id]);
-  const course = await diffuserMaj(req.app.get('io'), req.params.id, { message: 'Votre livraison a été annulée par Yobalema Yène. Appelez-nous pour plus d\'informations.' });
+  const avant = await lireCourse(req.params.id);
+  const message = String((req.body || {}).message || '').trim().slice(0, 500) || messageExcuse(avant);
+  const course = await diffuserMaj(req.app.get('io'), req.params.id, { message, titre: 'Course annulée', urgent: true });
   res.json({ ...course, a_rembourser: c.paiement_statut === 'paye' });
+}));
+
+// Remboursement fait à la main dans Wave Business / Orange Money : on l'enregistre et on prévient le client
+router.post('/courses/:id/rembourser', a(async (req, res) => {
+  const course = await lireCourse(req.params.id);
+  if (!course) return res.status(404).json({ erreur: 'Course introuvable' });
+  if (course.paiement === 'especes' || course.paiement_statut !== 'paye') return res.status(400).json({ erreur: 'Cette course n\'a pas été payée en ligne : rien à rembourser' });
+  if (course.rembourse_le) return res.status(409).json({ erreur: 'Cette course est déjà marquée remboursée' });
+  if (course.statut === 'livree') return res.status(400).json({ erreur: 'Cette course est terminée : elle ne peut pas être remboursée ici' });
+  const b = req.body || {};
+  const montant = Math.round(Number(b.montant) || course.montant_du || course.prix);
+  if (!(montant > 0)) return res.status(400).json({ erreur: 'Montant invalide' });
+  await query(
+    `UPDATE courses SET statut = 'annulee', annulee_le = coalesce(annulee_le, now()), rembourse_le = now(), rembourse_montant = $2, rembourse_ref = $3 WHERE id = $1`,
+    [course.id, montant, String(b.reference || '').trim().slice(0, 80) || null]
+  );
+  const message = String(b.message || '').trim().slice(0, 500) || messageExcuse(course, montant);
+  const io = req.app.get('io');
+  const maj = await diffuserMaj(io, course.id, { message, titre: 'Remboursement envoyé', urgent: true });
+  if (course.livreur_id) io.to('user:' + course.livreur_id).emit('course:maj', maj);
+  res.json(maj);
 }));
 
 // Remettre en attente : le livreur est retiré et les autres livreurs sont de nouveau prévenus

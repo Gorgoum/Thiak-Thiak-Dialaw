@@ -7,7 +7,7 @@ const COLONNES = `c.id, c.client_nom, c.client_tel, c.livreur_id, c.type, c.desc
   c.depart_lat, c.depart_lng, c.depart_repere, c.arrivee_lat, c.arrivee_lng, c.arrivee_repere,
   c.destinataire_nom, c.destinataire_tel, c.distance_km, c.prix, c.paiement, c.paiement_statut, c.montant_du, c.paye_le, c.statut, c.note,
   c.cree_le, c.acceptee_le, c.recuperee_le, c.livree_le, c.annulee_le,
-  c.service, c.vehicule, c.arrive_le, c.frais_service, c.frais_achat`;
+  c.service, c.vehicule, c.arrive_le, c.frais_service, c.frais_achat, c.rembourse_le, c.rembourse_montant, c.rembourse_ref`;
 
 const SELECT_COURSE = `
   SELECT ${COLONNES}, l.nom AS livreur_nom, l.telephone AS livreur_tel, l.vehicule AS livreur_vehicule, l.plaque AS livreur_plaque, l.modele AS livreur_modele,
@@ -84,4 +84,15 @@ async function diffuserMaj(io, id, { notifierClient = true, message = null, paie
   return c;
 }
 
-module.exports = { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj };
+/** Message d'excuse au client : course annulée faute de chauffeur, et remboursement s'il avait payé. */
+function messageExcuse(course, rembourse = null) {
+  const trajet = course.service === 'trajet';
+  const moyen = course.paiement === 'orange_money' ? 'Orange Money' : 'Wave';
+  const montant = rembourse ?? (course.paiement_statut === 'paye' ? (course.montant_du || course.prix) : null);
+  const fcfa = (n) => Number(n).toLocaleString('fr-FR') + ' FCFA';
+  return `Nous sommes désolés : aucun${trajet ? 'e voiture n\'est disponible' : ' livreur n\'est disponible'} pour le moment, votre ${trajet ? 'course' : 'livraison'} est annulée.`
+    + (montant ? ` Votre paiement de ${fcfa(montant)} vous ${rembourse != null ? 'a été remboursé' : 'sera remboursé'} par ${moyen}.` : '')
+    + ' Merci de votre compréhension. Yobalema Yène';
+}
+
+module.exports = { messageExcuse, SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj };
