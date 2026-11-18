@@ -39,37 +39,47 @@
   <!-- Accueil : les services, « Où allons-nous ? », les adresses récentes -->
   <section class="accueil" id="accueil" aria-label="Accueil" hidden>
     <div class="accueil-cadre">
-      <div class="accueil-entete">
+      <header class="accueil-entete">
         <span class="marque"><span class="logo"><img src="/icons/icon-96.png" alt="" width="40" height="40"></span><span>Yobalema <b>Yène</b></span></span>
-        <button type="button" class="btn btn-ghost" id="accueil-mes-courses" hidden>
-          <svg class="ic" aria-hidden="true"><use href="/icons.svg#list"></use></svg><span>Mes courses</span><span class="pastille" id="accueil-nb" hidden></span>
+        <button type="button" class="accueil-menu" id="accueil-mes-courses" hidden aria-label="Mes courses">
+          <svg class="ic" aria-hidden="true"><use href="/icons.svg#list"></use></svg><span class="pastille" id="accueil-nb" hidden></span>
         </button>
-      </div>
+      </header>
       <button type="button" class="accueil-position" id="accueil-position">
-        <svg class="ic ic-sm" aria-hidden="true"><use href="/icons.svg#map-pin"></use></svg>
         <span id="accueil-position-texte">Votre position</span>
-        <svg class="ic ic-sm" aria-hidden="true"><use href="/icons.svg#chevron-right"></use></svg>
+        <span class="rond-noir"><svg class="ic" aria-hidden="true"><use href="/icons.svg#chevron-right"></use></svg></span>
       </button>
-      <div class="tuiles">
-        <button type="button" class="tuile tuile-courses" data-service="courses">
-          <span class="tuile-ic"><svg class="ic" aria-hidden="true"><use href="/icons.svg#car-taxi-front"></use></svg></span>
-          <b>Courses</b><small id="tuile-courses-temps">Moto, Éco, Confort</small>
+
+      <div class="services">
+        <button type="button" class="service" data-service="livraison">
+          <span class="service-visuel"><img src="/img/3d/livraison.png" alt="" class="img-scooter"><img src="/img/3d/colis.png" alt="" class="img-colis"></span>
+          <span class="service-nom">Livraison</span>
         </button>
-        <button type="button" class="tuile" data-service="livraison">
-          <span class="tuile-ic"><svg class="ic" aria-hidden="true"><use href="/icons.svg#package"></use></svg></span>
-          <b>Livraison</b><small>Colis, acheter pour moi</small>
+        <button type="button" class="service" data-service="food">
+          <span class="service-visuel"><img src="/img/3d/food.png" alt=""></span>
+          <span class="service-nom">Food <small>bientôt</small></span>
         </button>
-        <button type="button" class="tuile bientot" data-service="food" aria-disabled="true">
-          <span class="tuile-ic"><svg class="ic" aria-hidden="true"><use href="/icons.svg#utensils"></use></svg></span>
-          <b>Food</b><small>Bientôt</small>
+        <button type="button" class="service" data-service="achats">
+          <span class="service-visuel"><img src="/img/3d/achats.png" alt=""></span>
+          <span class="service-nom">Achats</span>
+        </button>
+        <button type="button" class="service" data-service="moto">
+          <span class="service-visuel"><img src="/img/3d/moto.png" alt=""></span>
+          <span class="service-nom">Moto</span>
+        </button>
+        <button type="button" class="service service-courses" data-service="courses">
+          <span class="service-visuel"><img src="/img/3d/courses.png" alt=""></span>
+          <span class="service-nom">Courses <small id="tuile-courses-temps"></small></span>
         </button>
       </div>
+
       <button type="button" class="accueil-recherche" id="accueil-recherche">
-        <svg class="ic" aria-hidden="true"><use href="/icons.svg#search"></use></svg>
+        <img src="/img/3d/eco.png" alt="" class="recherche-auto">
         <span>Où allons-nous ?</span>
-        <svg class="ic ic-sm" aria-hidden="true"><use href="/icons.svg#chevron-right"></use></svg>
+        <span class="rond-noir"><svg class="ic" aria-hidden="true"><use href="/icons.svg#chevron-right"></use></svg></span>
       </button>
       <div class="accueil-recents" id="accueil-recents"></div>
+      <p class="credits">Illustrations : Fluent Emoji (Microsoft, MIT)</p>
     </div>
   </section>
 

@@ -1295,3 +1295,83 @@ body.course-en-cours #aide-carte { display: none; }
 .accueil-recents .recent { border: 0; border-radius: 0; background: transparent; box-shadow: none; padding-left: 0; }
 .accueil-recents .recent + .recent { border-top: 1px solid var(--line); }
 body.sur-accueil { overflow: hidden; }
+
+/* =========================================================================
+   Refonte : langage visuel d'appli de VTC (fonds gris chauds, grandes illustrations 3D,
+   titres noirs, boutons ronds). Illustrations : Fluent Emoji de Microsoft (licence MIT).
+   ========================================================================= */
+.page-client { --gris: #f3f2f0; --gris-2: #e9e7e4; --encre: #1b1a19; --encre-2: #8d8a86; }
+@media (prefers-color-scheme: dark) { .page-client { --gris: #26282c; --gris-2: #30333a; --encre: #f2f2f2; --encre-2: #9aa0a8; } }
+
+/* ----- Accueil ----- */
+.accueil { background: var(--surface); padding-top: calc(10px + env(safe-area-inset-top)); }
+.accueil-cadre { gap: 14px; }
+.accueil-entete .marque { font-size: 1.45rem; letter-spacing: -.02em; }
+.accueil-menu { position: relative; width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--gris); box-shadow: none; display: grid; place-items: center; color: var(--encre); }
+.accueil-menu .pastille { position: absolute; top: 4px; right: 4px; }
+.accueil-position { gap: 8px; font-size: 1.12rem; font-weight: 700; color: var(--encre); padding: 0; min-height: 32px; }
+.rond-noir { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--encre); color: var(--surface); display: grid; place-items: center; }
+.rond-noir .ic { width: 16px; height: 16px; stroke-width: 3; }
+.services { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "liv food" "ach courses" "moto courses"; gap: 12px 12px; }
+.service { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; box-shadow: none; min-height: 0; color: var(--encre); }
+.service[data-service="livraison"] { grid-area: liv; }
+.service[data-service="food"] { grid-area: food; }
+.service[data-service="achats"] { grid-area: ach; }
+.service[data-service="moto"] { grid-area: moto; }
+.service-courses { grid-area: courses; }
+.service-visuel { position: relative; width: 100%; height: 96px; border-radius: 26px; background: var(--gris); overflow: visible; display: grid; place-items: center; transition: transform 140ms ease; }
+.service:active .service-visuel { transform: scale(.97); }
+.service-visuel img { width: 78px; height: 78px; object-fit: contain; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, .12)); }
+.service-courses .service-visuel { height: 100%; min-height: 214px; overflow: hidden; }
+.service-courses .service-visuel img { width: 150px; height: 150px; transform: translate(14%, 6%); }
+.img-scooter { transform: translate(-10%, -4%); }
+.img-colis { position: absolute; width: 46px !important; height: 46px !important; right: 18%; bottom: 10%; }
+.service-nom { font-size: 1rem; font-weight: 700; color: var(--encre); }
+.service-nom small { font-weight: 500; color: var(--encre-2); font-size: .95rem; }
+.service[data-service="food"] .service-visuel img { opacity: .9; }
+.accueil-recherche { position: relative; min-height: 72px; border-radius: 30px; background: var(--gris); padding: 0 16px 0 92px; font-size: 1.28rem; font-weight: 700; color: var(--encre); overflow: hidden; }
+.accueil-recherche span:first-of-type { text-align: center; }
+.recherche-auto { position: absolute; left: -10px; bottom: -6px; width: 92px; height: 92px; object-fit: contain; }
+.accueil-recherche .rond-noir { width: 32px; height: 32px; }
+.accueil-recents .recent { min-height: 72px; gap: 14px; }
+.accueil-recents .recent-ic { width: 54px; height: 54px; border-radius: 18px; background: var(--gris); }
+.accueil-recents .recent-texte b { font-size: 1.12rem; font-weight: 600; }
+.accueil-recents .recent-texte small { font-size: .95rem; color: var(--encre-2); }
+.credits { margin: 8px 0 0; text-align: center; font-size: .7rem; color: var(--encre-2); opacity: .7; }
+
+/* ----- Fiche : cartes de tarifs illustrées ----- */
+.page-client .options { gap: 4px; padding: 4px 2px 8px; }
+.page-client .option { flex: 0 0 auto; width: 104px; min-width: 104px; padding: 8px 8px 10px; border-radius: 20px; gap: 0; align-items: flex-start; background: transparent; border: 0; box-shadow: none; }
+.page-client .option.choisi { background: var(--gris); }
+.option-visuel { position: relative; width: 100%; height: 56px; display: block; margin-bottom: 6px; }
+.option-visuel img { width: 76px; height: 56px; object-fit: contain; object-position: left bottom; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .12)); }
+.page-client .option .option-temps { position: absolute; left: 0; bottom: -2px; padding: 2px 7px; border-radius: 8px; background: var(--surface); color: var(--encre); font-size: .74rem; font-weight: 700; box-shadow: 0 1px 4px rgba(0, 0, 0, .12); line-height: 1.3; min-height: 0; }
+.page-client .option.occupe .option-temps { color: var(--encre-2); }
+.page-client .option.occupe .option-visuel img { filter: grayscale(.8) opacity(.6); }
+.page-client .option .option-nom { font-size: .98rem; font-weight: 600; color: var(--encre); }
+.page-client .option.choisi .option-nom { color: var(--encre); font-weight: 700; }
+.page-client .option .option-prix { font-size: 1.02rem; font-weight: 800; color: var(--encre); }
+.page-client .option.occupe .option-nom, .page-client .option.occupe .option-prix { color: var(--encre-2); }
+.option-detail { display: grid; gap: 1px; margin: 8px 2px 0; padding: 12px 0 2px; border-top: 1px solid var(--line); }
+.choix-titre { font-size: 1.05rem; font-weight: 600; color: var(--encre); }
+.choix-sous { font-size: .88rem; color: var(--encre-2); }
+.fiche-note { text-align: center; color: var(--encre-2); font-size: .82rem; }
+.page-client .fiche-trajet { color: var(--encre-2); }
+
+/* ----- Panneau et boutons ----- */
+.page-client .btn-commander { border-radius: 18px; min-height: 58px; }
+.page-client .paiement-choix, .page-client .btn-options { border-radius: 18px; border-color: transparent; background: var(--gris); }
+.page-client .ligne-lieu input { font-size: 1.05rem; }
+.page-client .recent-ic { background: var(--gris); }
+@media (min-width: 960px) {
+  .services { grid-template-columns: 1fr 1fr 1.2fr; grid-template-areas: "liv food courses" "ach moto courses"; }
+  .service-courses .service-visuel { min-height: 226px; }
+}
+.accueil-recherche .rond-noir { flex: none; }
+.accueil-recherche > span:not(.rond-noir) { flex: 1; text-align: center; }
+.accueil-cadre { grid-template-columns: minmax(0, 1fr); }
+.accueil-cadre > * { min-width: 0; }
+.accueil-position { max-width: 100%; min-width: 0; }
+.accueil-position span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.services { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (min-width: 960px) { .services { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); } }

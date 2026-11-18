@@ -447,7 +447,7 @@ function recadrerItineraire(pts) {
   const h = carte.getSize().y;
   // marges pour la recherche (haut) et la bulle d'aide (bas), proportionnées à la hauteur de la carte
   carte.flyToBounds(zone, {
-    paddingTopLeft: [30, Math.min(large ? 130 : 80, h * 0.22)],
+    paddingTopLeft: [30, estTelephone() ? 130 : Math.min(large ? 130 : 80, h * 0.22)], // téléphone : place pour le logo et les bulles
     paddingBottomRight: [large ? 40 : 60, estTelephone() ? hauteurFeuille() + 30 : Math.min(large ? 70 : 100, h * 0.22)],
     maxZoom: 17,
     duration: 0.8,
@@ -511,10 +511,10 @@ function fraisAchatClient() {
   return Math.max(Number(reglagesFrais.frais_achat_min) || 0, Math.round(((Number(form.montant_achat.value) || 0) * pct) / 100));
 }
 const OPTIONS = [
-  { id: 'moto', icone: 'bike', nom: 'Moto', detail: '1 personne · le plus rapide', prix: (d) => d.prix_moto || d.prix },
-  { id: 'voiture', icone: 'car-taxi-front', nom: 'Éco', detail: 'Taxi ou clando · jusqu\'à 4 personnes', prix: (d) => d.prix_voiture || d.prix },
-  { id: 'confort', icone: 'car', nom: 'Confort', detail: 'Voiture climatisée · jusqu\'à 4 personnes', prix: (d) => d.prix_confort || d.prix_voiture || d.prix },
-  { id: 'colis', icone: 'package', nom: 'Colis', detail: 'Livrer un objet, faire des courses', prix: (d) => d.prix },
+  { id: 'moto', image: '/img/3d/moto.png', nom: 'Moto', detail: 'Jakarta, 1 personne', prix: (d) => d.prix_moto || d.prix },
+  { id: 'voiture', image: '/img/3d/eco.png', nom: 'Éco', detail: 'Taxi ou clando, 4 places', prix: (d) => d.prix_voiture || d.prix },
+  { id: 'confort', image: '/img/3d/suv.png', nom: 'Confort', detail: 'Climatisée, 4 places', prix: (d) => d.prix_confort || d.prix_voiture || d.prix },
+  { id: 'colis', image: '/img/3d/colis.png', nom: 'Colis', detail: 'Un objet, des achats', prix: (d) => d.prix },
 ];
 
 /** La fiche apparaît dès que le départ et l'arrivée sont connus et le prix calculé. */
@@ -545,6 +545,11 @@ function majFiche() {
   $('aide-lieux').hidden = pret;
   afficherAdresses();
   const vientDOuvrir = pret && !fichePrete;
+  // trajet prêt : on quitte l'écran de recherche pour montrer les prix
+  if (vientDOuvrir) {
+    document.body.classList.remove('feuille-recherche');
+    if (document.activeElement && document.activeElement.closest('.lieux')) document.activeElement.blur(); // range le clavier
+  }
   fichePrete = pret;
   majBulles(pret);
   if (vientDOuvrir && estTelephone()) setTimeout(() => { majHauteurFeuille(); if (ptsTrace) recadrerItineraire(ptsTrace); }, 120);
@@ -557,19 +562,16 @@ function majFiche() {
     const temps = !x ? '' : x.nb ? `${x.minutes} min` : 'Occupé';
     return `
     <button type="button" class="option ${choix === o.id ? 'choisi' : ''} ${x && !x.nb ? 'occupe' : ''}" data-choix="${o.id}" role="radio" aria-checked="${choix === o.id}">
-      <span class="option-temps">${temps}</span>
-      <span class="pic-rond">${ico(o.icone)}</span>
-      <b class="option-nom">${o.nom}</b>
+      <span class="option-visuel"><img src="${o.image}" alt="" loading="lazy">${temps ? `<span class="option-temps">${temps}</span>` : ''}</span>
+      <span class="option-nom">${o.nom}</span>
       <b class="option-prix">${fcfa(o.prix(d))}</b>
     </button>`;
   }).join('');
   // détail du choix, et prévenir quand personne n'est libre (la commande reste possible : elle attendra)
   const o = OPTIONS.find((x) => x.id === choix);
   const dispo = ch[choix];
-  $('option-detail').innerHTML = `<b>${o.nom}</b> · ${o.detail}`
-    + (dispo && !dispo.nb
-      ? `<span class="occupe-note">${ico('clock', 'ic-sm')} Tous les ${choix === 'colis' ? 'livreurs' : choix === 'confort' ? 'chauffeurs Confort' : choix === 'voiture' ? 'chauffeurs Éco' : 'chauffeurs à moto'} sont occupés : votre demande attendra le premier libre.</span>`
-      : dispo ? ` · ${dispo.nb} libre${dispo.nb > 1 ? 's' : ''} autour de vous` : '');
+  $('option-detail').innerHTML = `<span class="choix-titre">Vous avez choisi ${o.nom}</span><span class="choix-sous">${o.detail}${dispo && dispo.nb ? ` · ${dispo.nb} disponible${dispo.nb > 1 ? 's' : ''}` : ''}</span>`
+    + (dispo && !dispo.nb ? `<span class="occupe-note">${ico('clock', 'ic-sm')} Aucun disponible pour l'instant : votre demande attendra le premier libre.</span>` : '');
   // faire défiler jusqu'au choix (petits écrans)
   const carteChoisie = $('options').querySelector('.option.choisi');
   if (carteChoisie) carteChoisie.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -621,9 +623,9 @@ function majCommander() {
   const fa = fraisAchatClient();
   const detail = [fsrv ? `${fcfa(fsrv)} de frais de service` : '', fa ? `${fcfa(fa)} de frais d'achat` : ''].filter(Boolean).join(' et ');
   $('fiche-note').textContent = (m === 'especes'
-    ? (estTrajet() ? 'Vous payez le chauffeur à l\'arrivée.' : 'Vous payez le livreur à la livraison.')
-    : `Rien à payer maintenant : vous paierez avec ${MOYENS[m].nom} quand ${qui} aura accepté.`)
-    + (detail ? ` Prix tout compris (dont ${detail})${fa ? ', achats en plus' : ''}.` : '');
+    ? (estTrajet() ? 'Espèces, à l\'arrivée' : 'Espèces, à la livraison')
+    : `${MOYENS[m].nom}, après l'acceptation`)
+    + (detail ? ` · dont ${detail}${fa ? ' · achats en plus' : ''}` : '');
 }
 
 /** Moyen de paiement : une petite liste, le dernier choix est gardé. */
@@ -1349,7 +1351,7 @@ async function utiliserMaPosition(silencieux = false) {
     delete champ.dataset.ancre;
     placerAvecRepere('depart', p.coords.latitude, p.coords.longitude, null);
     parGPS.depart = true;
-    proposerRepere('depart', 'Ma position');
+    await proposerRepere('depart', 'Ma position'); // le nom du lieu est prêt pour l'accueil
     apresPoint('depart');
     if (p.coords.accuracy > 150 && !silencieux) {
       toast(`Position approximative (±${Math.round(p.coords.accuracy)} m). Faites glisser le point A sur l'endroit exact.`, true);
@@ -1404,7 +1406,9 @@ function fermerAccueil() {
 let jetonAccueil = 0;
 async function majAccueil() {
   if ($('accueil').hidden) return;
-  $('accueil-position-texte').textContent = form.depart_repere.value || 'Votre position';
+  // « Ma position · près de l'École » → « Près de l'École »
+  const ici = form.depart_repere.value.replace(/^Ma position · /, '');
+  $('accueil-position-texte').textContent = ici ? ici.charAt(0).toUpperCase() + ici.slice(1) : 'Votre position';
   // adresses récentes, avec une icône comme sur l'écran de recherche
   $('accueil-recents').innerHTML = lireAdresses().slice(0, 3).map((x, i) => {
     const [nom, ...reste] = x.repere.split(/ · |, /);
@@ -1413,7 +1417,7 @@ async function majAccueil() {
       <span class="recent-texte"><b>${esc(nom)}</b>${reste.length ? `<small>${esc(reste.join(', '))}</small>` : ''}</span>
     </button>`;
   }).join('');
-  // « Courses · à partir de 3 min » : le chauffeur libre le plus proche
+  // « Courses · dès de 3 min » : le chauffeur libre le plus proche
   if (!points.depart) return;
   const jeton = ++jetonAccueil;
   try {
@@ -1421,13 +1425,20 @@ async function majAccueil() {
     const ch = await api('GET', `/api/courses/chauffeurs-proches?lat=${p.lat}&lng=${p.lng}`);
     if (jeton !== jetonAccueil) return;
     const m = ['moto', 'voiture', 'confort'].map((v) => ch[v] && ch[v].minutes).filter((x) => x != null);
-    $('tuile-courses-temps').textContent = m.length ? `à partir de ${Math.min(...m)} min` : 'Moto, Éco, Confort';
+    $('tuile-courses-temps').textContent = m.length ? `· dès ${Math.min(...m)} min` : '';
   } catch { /* pas grave : texte par défaut */ }
 }
 /** Courses ou Livraison : on passe à l'écran de commande, réglé sur trajet ou colis. */
 function choisirService(service, chercher = true) {
-  if (service === 'livraison') choix = 'colis';
-  else if (choix === 'colis') choix = Stock.get('tt_choix_trajet') || 'moto';
+  if (service === 'livraison' || service === 'achats') {
+    choix = 'colis';
+    form.type.value = service === 'achats' ? 'achat' : 'colis';
+    form.description.value = '';
+    afficherChoixRapides();
+  } else if (service === 'moto') {
+    choix = 'moto';
+    Stock.set('tt_choix_trajet', 'moto');
+  } else if (choix === 'colis') choix = Stock.get('tt_choix_trajet') || 'moto';
   Stock.set(CLE_CHOIX, choix);
   fermerAccueil();
   majFiche();
@@ -1441,7 +1452,7 @@ function choisirService(service, chercher = true) {
 $('accueil').addEventListener('click', (e) => {
   const t = e.target.closest('[data-service]');
   if (t) {
-    if (t.dataset.service === 'food') { toast('Food arrive bientôt : les restaurants de Yène livrés chez vous.'); return; }
+    if (t.dataset.service === 'food') { toast('Food arrive bientôt à Yène.'); return; }
     choisirService(t.dataset.service);
     return;
   }
