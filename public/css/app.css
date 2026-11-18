@@ -1240,3 +1240,6 @@ body.course-en-cours #aide-carte { display: none; }
   body.page-client.feuille-recherche .recents { display: block !important; }
   body.page-client.feuille-recherche .retour-carte, body.page-client.feuille-recherche .carte-outils { visibility: hidden; }
 }
+/* adresses récentes : lignes droites (les anciens boutons ronds ne s'appliquent pas) */
+.recents .raccourcis .recent { border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0; box-shadow: none; background: transparent; padding-left: 0; }
+.recents .raccourcis .recent:first-child { border-top: 0; }
