@@ -24,6 +24,17 @@ export function enregistrer(r) {
     return json({ ...d, chauffeurs: chauffeursProches(depart, libres, await parametres(c.db)) });
   });
 
+  // Accueil : chauffeurs libres autour du client (« Courses · à partir de 3 min »)
+  r.get('/api/courses/chauffeurs-proches', async (req, c) => {
+    const pt = { lat: Number(c.url.searchParams.get('lat')), lng: Number(c.url.searchParams.get('lng')) };
+    if (!pointValide(pt)) throw new HttpErreur(400, 'Position invalide');
+    const libres = (await c.db.query(
+      `SELECT lat, lng, vehicule, position_maj FROM utilisateurs u WHERE role = 'livreur' AND actif = 1 AND disponible = 1
+       AND NOT EXISTS (SELECT 1 FROM courses co WHERE co.livreur_id = u.id AND co.statut IN ('acceptee', 'recuperee'))`
+    )).rows;
+    return json(chauffeursProches(pt, libres, await parametres(c.db)));
+  });
+
   r.post('/api/courses', async (req, c) => {
     const b = await lireCorps(req);
     const clientNom = texte(b.client_nom, 100);

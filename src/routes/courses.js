@@ -34,6 +34,15 @@ router.post('/devis', a(async (req, res) => {
   res.json({ ...d, chauffeurs: chauffeursProches(depart, libres, await parametres()) });
 }));
 
+// Accueil : chauffeurs libres autour du client (« Courses · à partir de 3 min »)
+router.get('/chauffeurs-proches', a(async (req, res) => {
+  const pt = { lat: Number(req.query.lat), lng: Number(req.query.lng) };
+  if (!pointValide(pt)) return res.status(400).json({ erreur: 'Position invalide' });
+  const occupes = new Set((await query("SELECT livreur_id FROM courses WHERE statut IN ('acceptee', 'recuperee') AND livreur_id IS NOT NULL")).rows.map((x) => x.livreur_id));
+  const libres = (await query("SELECT id, lat, lng, vehicule, position_maj FROM utilisateurs WHERE role = 'livreur' AND actif AND disponible")).rows.filter((l) => !occupes.has(l.id));
+  res.json(chauffeursProches(pt, libres, await parametres()));
+}));
+
 router.post('/', a(async (req, res) => {
   const b = req.body || {};
   const clientNom = texte(b.client_nom, 100);

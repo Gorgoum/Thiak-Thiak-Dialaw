@@ -430,6 +430,7 @@ $('poignee').onclick = () => {
 };
 // flèche retour : changer de destination
 $('retour-carte').onclick = () => {
+  if (!points.arrivee) { ouvrirAccueil(); return; }
   form.arrivee_repere.value = '';
   delete form.arrivee_repere.dataset.auto;
   delete form.arrivee_repere.dataset.ancre;
@@ -536,7 +537,7 @@ function majBulles(pret) {
 
 let fichePrete = false;
 function majFiche() {
-  $('retour-carte').hidden = !points.arrivee;
+  $('retour-carte').hidden = false; // avec destination : la changer ; sans : retour à l'accueil
   requestAnimationFrame(majHauteurFeuille);
   const pret = !!(dernierDevis && points.depart && points.arrivee && !erreurDevis && !memeEndroit());
   $('fiche').hidden = !pret;
@@ -593,6 +594,7 @@ $('options').addEventListener('click', (e) => {
   if (!b) return;
   choix = b.dataset.choix;
   Stock.set(CLE_CHOIX, choix);
+  if (choix !== 'colis') Stock.set('tt_choix_trajet', choix);
   majFiche();
   majBulles(fichePrete);
 });
@@ -920,6 +922,7 @@ function majVehicules() {
     else if (v.prevu) { v.prevu.remove(); v.prevu = null; } // passager à bord : la route du chauffeur suffit
   }
   courseSuivie = actives[0] || derniereListe.find((c) => c.statut === 'acceptee' || c.statut === 'recuperee') || null;
+  if (courseSuivie && !$('accueil').hidden) fermerAccueil();
   afficherCourseActive();
   // première apparition du véhicule : on cadre la carte sur lui et sur le point où il va
   if (courseSuivie && enRoute(courseSuivie) && dejaCadre !== courseSuivie.id + courseSuivie.statut) {
@@ -1022,6 +1025,9 @@ async function chargerListe() {
     bouton.hidden = !liste.length;
     $('nb-actives').hidden = !actives;
     $('nb-actives').textContent = actives;
+    $('accueil-mes-courses').hidden = !liste.length;
+    $('accueil-nb').hidden = !actives;
+    $('accueil-nb').textContent = actives;
     $('liste').innerHTML = liste.length ? liste.map(carteCourse).join('') : '<p class="vide">Aucune livraison pour le moment.</p>';
     majVehicules();
   } catch (e) { toast(e.message, true); }
@@ -1382,6 +1388,80 @@ function ouvrirRecherche(oui) {
   setTimeout(majHauteurFeuille, 300);
 }
 
+// =========================================================================
+// Accueil : les services, « Où allons-nous ? », les adresses récentes
+// =========================================================================
+function ouvrirAccueil() {
+  $('accueil').hidden = false;
+  document.body.classList.add('sur-accueil');
+  majAccueil();
+}
+function fermerAccueil() {
+  $('accueil').hidden = true;
+  document.body.classList.remove('sur-accueil');
+  setTimeout(() => { if (carte) carte.invalidateSize(); majHauteurFeuille(); }, 60);
+}
+let jetonAccueil = 0;
+async function majAccueil() {
+  if ($('accueil').hidden) return;
+  $('accueil-position-texte').textContent = form.depart_repere.value || 'Votre position';
+  // adresses récentes, avec une icône comme sur l'écran de recherche
+  $('accueil-recents').innerHTML = lireAdresses().slice(0, 3).map((x, i) => {
+    const [nom, ...reste] = x.repere.split(/ · |, /);
+    return `<button type="button" class="recent" data-recent="${i}" title="${esc(x.repere)}">
+      <span class="recent-ic">${ico('history')}</span>
+      <span class="recent-texte"><b>${esc(nom)}</b>${reste.length ? `<small>${esc(reste.join(', '))}</small>` : ''}</span>
+    </button>`;
+  }).join('');
+  // « Courses · à partir de 3 min » : le chauffeur libre le plus proche
+  if (!points.depart) return;
+  const jeton = ++jetonAccueil;
+  try {
+    const p = coord(points.depart);
+    const ch = await api('GET', `/api/courses/chauffeurs-proches?lat=${p.lat}&lng=${p.lng}`);
+    if (jeton !== jetonAccueil) return;
+    const m = ['moto', 'voiture', 'confort'].map((v) => ch[v] && ch[v].minutes).filter((x) => x != null);
+    $('tuile-courses-temps').textContent = m.length ? `à partir de ${Math.min(...m)} min` : 'Moto, Éco, Confort';
+  } catch { /* pas grave : texte par défaut */ }
+}
+/** Courses ou Livraison : on passe à l'écran de commande, réglé sur trajet ou colis. */
+function choisirService(service, chercher = true) {
+  if (service === 'livraison') choix = 'colis';
+  else if (choix === 'colis') choix = Stock.get('tt_choix_trajet') || 'moto';
+  Stock.set(CLE_CHOIX, choix);
+  fermerAccueil();
+  majFiche();
+  if (chercher && !points.arrivee) {
+    // écran de recherche ouvert tout de suite (le focus donné par programme ne déclenche pas toujours l'événement)
+    choisirMode('arrivee');
+    ouvrirRecherche(true);
+    setTimeout(() => form.arrivee_repere.focus(), 250);
+  }
+}
+$('accueil').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-service]');
+  if (t) {
+    if (t.dataset.service === 'food') { toast('Food arrive bientôt : les restaurants de Yène livrés chez vous.'); return; }
+    choisirService(t.dataset.service);
+    return;
+  }
+  if (e.target.closest('#accueil-recherche')) { choisirService('courses'); return; }
+  if (e.target.closest('#accueil-position')) { fermerAccueil(); choisirMode('depart'); setTimeout(() => form.depart_repere.focus(), 250); return; }
+  if (e.target.closest('#accueil-mes-courses')) { ouvrirTiroir(); chargerListe(); return; }
+  const r = e.target.closest('[data-recent]');
+  if (r) {
+    const x = lireAdresses()[Number(r.dataset.recent)];
+    if (!x) return;
+    choisirService('courses', false);
+    const type = points.depart ? 'arrivee' : 'depart';
+    form[type + '_repere'].dataset.ancre = JSON.stringify({ nom: x.repere, lat: x.lat, lng: x.lng });
+    placerAvecRepere(type, x.lat, x.lng, x.repere, true);
+    apresPoint(type);
+  }
+});
+// le logo ramène à l'accueil (sans recharger la page)
+document.querySelector('.entete .marque').addEventListener('click', (e) => { e.preventDefault(); ouvrirAccueil(); });
+
 function initCarte() {
   const outilsCarte = creerCarte('map');
   carte = outilsCarte.carte;
@@ -1439,7 +1519,8 @@ afficherAdresses();
 choisirMode('depart');
 majDevis();
 // le départ est pris automatiquement à la position du téléphone (sauf si l'on vient suivre une course)
-if (!suiviPartage) utiliserMaPosition(true);
+if (!suiviPartage) utiliserMaPosition(true).then(majAccueil);
+if (!suiviPartage) ouvrirAccueil();
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('confirmation').hidden) fermerConfirmation(); });
 brancherBoutonNotif($('btn-notif'));
 proposerNotifications();

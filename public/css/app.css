@@ -1264,3 +1264,34 @@ body.course-en-cours #aide-carte { display: none; }
 .bloc-remboursement .ligne-action { display: flex; flex-wrap: wrap; gap: 8px; }
 .bloc-remboursement .ligne-action > * { flex: 1 1 150px; min-width: 0; justify-content: center; white-space: normal; text-align: center; }
 .bloc-remboursement textarea { width: 100%; box-sizing: border-box; }
+
+/* =========================================================================
+   Accueil (comme une appli de VTC) : services en grandes tuiles, « Où allons-nous ? », adresses récentes
+   ========================================================================= */
+.accueil { position: fixed; inset: 0; z-index: 1200; overflow-y: auto; background: var(--surface); padding: calc(14px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom)); }
+.accueil[hidden] { display: none; }
+.accueil-cadre { max-width: 560px; margin: 0 auto; display: grid; gap: 16px; }
+.accueil-entete { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.accueil-entete .marque { display: flex; align-items: center; gap: 10px; font-size: 1.3rem; font-weight: 800; color: var(--ink); }
+.accueil-entete .marque b { color: var(--accent); }
+.accueil-entete .logo img { border-radius: 12px; display: block; }
+.accueil-position { justify-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 2px; border: 0; background: transparent; box-shadow: none; font-weight: 700; color: var(--ink); max-width: 100%; }
+.accueil-position span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tuiles { display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: auto auto; gap: 10px; }
+.tuile { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; gap: 2px; min-height: 118px; padding: 14px; border-radius: 22px; border: 0; background: var(--surface-2); box-shadow: none; text-align: left; color: var(--ink); white-space: normal; }
+.tuile-courses { grid-row: span 2; min-height: 246px; background: linear-gradient(160deg, var(--brand-50), var(--surface-2)); }
+.tuile-ic { width: 56px; height: 56px; border-radius: 18px; display: grid; place-items: center; background: var(--surface); color: var(--brand); margin-bottom: auto; box-shadow: var(--shadow-sm); }
+.tuile-ic .ic { width: 28px; height: 28px; }
+.tuile-courses .tuile-ic { width: 84px; height: 84px; border-radius: 26px; background: var(--brand); color: #fff; }
+.tuile-courses .tuile-ic .ic { width: 44px; height: 44px; }
+.tuile b { font-size: 1.12rem; }
+.tuile small { color: var(--ink-3); font-size: .84rem; }
+.tuile-courses small { color: #15803d; font-weight: 700; }
+.tuile.bientot { opacity: .65; }
+.tuile.bientot small { font-weight: 700; color: var(--accent); }
+.accueil-recherche { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 0 18px; border-radius: 22px; border: 0; background: var(--surface-2); box-shadow: none; font-size: 1.15rem; font-weight: 700; color: var(--ink); justify-content: flex-start; }
+.accueil-recherche span { flex: 1; text-align: left; }
+.accueil-recents { display: grid; }
+.accueil-recents .recent { border: 0; border-radius: 0; background: transparent; box-shadow: none; padding-left: 0; }
+.accueil-recents .recent + .recent { border-top: 1px solid var(--line); }
+body.sur-accueil { overflow: hidden; }

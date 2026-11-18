@@ -36,6 +36,43 @@
     </button>
   </header>
 
+  <!-- Accueil : les services, « Où allons-nous ? », les adresses récentes -->
+  <section class="accueil" id="accueil" aria-label="Accueil" hidden>
+    <div class="accueil-cadre">
+      <div class="accueil-entete">
+        <span class="marque"><span class="logo"><img src="/icons/icon-96.png" alt="" width="40" height="40"></span><span>Yobalema <b>Yène</b></span></span>
+        <button type="button" class="btn btn-ghost" id="accueil-mes-courses" hidden>
+          <svg class="ic" aria-hidden="true"><use href="/icons.svg#list"></use></svg><span>Mes courses</span><span class="pastille" id="accueil-nb" hidden></span>
+        </button>
+      </div>
+      <button type="button" class="accueil-position" id="accueil-position">
+        <svg class="ic ic-sm" aria-hidden="true"><use href="/icons.svg#map-pin"></use></svg>
+        <span id="accueil-position-texte">Votre position</span>
+        <svg class="ic ic-sm" aria-hidden="true"><use href="/icons.svg#chevron-right"></use></svg>
+      </button>
+      <div class="tuiles">
+        <button type="button" class="tuile tuile-courses" data-service="courses">
+          <span class="tuile-ic"><svg class="ic" aria-hidden="true"><use href="/icons.svg#car-taxi-front"></use></svg></span>
+          <b>Courses</b><small id="tuile-courses-temps">Moto, Éco, Confort</small>
+        </button>
+        <button type="button" class="tuile" data-service="livraison">
+          <span class="tuile-ic"><svg class="ic" aria-hidden="true"><use href="/icons.svg#package"></use></svg></span>
+          <b>Livraison</b><small>Colis, acheter pour moi</small>
+        </button>
+        <button type="button" class="tuile bientot" data-service="food" aria-disabled="true">
+          <span class="tuile-ic"><svg class="ic" aria-hidden="true"><use href="/icons.svg#utensils"></use></svg></span>
+          <b>Food</b><small>Bientôt</small>
+        </button>
+      </div>
+      <button type="button" class="accueil-recherche" id="accueil-recherche">
+        <svg class="ic" aria-hidden="true"><use href="/icons.svg#search"></use></svg>
+        <span>Où allons-nous ?</span>
+        <svg class="ic ic-sm" aria-hidden="true"><use href="/icons.svg#chevron-right"></use></svg>
+      </button>
+      <div class="accueil-recents" id="accueil-recents"></div>
+    </div>
+  </section>
+
   <main class="client">
     <!-- Carte -->
     <section class="volet-carte bloc-carte" id="bloc-carte" aria-label="Carte">
