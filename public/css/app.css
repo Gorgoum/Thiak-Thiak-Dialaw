@@ -1238,7 +1238,9 @@ body.course-en-cours #aide-carte { display: none; }
   body.page-client.feuille-recherche .volet-form { max-height: 88dvh; min-height: 70dvh; }
   body.page-client.feuille-recherche .fiche, body.page-client.feuille-recherche .aide-lieux, body.page-client.feuille-recherche .suivi-direct { display: none; }
   body.page-client.feuille-recherche .recents { display: block !important; }
-  body.page-client.feuille-recherche .retour-carte, body.page-client.feuille-recherche .carte-outils { visibility: hidden; }
+  body.page-client.feuille-recherche .carte-outils { visibility: hidden; }
+  /* la flèche retour reste visible pendant la recherche (elle la ferme), au-dessus du panneau */
+  body.page-client.feuille-recherche .retour-carte { bottom: calc(var(--feuille-h, 300px) + 12px); }
 }
 /* adresses récentes : lignes droites (les anciens boutons ronds ne s'appliquent pas) */
 .recents .raccourcis .recent { border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0; box-shadow: none; background: transparent; padding-left: 0; }

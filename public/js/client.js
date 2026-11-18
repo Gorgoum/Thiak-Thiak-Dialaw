@@ -430,6 +430,7 @@ $('poignee').onclick = () => {
 };
 // flèche retour : changer de destination
 $('retour-carte').onclick = () => {
+  if (document.body.classList.contains('feuille-recherche')) { fermerRecherche(); return; }
   if (!points.arrivee) { ouvrirAccueil(); return; }
   form.arrivee_repere.value = '';
   delete form.arrivee_repere.dataset.auto;
@@ -705,7 +706,7 @@ $('confirmation').addEventListener('click', (e) => { if (e.target.closest('[data
 // =========================================================================
 // Mes livraisons (tiroir)
 // =========================================================================
-function ouvrirTiroir() { $('tiroir').hidden = false; document.body.classList.add('sans-defilement'); }
+function ouvrirTiroir() { if ($('tiroir').hidden) empiler('tiroir'); $('tiroir').hidden = false; document.body.classList.add('sans-defilement'); }
 function fermerTiroir() { $('tiroir').hidden = true; document.body.classList.remove('sans-defilement'); }
 $('ouvrir-suivi').onclick = () => { ouvrirTiroir(); chargerListe(); };
 $('tiroir').addEventListener('click', (e) => { if (e.target.closest('[data-fermer]')) fermerTiroir(); });
@@ -1384,6 +1385,7 @@ $('recents-liste').onclick = (e) => {
 /** Écran de recherche : le panneau monte presque en plein écran, avec les adresses récentes en liste. */
 function ouvrirRecherche(oui) {
   if (!estTelephone()) return;
+  if (oui && !document.body.classList.contains('feuille-recherche')) empiler('recherche');
   document.body.classList.toggle('feuille-recherche', oui);
   document.body.classList.remove('feuille-reduite');
   $('recents').hidden = !lireAdresses().length || (!oui && !$('fiche').hidden);
@@ -1393,12 +1395,38 @@ function ouvrirRecherche(oui) {
 // =========================================================================
 // Accueil : les services, « Où allons-nous ? », les adresses récentes
 // =========================================================================
+/** Ferme l'écran de recherche (et range le clavier). */
+function fermerRecherche() {
+  document.body.classList.remove('feuille-recherche');
+  if (document.activeElement && document.activeElement.closest('.lieux')) document.activeElement.blur();
+  if (!lireAdresses().length || !$('fiche').hidden) $('recents').hidden = true;
+  setTimeout(majHauteurFeuille, 300);
+}
+
+// =========================================================================
+// Bouton « retour » du téléphone : chaque écran est déclaré au navigateur ; « retour » ferme d'abord
+// ce qui est ouvert (Mes courses, recherche, destination) puis revient à l'accueil, au lieu de quitter le site.
+// =========================================================================
+function empiler(ecran) { try { history.pushState({ ecran }, ''); } catch { /* navigation privée */ } }
+window.addEventListener('popstate', () => {
+  if (!$('confirmation').hidden) { fermerConfirmation(); return; }
+  if (!$('tiroir').hidden) { fermerTiroir(); return; }
+  if (document.body.classList.contains('feuille-recherche')) { fermerRecherche(); return; }
+  if ($('accueil').hidden && points.arrivee && !courseSuivie) {
+    $('retour-carte').click(); // enlève la destination, on reste sur la commande
+    empiler('commande');
+    return;
+  }
+  if ($('accueil').hidden) ouvrirAccueil();
+});
+
 function ouvrirAccueil() {
   $('accueil').hidden = false;
   document.body.classList.add('sur-accueil');
   majAccueil();
 }
 function fermerAccueil() {
+  if (!$('accueil').hidden) empiler('commande');
   $('accueil').hidden = true;
   document.body.classList.remove('sur-accueil');
   setTimeout(() => { if (carte) carte.invalidateSize(); majHauteurFeuille(); }, 60);
