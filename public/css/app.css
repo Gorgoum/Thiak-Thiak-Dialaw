@@ -1004,3 +1004,53 @@ body.service-trajet [data-pour="livraison"] { display: none !important; }
 .carte-vehicule.choisi .pic-rond { background: var(--brand); color: #fff; }
 .vehicule-chauffeur { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding: 3px 10px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); font-size: .82rem; font-weight: 600; color: var(--ink-2); }
 .chauffeur-arrive { padding: 10px 12px; border-radius: 12px; background: var(--brand-50); border: 1px solid var(--brand-100); font-weight: 600; }
+
+/* =========================================================================
+   Écran unique (comme une appli de VTC) : départ, arrivée, fiche, « Commander »
+   ========================================================================= */
+.volet-form { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+.lieux { position: relative; display: grid; gap: 8px; padding: 12px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+.lieux::before { content: ''; position: absolute; left: 26px; top: 40px; bottom: 40px; border-left: 2px dashed var(--line-2); }
+.ligne-lieu { display: flex; align-items: center; gap: 10px; position: relative; }
+.ligne-lieu .puce { width: 28px; height: 28px; font-size: .8rem; margin: 0; z-index: 1; }
+.ligne-lieu .champ-lieu { flex: 1; min-width: 0; }
+.ligne-lieu input { margin: 0; min-height: 50px; font-size: 1rem; border-radius: 12px; background: var(--surface-2); }
+.ligne-lieu.actif input { border-color: var(--brand-600); background: var(--surface); }
+.btn-position { flex: none; width: 46px; min-height: 46px; box-shadow: none; border: 1px solid var(--line); }
+.aide-lieux { margin: 10px 4px 0; color: var(--ink-3); font-size: .9rem; }
+.aide-lieux.alerte { color: var(--danger); font-weight: 600; }
+.volet-form .recents { margin-top: 12px; }
+
+.fiche { margin-top: 14px; padding: 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-md); animation: entre 240ms cubic-bezier(.2, .8, .2, 1); }
+.fiche.charge { opacity: .6; }
+.fiche-trajet { margin: 0 0 10px; color: var(--ink-3); font-size: .88rem; display: flex; align-items: center; gap: 6px; }
+.options { display: grid; gap: 8px; }
+.option {
+  justify-content: flex-start; gap: 12px; text-align: left; white-space: normal; min-height: 64px; padding: 8px 12px;
+  border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+}
+.option .pic-rond { width: 42px; height: 42px; }
+.option-texte { flex: 1; min-width: 0; }
+.option-texte b { display: block; font-size: 1.02rem; }
+.option-texte small { display: block; color: var(--ink-3); font-weight: 400; font-size: .82rem; }
+.option-prix { font-size: 1.05rem; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.option.choisi { border-color: var(--brand); background: var(--brand-50); box-shadow: inset 0 0 0 1px var(--brand); }
+.option.choisi .pic-rond { background: var(--brand); color: #fff; }
+.bloc-colis { margin-top: 12px; display: grid; gap: 10px; }
+.puces-choix { display: flex; flex-wrap: wrap; gap: 6px; }
+.puces-choix .chip.choisi { background: var(--brand-50); border-color: var(--brand); color: var(--brand); }
+.bloc-colis textarea { margin: 0; min-height: 46px; }
+.fiche .coord-connues, .fiche #coord-saisie { margin: 12px 0 0; }
+.fiche #coord-saisie .champ { margin-bottom: 0; }
+.fiche-pied { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 8px; align-items: center; margin-top: 12px; }
+.paiement-choix { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0 8px; min-height: 56px; min-width: 0; max-width: 40vw; border-radius: 14px; border: 1px solid var(--line-2); background: var(--surface); }
+.paiement-choix .ic { flex: none; }
+.paiement-choix select { margin: 0; padding: 0 2px; border: 0; background: transparent; min-height: 54px; font-weight: 600; width: 100%; min-width: 0; text-overflow: ellipsis; }
+.paiement-choix select:focus { box-shadow: none; }
+.btn-commander { min-height: 56px; min-width: 0; padding-inline: 12px; font-size: 1.05rem; border-radius: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fiche-note { margin: 8px 2px 0; color: var(--ink-3); font-size: .84rem; text-align: center; }
+/* téléphone : le bouton « Commander » reste visible en bas pendant qu'on fait défiler */
+@media (max-width: 959px) {
+  .fiche-pied { position: sticky; bottom: 0; z-index: 5; background: var(--surface); padding: 10px 0 calc(6px + env(safe-area-inset-bottom)); margin-bottom: -6px; }
+  body.fiche-ouverte .volet-carte #map { height: clamp(200px, 30vh, 320px); }
+}

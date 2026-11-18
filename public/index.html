@@ -54,7 +54,7 @@
       </div>
     </section>
 
-    <!-- Assistant : une question par écran -->
+    <!-- Écran unique : départ (ma position), « Où allez-vous ? », puis la fiche avec les prix et « Commander » -->
     <section class="volet-form">
       <!-- Première ouverture : activer les notifications de l'application (une seule fois) -->
       <div class="bandeau-alertes" id="bandeau-alertes" hidden>
@@ -69,169 +69,79 @@
         </div>
       </div>
 
-      <div class="choix-service" role="radiogroup" aria-label="Que voulez-vous faire ?">
-        <label><input type="radio" name="service" value="livraison" form="f-course" checked>
-          <span><svg class="ic" aria-hidden="true"><use href="/icons.svg#package"></use></svg>Envoyer un colis</span></label>
-        <label><input type="radio" name="service" value="trajet" form="f-course">
-          <span><svg class="ic" aria-hidden="true"><use href="/icons.svg#bike"></use></svg>Me déplacer</span></label>
-      </div>
-
-      <ol class="progression" id="progression" aria-label="Étapes de la commande">
-        <li data-aller="1"><span>1</span>Départ</li>
-        <li data-aller="2"><span>2</span>Arrivée</li>
-        <li data-aller="3"><span>3</span><em data-pour="livraison">Colis</em><em data-pour="trajet">Véhicule</em></li>
-        <li data-aller="4"><span>4</span>Vous</li>
-      </ol>
-
       <form id="f-course" novalidate>
-        <!-- 1. Départ -->
-        <div class="ecran etape-trajet" data-etape="1" data-type="depart">
-          <h2 class="question"><span class="puce puce-a">A</span><span data-pour="livraison">D'où part le colis ?</span><span data-pour="trajet">Où êtes-vous ?</span></h2>
-          <p class="note-gps" id="note-depart" hidden></p>
-          <div class="gros-choix">
-            <button type="button" class="gros-bouton" data-gps="depart">
-              <span class="pic-rond"><svg class="ic"><use href="/icons.svg#locate-fixed"></use></svg></span>
-              <span><b>Je suis ici</b><small>Prendre ma position</small></span>
-            </button>
-            <button type="button" class="gros-bouton" data-sur-carte="depart">
-              <span class="pic-rond"><svg class="ic"><use href="/icons.svg#pointer"></use></svg></span>
-              <span><b>Toucher la carte</b><small>Montrer l'endroit sur la carte</small></span>
-            </button>
-            <button type="button" class="gros-bouton" data-demander="depart">
-              <span class="pic-rond"><svg class="ic"><use href="/icons.svg#send"></use></svg></span>
-              <span><b>Demander la position</b><small>Envoyer un lien par WhatsApp</small></span>
-            </button>
-          </div>
-          <div class="attente-pos" id="attente-depart" hidden></div>
-          <label class="champ-question">Ou écrivez le nom du lieu
+        <input type="hidden" name="service" value="trajet">
+        <input type="hidden" name="vehicule" value="moto">
+        <input type="hidden" name="type" value="colis">
+
+        <!-- Départ et arrivée -->
+        <div class="lieux">
+          <div class="ligne-lieu" data-type="depart">
+            <span class="puce puce-a">A</span>
             <span class="champ-lieu">
-              <svg class="ic ic-recherche" aria-hidden="true"><use href="/icons.svg#search"></use></svg>
-              <input name="depart_repere" maxlength="300" autocomplete="off" enterkeyhint="search"
-                     placeholder="Marché, mosquée, école, boutique…">
+              <input name="depart_repere" maxlength="300" autocomplete="off" enterkeyhint="search" placeholder="Départ : où êtes-vous ?" aria-label="Départ">
               <ul class="suggestions" id="sugg-depart" role="listbox" hidden></ul>
             </span>
-          </label>
-          <div class="etat-lieu"><span class="etape-etat" id="etat-depart">Pas encore choisi</span><span class="etape-coord" id="coord-depart" hidden></span></div>
-        </div>
-
-        <!-- 2. Arrivée -->
-        <div class="ecran etape-trajet" data-etape="2" data-type="arrivee" hidden>
-          <h2 class="question"><span class="puce puce-b">B</span><span data-pour="livraison">Où faut-il livrer ?</span><span data-pour="trajet">Où allez-vous ?</span></h2>
-          <p class="note-gps" id="note-arrivee" hidden></p>
-          <div class="gros-choix">
-            <button type="button" class="gros-bouton" data-gps="arrivee" data-pour="livraison">
-              <span class="pic-rond"><svg class="ic"><use href="/icons.svg#house"></use></svg></span>
-              <span><b>Chez moi, ici</b><small>Prendre ma position</small></span>
-            </button>
-            <button type="button" class="gros-bouton" data-sur-carte="arrivee">
-              <span class="pic-rond"><svg class="ic"><use href="/icons.svg#pointer"></use></svg></span>
-              <span><b>Toucher la carte</b><small>Montrer l'endroit sur la carte</small></span>
-            </button>
-            <button type="button" class="gros-bouton" data-demander="arrivee" data-pour="livraison">
-              <span class="pic-rond"><svg class="ic"><use href="/icons.svg#send"></use></svg></span>
-              <span><b>Demander au destinataire</b><small>Il envoie sa position par un lien</small></span>
+            <button type="button" class="btn-rond btn-position" id="btn-ma-position" title="Ma position" aria-label="Utiliser ma position">
+              <svg class="ic" aria-hidden="true"><use href="/icons.svg#locate-fixed"></use></svg>
             </button>
           </div>
-          <div class="attente-pos" id="attente-arrivee" hidden></div>
-          <label class="champ-question">Ou écrivez le nom du lieu
+          <div class="ligne-lieu" data-type="arrivee">
+            <span class="puce puce-b">B</span>
             <span class="champ-lieu">
-              <svg class="ic ic-recherche" aria-hidden="true"><use href="/icons.svg#search"></use></svg>
-              <input name="arrivee_repere" maxlength="300" autocomplete="off" enterkeyhint="search"
-                     placeholder="Maison, quartier, boutique…">
+              <input name="arrivee_repere" maxlength="300" autocomplete="off" enterkeyhint="search" placeholder="Où allez-vous ?" aria-label="Arrivée">
               <ul class="suggestions" id="sugg-arrivee" role="listbox" hidden></ul>
             </span>
-          </label>
-          <div class="etat-lieu"><span class="etape-etat" id="etat-arrivee">Pas encore choisi</span><span class="etape-coord" id="coord-arrivee" hidden></span></div>
+          </div>
         </div>
-
-        <!-- Adresses déjà utilisées (étapes 1 et 2) -->
+        <p class="aide-lieux" id="aide-lieux">Écrivez le lieu, ou touchez la carte.</p>
         <div class="recents" id="recents" hidden>
-          <div class="recents-titre"><svg class="ic ic-sm"><use href="/icons.svg#history"></use></svg>Déjà utilisées</div>
           <div class="raccourcis" id="recents-liste"></div>
         </div>
 
-        <!-- 3. Quoi -->
-        <div class="ecran" data-etape="3" hidden>
-          <div data-pour="trajet">
-            <h2 class="question">Moto ou voiture ?</h2>
-            <input type="hidden" name="vehicule" value="moto">
-            <div class="choix-vehicule" id="choix-vehicule">
-              <button type="button" class="carte-vehicule" data-vehicule="moto">
-                <span class="pic-rond"><svg class="ic"><use href="/icons.svg#bike"></use></svg></span>
-                <span class="carte-vehicule-texte"><b>Moto</b><small>1 personne · le plus rapide</small></span>
-                <b class="prix-vehicule" id="prix-moto">— FCFA</b>
-              </button>
-              <button type="button" class="carte-vehicule" data-vehicule="voiture">
-                <span class="pic-rond"><svg class="ic"><use href="/icons.svg#car"></use></svg></span>
-                <span class="carte-vehicule-texte"><b>Voiture</b><small>Jusqu'à 4 personnes · confortable</small></span>
-                <b class="prix-vehicule" id="prix-voiture">— FCFA</b>
-              </button>
-            </div>
-            <label class="champ">Un mot pour le chauffeur (facultatif)
-              <input name="note_trajet" maxlength="200" placeholder="Ex : 2 personnes, un bagage">
-            </label>
-          </div>
-          <div data-pour="livraison">
-          <h2 class="question">Que faut-il livrer ?</h2>
-          <div class="segment grand" role="radiogroup" aria-label="Type de service">
-            <label><input type="radio" name="type" value="colis" checked><span><svg class="ic"><use href="/icons.svg#package"></use></svg>Livrer un colis</span></label>
-            <label><input type="radio" name="type" value="achat"><span><svg class="ic"><use href="/icons.svg#shopping-bag"></use></svg>Acheter pour moi</span></label>
-          </div>
-          <div class="vignettes" id="choix-rapides" aria-label="Choisir"></div>
-          <label class="champ">Précisez si besoin
-            <textarea name="description" maxlength="500" rows="2" placeholder="Ex : un sac de riz de 25 kg"></textarea>
-          </label>
-          <label class="champ" id="l-montant" hidden>Combien coûtent les achats ? (FCFA)
-            <input name="montant_achat" type="number" inputmode="numeric" min="0" step="50" placeholder="5 000">
-            <small>Le livreur paie pour vous, vous le remboursez à la livraison.</small>
-          </label>
-          </div>
-        </div>
+        <!-- Fiche : apparaît dès que le départ et l'arrivée sont connus -->
+        <div class="fiche" id="fiche" hidden>
+          <p class="fiche-trajet" id="fiche-trajet"></p>
+          <div class="options" id="options" role="radiogroup" aria-label="Que voulez-vous ?"></div>
 
-        <!-- 4. Vous -->
-        <div class="ecran" data-etape="4" hidden>
-          <h2 class="question">Votre numéro de téléphone</h2>
-          <p class="consigne">Le livreur vous appellera à ce numéro.</p>
+          <!-- Colis : que faut-il livrer ? -->
+          <div class="bloc-colis" id="bloc-colis" hidden>
+            <div class="puces-choix" id="choix-rapides" aria-label="Que faut-il livrer ?"></div>
+            <textarea name="description" maxlength="500" rows="1" placeholder="Que faut-il livrer ? (ex : un sac de riz)"></textarea>
+            <label class="champ" id="l-montant" hidden>Montant des achats (FCFA)
+              <input name="montant_achat" type="number" inputmode="numeric" min="0" step="50" placeholder="5 000">
+            </label>
+            <details class="replier" id="bloc-destinataire">
+              <summary><svg class="ic ic-sm"><use href="/icons.svg#chevron-down"></use></svg>Pour une autre personne</summary>
+              <div class="grille-2">
+                <label class="champ">Son nom<input name="destinataire_nom" maxlength="100"></label>
+                <label class="champ">Son téléphone<input name="destinataire_tel" type="tel" inputmode="tel" placeholder="77 123 45 67"></label>
+              </div>
+            </details>
+          </div>
+
+          <!-- Vous : demandé une seule fois, ensuite résumé sur une ligne -->
           <div class="coord-connues" id="coord-connues" hidden>
             <span class="avatar" id="coord-avatar"></span>
             <span class="qui"><b id="coord-nom"></b><small id="coord-tel"></small></span>
             <button type="button" class="btn btn-ghost" id="coord-modifier">Modifier</button>
           </div>
-          <div id="coord-saisie">
-            <label class="champ">Votre téléphone
-              <input name="client_tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="77 123 45 67">
-            </label>
-            <label class="champ">Votre nom
-              <input name="client_nom" maxlength="100" autocomplete="name" placeholder="Ex : Awa Diop">
-            </label>
+          <div class="grille-2" id="coord-saisie">
+            <label class="champ">Votre téléphone<input name="client_tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="77 123 45 67"></label>
+            <label class="champ">Votre nom<input name="client_nom" maxlength="100" autocomplete="name" placeholder="Awa Diop"></label>
           </div>
-          <details class="replier" id="bloc-destinataire" data-pour="livraison">
-            <summary><svg class="ic ic-sm"><use href="/icons.svg#chevron-down"></use></svg>C'est pour une autre personne</summary>
-            <label class="champ">Son nom
-              <input name="destinataire_nom" maxlength="100">
+
+          <div class="fiche-pied">
+            <label class="paiement-choix"><svg class="ic ic-sm" aria-hidden="true"><use href="/icons.svg#wallet"></use></svg>
+              <select name="paiement" id="choix-paiement" aria-label="Moyen de paiement"></select>
             </label>
-            <label class="champ">Son téléphone
-              <input name="destinataire_tel" type="tel" inputmode="tel" placeholder="77 123 45 67">
-            </label>
-          </details>
+            <button type="submit" class="btn btn-primaire btn-commander" id="btn-commander">Commander</button>
+          </div>
+          <p class="fiche-note" id="fiche-note"></p>
         </div>
       </form>
     </section>
   </main>
-
-  <!-- Barre : retour, prix, bouton principal -->
-  <div class="barre-commande">
-    <button type="button" class="btn-rond btn-retour" id="btn-retour" aria-label="Retour" hidden>
-      <svg class="ic"><use href="/icons.svg#chevron-left"></use></svg>
-    </button>
-    <div class="resume">
-      <span class="resume-prix" id="resume-prix">— FCFA</span>
-      <span class="resume-detail" id="resume-detail">Choisissez le départ</span>
-    </div>
-    <button type="submit" form="f-course" class="btn btn-primaire" id="btn-commander">
-      Continuer <svg class="ic" aria-hidden="true"><use href="/icons.svg#arrow-right"></use></svg>
-    </button>
-  </div>
 
   <!-- Confirmation avant envoi -->
   <div class="tiroir" id="confirmation" hidden>
