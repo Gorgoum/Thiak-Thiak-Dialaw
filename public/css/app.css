@@ -1149,3 +1149,94 @@ body.course-en-cours #aide-carte { display: none; }
 /* trois cartes visibles dès 360 px ; en dessous, on fait défiler */
 .option { flex: 1 1 0; min-width: 92px; padding: 10px 10px 12px; }
 .option .option-prix { font-size: .88rem; white-space: nowrap; }
+
+/* =========================================================================
+   Téléphone : carte en plein écran, panneau en bas (comme une appli de VTC)
+   ========================================================================= */
+.poignee, .retour-carte { display: none; }
+@media (max-width: 959px) {
+  body.page-client { height: 100dvh; overflow: hidden; }
+  /* en-tête flottant sur la carte */
+  .page-client .entete { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: transparent; border: 0; box-shadow: none; backdrop-filter: none; padding-top: env(safe-area-inset-top); pointer-events: none; }
+  .page-client .entete > * { pointer-events: auto; }
+  .page-client .entete .marque { background: var(--surface); border-radius: 999px; padding: 4px 14px 4px 4px; box-shadow: var(--shadow-md); }
+  .page-client .entete #ouvrir-suivi { background: var(--surface); border-radius: 999px; box-shadow: var(--shadow-md); border: 0; }
+  /* carte sur tout l'écran */
+  .page-client .client { display: block; height: auto; }
+  .page-client .volet-carte { position: fixed; inset: 0; padding: 0; z-index: 0; }
+  .page-client .volet-carte .carte-cadre { height: 100%; border-radius: 0; box-shadow: none; }
+  .page-client .volet-carte #map, body.page-client.fiche-ouverte .volet-carte #map { height: 100dvh !important; }
+  .page-client .volet-carte .leaflet-top.leaflet-left { top: calc(68px + env(safe-area-inset-top)); }
+  .page-client #plein-ecran { display: none; }
+  .page-client .carte-outils { bottom: calc(var(--feuille-h, 300px) + 12px); transition: bottom 200ms ease; }
+  .page-client .carte-aide { bottom: calc(var(--feuille-h, 300px) + 12px) !important; }
+  .page-client .volet-carte .leaflet-bottom { bottom: var(--feuille-h, 300px); }
+  .retour-carte { display: grid; position: absolute; left: 12px; bottom: calc(var(--feuille-h, 300px) + 12px); z-index: 900; }
+  .retour-carte[hidden] { display: none; }
+  /* panneau du bas */
+  .page-client .volet-form {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 950; margin: 0; max-width: none;
+    max-height: 64dvh; overflow-y: auto; overscroll-behavior: contain;
+    background: var(--surface); border-radius: 22px 22px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 40, .16);
+    padding: 0 14px calc(10px + env(safe-area-inset-bottom)); transition: max-height 280ms cubic-bezier(.2, .8, .2, 1);
+  }
+  body.page-client.feuille-reduite .volet-form { max-height: 30dvh; }
+  .poignee { display: flex; justify-content: center; position: sticky; top: 0; z-index: 3; width: calc(100% + 28px); margin: 0 -14px 4px; padding: 8px 0 6px; min-height: 0; border: 0; border-radius: 0; background: var(--surface); box-shadow: none; }
+  .poignee span { width: 40px; height: 5px; border-radius: 3px; background: var(--line-2); }
+  /* départ / arrivée en liste, sans cadre */
+  .page-client .lieux { padding: 2px 0; border: 0; box-shadow: none; background: transparent; gap: 0; }
+  .page-client .lieux::before { left: 14px; top: 34px; bottom: 34px; }
+  .page-client .ligne-lieu { padding: 4px 0; }
+  .page-client .ligne-lieu + .ligne-lieu { border-top: 1px solid var(--line); }
+  .page-client .ligne-lieu input { border-color: transparent; background: transparent; min-height: 46px; padding-left: 4px; font-weight: 600; }
+  .page-client .ligne-lieu.actif input, .page-client .ligne-lieu input:focus { background: var(--surface-2); border-color: transparent; }
+  .page-client .ligne-lieu .btn-rond { box-shadow: none; border-color: transparent; background: var(--surface-2); width: 40px; height: 40px; }
+  /* fiche intégrée au panneau */
+  .page-client .fiche { margin-top: 6px; padding: 0; border: 0; box-shadow: none; background: transparent; }
+  .page-client .fiche-pied { margin: 10px -14px 0; padding: 10px 14px calc(6px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+  .page-client .suivi-direct { margin-top: 4px; }
+  .page-client .aide-lieux { margin: 6px 0 2px; }
+}
+
+/* Bulles sur la carte (temps d'arrivée du chauffeur, heure d'arrivée) */
+.leaflet-tooltip.bulle-carte { background: var(--surface); color: var(--ink); border: 0; border-radius: 14px; box-shadow: 0 6px 18px rgba(16, 24, 40, .22); padding: 6px 10px; font: 600 .82rem/1.15 inherit; text-align: center; white-space: nowrap; }
+.leaflet-tooltip.bulle-carte::before { border-top-color: var(--surface); }
+.pin-depart + .leaflet-tooltip.bulle-carte, .leaflet-tooltip.bulle-carte b { font-weight: 800; }
+.leaflet-marker-pane .leaflet-tooltip.bulle-carte b { display: inline; }
+.leaflet-tooltip.bulle-carte small { display: block; font-size: .7rem; font-weight: 600; color: var(--ink-3); }
+
+/* Choix : cartes sans contour, le choix sélectionné sur fond gris */
+.option { border-color: transparent; background: transparent; }
+.option.choisi { border-color: transparent; background: var(--surface-2); box-shadow: none; }
+.option.choisi .option-nom { color: var(--brand); }
+
+/* Adresses récentes : une liste comme l'écran de recherche */
+.recents .raccourcis { display: grid; gap: 0; }
+.recent { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; padding: 6px 2px; border: 0; border-radius: 0; background: transparent; box-shadow: none; text-align: left; justify-content: flex-start; white-space: normal; }
+.recent + .recent { border-top: 1px solid var(--line); }
+.recent-ic { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--ink-3); }
+.recent-texte { min-width: 0; display: flex; flex-direction: column; }
+.recent-texte b { font-size: .98rem; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-texte small { color: var(--ink-3); font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 959px) {
+  /* carte dégagée : on zoome avec deux doigts ; pas de bulle d'aide une fois le trajet prêt */
+  .page-client .leaflet-control-zoom { display: none; }
+  body.page-client.fiche-ouverte .carte-aide { display: none; }
+  .page-client .carte-aide { left: 64px; right: 64px; }
+  /* bouton satellite en haut à droite, sous « Mes courses » */
+  .page-client .volet-carte .leaflet-bottom.leaflet-left { top: calc(72px + env(safe-area-inset-top)); bottom: auto; left: auto; right: 0; }
+  .page-client .volet-carte .leaflet-bottom.leaflet-left .leaflet-control { margin: 0 12px 0 0; }
+  .page-client .entete .marque { width: auto; flex: 0 0 auto; }
+  .page-client .volet-form { max-height: 60dvh; }
+}
+.leaflet-tooltip.bulle-carte.bulle-temps { background: var(--brand); color: #fff; padding: 6px 12px; font-size: 1.05rem; }
+.leaflet-tooltip.bulle-carte.bulle-temps::before { border-top-color: var(--brand); }
+.leaflet-tooltip.bulle-carte.bulle-temps small { color: rgba(255, 255, 255, .85); }
+@media (max-width: 959px) {
+  /* « Où allez-vous ? » touché : écran de recherche, panneau presque plein écran */
+  body.page-client.feuille-recherche .volet-form { max-height: 88dvh; min-height: 70dvh; }
+  body.page-client.feuille-recherche .fiche, body.page-client.feuille-recherche .aide-lieux, body.page-client.feuille-recherche .suivi-direct { display: none; }
+  body.page-client.feuille-recherche .recents { display: block !important; }
+  body.page-client.feuille-recherche .retour-carte, body.page-client.feuille-recherche .carte-outils { visibility: hidden; }
+}

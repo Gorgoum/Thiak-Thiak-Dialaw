@@ -377,8 +377,15 @@ function memoriserAdresse(pt, repere) {
 function afficherAdresses() {
   const liste = lireAdresses();
   $('recents').hidden = !liste.length || !$('fiche').hidden;
-  $('recents-liste').innerHTML = liste.map((x, i) => `
-    <button type="button" class="chip" data-i="${i}" title="${esc(x.repere)}">${ico('map-pin', 'ic-sm')}${esc(x.repere.length > 30 ? x.repere.slice(0, 29) + '…' : x.repere)}</button>`).join('');
+  $('recents-liste').innerHTML = liste.slice(0, 4).map((x, i) => {
+    // « Ma position · près de l'École » → nom « Ma position », précision « près de l'École »
+    const [nom, ...reste] = x.repere.split(/ · |, /);
+    return `
+    <button type="button" class="recent" data-i="${i}" title="${esc(x.repere)}">
+      <span class="recent-ic">${ico('history')}</span>
+      <span class="recent-texte"><b>${esc(nom)}</b>${reste.length ? `<small>${esc(reste.join(', '))}</small>` : ''}</span>
+    </button>`;
+  }).join('');
 }
 // =========================================================================
 // Tracé du trajet
@@ -404,6 +411,35 @@ function dessinerTrace(d) {
   return pts;
 }
 /** Zoom automatique sur tout l'itinéraire, comme un GPS (en laissant la place à la recherche et aux boutons). */
+/** Téléphone : carte plein écran sous le panneau du bas. Hauteur du panneau visible (0 sur ordinateur). */
+const estTelephone = () => window.matchMedia('(max-width: 959px)').matches;
+function hauteurFeuille() {
+  if (!estTelephone()) return 0;
+  const r = $('feuille').getBoundingClientRect();
+  return Math.max(0, window.innerHeight - r.top);
+}
+function majHauteurFeuille() {
+  document.documentElement.style.setProperty('--feuille-h', hauteurFeuille() + 'px');
+}
+if ('ResizeObserver' in window) new ResizeObserver(majHauteurFeuille).observe($('feuille'));
+window.addEventListener('resize', majHauteurFeuille);
+// la poignée réduit / agrandit le panneau (pour mieux voir la carte)
+$('poignee').onclick = () => {
+  document.body.classList.toggle('feuille-reduite');
+  setTimeout(() => { majHauteurFeuille(); if (ptsTrace && points.depart && points.arrivee) recadrerItineraire(ptsTrace); }, 320);
+};
+// flèche retour : changer de destination
+$('retour-carte').onclick = () => {
+  form.arrivee_repere.value = '';
+  delete form.arrivee_repere.dataset.auto;
+  delete form.arrivee_repere.dataset.ancre;
+  retirerPoint('arrivee');
+  imprecis.arrivee = null;
+  choisirMode('arrivee');
+  majDevis();
+  form.arrivee_repere.focus();
+};
+
 function recadrerItineraire(pts) {
   const zone = L.latLngBounds(pts).extend(points.depart.getLatLng()).extend(points.arrivee.getLatLng());
   const large = window.matchMedia('(min-width: 960px)').matches;
@@ -411,7 +447,7 @@ function recadrerItineraire(pts) {
   // marges pour la recherche (haut) et la bulle d'aide (bas), proportionnées à la hauteur de la carte
   carte.flyToBounds(zone, {
     paddingTopLeft: [30, Math.min(large ? 130 : 80, h * 0.22)],
-    paddingBottomRight: [large ? 40 : 60, Math.min(large ? 70 : 100, h * 0.22)],
+    paddingBottomRight: [large ? 40 : 60, estTelephone() ? hauteurFeuille() + 30 : Math.min(large ? 70 : 100, h * 0.22)],
     maxZoom: 17,
     duration: 0.8,
   });
@@ -480,12 +516,36 @@ const OPTIONS = [
 ];
 
 /** La fiche apparaît dès que le départ et l'arrivée sont connus et le prix calculé. */
+/** Bulles sur la carte : temps d'arrivée du chauffeur au départ, heure d'arrivée à destination. */
+function majBulles(pret) {
+  const bulle = (m, html, classe = '') => {
+    if (!m) return;
+    if (!html) { m.unbindTooltip(); return; }
+    if (m.getTooltip()) m.setTooltipContent(html);
+    else m.bindTooltip(html, { permanent: true, direction: 'top', offset: [0, -44], className: 'bulle-carte ' + classe, interactive: false }).openTooltip();
+  };
+  const d = dernierDevis;
+  const x = pret && d && d.chauffeurs ? d.chauffeurs[choix] : null;
+  bulle(points.depart, x && x.nb ? `<b>${x.minutes}</b><small>min</small>` : null, 'bulle-temps');
+  if (pret && d && d.minutes) {
+    const h = new Date(Date.now() + ((x && x.nb ? x.minutes : 0) + d.minutes) * 60000);
+    bulle(points.arrivee, `arrivée à <b>${String(h.getHours()).padStart(2, '0')}:${String(h.getMinutes()).padStart(2, '0')}</b>`);
+  } else bulle(points.arrivee, null);
+}
+
+let fichePrete = false;
 function majFiche() {
+  $('retour-carte').hidden = !points.arrivee;
+  requestAnimationFrame(majHauteurFeuille);
   const pret = !!(dernierDevis && points.depart && points.arrivee && !erreurDevis && !memeEndroit());
   $('fiche').hidden = !pret;
   document.body.classList.toggle('fiche-ouverte', pret);
   $('aide-lieux').hidden = pret;
   afficherAdresses();
+  const vientDOuvrir = pret && !fichePrete;
+  fichePrete = pret;
+  majBulles(pret);
+  if (vientDOuvrir && estTelephone()) setTimeout(() => { majHauteurFeuille(); if (ptsTrace) recadrerItineraire(ptsTrace); }, 120);
   if (!pret) return;
   const d = dernierDevis;
   $('fiche-trajet').innerHTML = `${ico('route', 'ic-sm')} ${d.distance_km.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km${d.minutes ? ` · environ ${d.minutes} min` : ''}`;
@@ -525,6 +585,7 @@ $('options').addEventListener('click', (e) => {
   choix = b.dataset.choix;
   Stock.set(CLE_CHOIX, choix);
   majFiche();
+  majBulles(fichePrete);
 });
 
 function majCommander() {
@@ -848,7 +909,7 @@ function recadrerSurVehicule(c) {
   const v = vehicules.get(c.id);
   const zone = L.latLngBounds([[c.livreur_lat, c.livreur_lng], [cible.lat, cible.lng]]);
   if (v && v.route && v.route.pts) zone.extend(L.latLngBounds(v.route.pts));
-  carte.fitBounds(zone, { padding: [60, 60], maxZoom: 17 });
+  carte.fitBounds(zone, { paddingTopLeft: [50, 80], paddingBottomRight: [50, hauteurFeuille() + 40], maxZoom: 17 });
 }
 
 /** Bandeau sur l'écran principal : qui arrive, dans combien de temps, avec quel véhicule. */
@@ -1282,9 +1343,19 @@ $('recents-liste').onclick = (e) => {
   const x = b && lireAdresses()[Number(b.dataset.i)];
   if (!x) return;
   const type = points.depart ? 'arrivee' : 'depart';
+  form[type + '_repere'].dataset.ancre = JSON.stringify({ nom: x.repere, lat: x.lat, lng: x.lng }); // le nom choisi reste
   placerAvecRepere(type, x.lat, x.lng, x.repere, true);
   apresPoint(type);
 };
+
+/** Écran de recherche : le panneau monte presque en plein écran, avec les adresses récentes en liste. */
+function ouvrirRecherche(oui) {
+  if (!estTelephone()) return;
+  document.body.classList.toggle('feuille-recherche', oui);
+  document.body.classList.remove('feuille-reduite');
+  $('recents').hidden = !lireAdresses().length || (!oui && !$('fiche').hidden);
+  setTimeout(majHauteurFeuille, 300);
+}
 
 function initCarte() {
   const outilsCarte = creerCarte('map');
@@ -1302,7 +1373,8 @@ function initCarte() {
   // Suggestions directement dans les champs : choisir un lieu place le point
   ['depart', 'arrivee'].forEach((type) => {
     const champ = form[type + '_repere'];
-    champ.addEventListener('focus', () => choisirMode(type));
+    champ.addEventListener('focus', () => { choisirMode(type); ouvrirRecherche(true); });
+    champ.addEventListener('blur', () => setTimeout(() => { if (!document.activeElement || !document.activeElement.closest('.lieux')) ouvrirRecherche(false); }, 250));
     brancherRecherche(champ, $('sugg-' + type), (lieu) => {
       choisirMode(type);
       if (lieu.colle) {

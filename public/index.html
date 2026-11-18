@@ -42,6 +42,9 @@
       <div class="carte-cadre">
         <div id="map"></div>
         <div class="bandeau-carte" id="bandeau-carte" hidden></div>
+        <button type="button" class="btn-rond retour-carte" id="retour-carte" hidden aria-label="Changer de destination" title="Changer de destination">
+          <svg class="ic" aria-hidden="true"><use href="/icons.svg#arrow-left"></use></svg>
+        </button>
         <div class="carte-outils">
           <button type="button" class="btn-rond" id="me-localiser" title="Me localiser" aria-label="Me localiser">
             <svg class="ic" aria-hidden="true"><use href="/icons.svg#locate-fixed"></use></svg>
@@ -55,7 +58,8 @@
     </section>
 
     <!-- Écran unique : départ (ma position), « Où allez-vous ? », puis la fiche avec les prix et « Commander » -->
-    <section class="volet-form">
+    <section class="volet-form" id="feuille">
+      <button type="button" class="poignee" id="poignee" aria-label="Agrandir ou réduire le panneau"><span></span></button>
       <!-- Course en cours : le chauffeur / livreur arrive (position en direct sur la carte) -->
       <div class="suivi-direct" id="suivi-direct" hidden aria-live="polite"></div>
 
