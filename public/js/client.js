@@ -489,12 +489,28 @@ function majFiche() {
   if (!pret) return;
   const d = dernierDevis;
   $('fiche-trajet').innerHTML = `${ico('route', 'ic-sm')} ${d.distance_km.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km${d.minutes ? ` · environ ${d.minutes} min` : ''}`;
-  $('options').innerHTML = OPTIONS.map((o) => `
-    <button type="button" class="option ${choix === o.id ? 'choisi' : ''}" data-choix="${o.id}" role="radio" aria-checked="${choix === o.id}">
+  const ch = d.chauffeurs || {};
+  $('options').innerHTML = OPTIONS.map((o) => {
+    const x = ch[o.id];
+    const temps = !x ? '' : x.nb ? `${x.minutes} min` : 'Occupé';
+    return `
+    <button type="button" class="option ${choix === o.id ? 'choisi' : ''} ${x && !x.nb ? 'occupe' : ''}" data-choix="${o.id}" role="radio" aria-checked="${choix === o.id}">
+      <span class="option-temps">${temps}</span>
       <span class="pic-rond">${ico(o.icone)}</span>
-      <span class="option-texte"><b>${o.nom}</b><small>${o.detail}</small></span>
+      <b class="option-nom">${o.nom}</b>
       <b class="option-prix">${fcfa(o.prix(d))}</b>
-    </button>`).join('');
+    </button>`;
+  }).join('');
+  // détail du choix, et prévenir quand personne n'est libre (la commande reste possible : elle attendra)
+  const o = OPTIONS.find((x) => x.id === choix);
+  const dispo = ch[choix];
+  $('option-detail').innerHTML = `<b>${o.nom}</b> · ${o.detail}`
+    + (dispo && !dispo.nb
+      ? `<span class="occupe-note">${ico('clock', 'ic-sm')} Tous les ${choix === 'colis' ? 'livreurs' : choix === 'voiture' ? 'chauffeurs en voiture' : 'chauffeurs à moto'} sont occupés : votre demande attendra le premier libre.</span>`
+      : dispo ? ` · ${dispo.nb} libre${dispo.nb > 1 ? 's' : ''} autour de vous` : '');
+  // faire défiler jusqu'au choix (petits écrans)
+  const carteChoisie = $('options').querySelector('.option.choisi');
+  if (carteChoisie) carteChoisie.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   form.service.value = estTrajet() ? 'trajet' : 'livraison';
   form.vehicule.value = choix === 'voiture' ? 'voiture' : 'moto';
   $('bloc-colis').hidden = estTrajet();
@@ -502,6 +518,7 @@ function majFiche() {
   majPaiement();
   majCommander();
 }
+setInterval(() => { if (!$('fiche').hidden && document.visibilityState === 'visible') majDevis(); }, 45000);
 $('options').addEventListener('click', (e) => {
   const b = e.target.closest('[data-choix]');
   if (!b) return;

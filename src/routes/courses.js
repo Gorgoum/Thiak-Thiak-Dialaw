@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const router = require('express').Router();
 const { query } = require('../db');
 const { normaliserTel, a } = require('../auth');
-const { devis, pointValide, distanceKm, fraisAchat, parametres } = require('../tarifs');
+const { devis, pointValide, distanceKm, fraisAchat, parametres, chauffeursProches } = require('../tarifs');
 const { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj } = require('../courses-service');
 const nangu = require('../nangu');
 const paiements = require('../paiements');
@@ -27,7 +27,11 @@ function tropDeDemandes(ip) {
 router.post('/devis', a(async (req, res) => {
   const { depart, arrivee } = req.body || {};
   if (!pointValide(depart) || !pointValide(arrivee)) return res.status(400).json({ erreur: 'Points invalides' });
-  res.json(await devis(depart, arrivee));
+  const d = await devis(depart, arrivee);
+  // chauffeurs libres autour du départ (sans course en cours) : temps d'arrivée affiché sur chaque choix
+  const occupes = new Set((await query("SELECT livreur_id FROM courses WHERE statut IN ('acceptee', 'recuperee') AND livreur_id IS NOT NULL")).rows.map((x) => x.livreur_id));
+  const libres = (await query("SELECT id, lat, lng, vehicule, position_maj FROM utilisateurs WHERE role = 'livreur' AND actif AND disponible")).rows.filter((l) => !occupes.has(l.id));
+  res.json({ ...d, chauffeurs: chauffeursProches(depart, libres, await parametres()) });
 }));
 
 router.post('/', a(async (req, res) => {

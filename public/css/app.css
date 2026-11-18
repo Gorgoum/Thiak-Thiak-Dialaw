@@ -1127,3 +1127,25 @@ body.course-en-cours #aide-carte { display: none; }
 #totaux-transactions { margin: 12px 0; }
 .part-livreur { color: #15803d; font-weight: 700; font-size: .8rem; }
 #transactions .nombre { text-align: right !important; }
+
+/* Choix en cartes compactes côte à côte (défilement au doigt), temps d'arrivée du chauffeur le plus proche */
+.options { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 2px 6px; margin: 0 -2px; scrollbar-width: none; }
+.options::-webkit-scrollbar { display: none; }
+.option {
+  flex: 1 0 100px; scroll-snap-align: start; flex-direction: column; align-items: flex-start; justify-content: flex-start;
+  gap: 4px; min-height: 0; padding: 10px 12px 12px; text-align: left; border-radius: 16px;
+}
+.option .pic-rond { width: 46px; height: 46px; margin: 2px 0 4px; }
+.option .pic-rond .ic { width: 24px; height: 24px; }
+.option-temps { font-size: .76rem; font-weight: 700; color: #15803d; min-height: 1em; line-height: 1; }
+.option.occupe .option-temps { color: var(--ink-3); }
+.option.occupe .pic-rond { opacity: .55; }
+.option-nom { font-size: .98rem; line-height: 1.1; }
+.option .option-prix { font-size: .95rem; }
+.option-detail { margin: 6px 2px 0; font-size: .84rem; color: var(--ink-3); line-height: 1.4; }
+.option-detail b { color: var(--ink); }
+.occupe-note { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: #fff7ed; color: #c2410c; font-weight: 600; }
+@media (prefers-color-scheme: dark) { .occupe-note { background: rgba(234, 88, 12, .12); } }
+/* trois cartes visibles dès 360 px ; en dessous, on fait défiler */
+.option { flex: 1 1 0; min-width: 92px; padding: 10px 10px 12px; }
+.option .option-prix { font-size: .88rem; white-space: nowrap; }

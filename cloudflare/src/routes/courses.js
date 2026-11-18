@@ -2,7 +2,7 @@
 import { HttpErreur, json, lireCorps, texte, adresseIp, codeAleatoire } from '../outils.js';
 import { MAINTENANT } from '../db.js';
 import { normaliserTel, limiter } from '../securite.js';
-import { devis, pointValide, distanceKm, fraisAchat, parametres } from '../tarifs.js';
+import { devis, pointValide, distanceKm, fraisAchat, parametres, chauffeursProches } from '../tarifs.js';
 import { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj } from '../courses-service.js';
 import * as nangu from '../nangu.js';
 import * as paiements from '../paiements.js';
@@ -15,7 +15,13 @@ export function enregistrer(r) {
   r.post('/api/courses/devis', async (req, c) => {
     const { depart, arrivee } = await lireCorps(req);
     if (!pointValide(depart) || !pointValide(arrivee)) throw new HttpErreur(400, 'Points invalides');
-    return json(await devis(c, depart, arrivee));
+    const d = await devis(c, depart, arrivee);
+    // chauffeurs libres autour du départ (sans course en cours) : temps d'arrivée affiché sur chaque choix
+    const libres = (await c.db.query(
+      `SELECT lat, lng, vehicule, position_maj FROM utilisateurs u WHERE role = 'livreur' AND actif = 1 AND disponible = 1
+       AND NOT EXISTS (SELECT 1 FROM courses co WHERE co.livreur_id = u.id AND co.statut IN ('acceptee', 'recuperee'))`
+    )).rows;
+    return json({ ...d, chauffeurs: chauffeursProches(depart, libres, await parametres(c.db)) });
   });
 
   r.post('/api/courses', async (req, c) => {

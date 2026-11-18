@@ -136,4 +136,26 @@ function partage(course, p) {
   };
 }
 
-module.exports = { parametres, distanceKm, fraisAchat, partage, messageSurPlace, devis, pointValide, CENTRE_YENE };
+/**
+ * Chauffeurs libres autour du départ, par véhicule : combien, et dans combien de minutes arrive le plus proche.
+ * livreurs : [{ lat, lng, vehicule, position_maj }] (disponibles, sans course en cours).
+ */
+function chauffeursProches(depart, livreurs, p) {
+  const res = {};
+  for (const v of ['moto', 'voiture']) {
+    const km = livreurs
+      .filter((l) => (l.vehicule || 'moto') === v && l.lat != null)
+      .filter((l) => !l.position_maj || Date.now() - new Date(l.position_maj).getTime() < 20 * 60000) // position récente
+      .map((l) => distanceKm(depart, { lat: Number(l.lat), lng: Number(l.lng) }) * (p.facteur_route || 1.3))
+      .filter((d) => d <= (p.rayon_km || 10));
+    res[v] = km.length
+      ? { nb: km.length, minutes: Math.max(1, Math.round((Math.min(...km) / (v === 'voiture' ? 22 : 25)) * 60)) }
+      : { nb: 0, minutes: null };
+  }
+  // un colis peut partir à moto ou en voiture
+  const m = [res.moto.minutes, res.voiture.minutes].filter((x) => x != null);
+  res.colis = { nb: res.moto.nb + res.voiture.nb, minutes: m.length ? Math.min(...m) : null };
+  return res;
+}
+
+module.exports = { parametres, distanceKm, chauffeursProches, fraisAchat, partage, messageSurPlace, devis, pointValide, CENTRE_YENE };
