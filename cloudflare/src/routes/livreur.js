@@ -47,6 +47,56 @@ async function exigerSurPlace(req, c, moi, id, versArrivee) {
   if (loin) throw new HttpErreur(409, loin);
 }
 
+// =========================================================================
+// Arrivées détectées par le GPS, comme Google Maps (pas de bouton à toucher)
+//  - à moins de RAYON du départ A        → « arrivé » (le client est prévenu)
+//  - reparti à plus de RAYON + 150 m de A → passager à bord / colis récupéré
+//    (après au moins 30 s sur place, et seulement si la course est payée quand elle se paie en ligne)
+//  - à moins de RAYON de l'arrivée B     → course terminée
+// Une position trop imprécise (> 100 m) n'est jamais utilisée.
+// =========================================================================
+async function detecterArrivees(c, livreurId, pos, precision) {
+  if (precision !== undefined && precision !== null && precision !== '' && Number(precision) > 100) return [];
+  const p = await parametres(c.db);
+  const rayon = p.rayon_arrivee_m || 200;
+  const courses = (await c.db.query(
+    `SELECT id, statut, service, arrive_le, paiement, paiement_statut, depart_lat, depart_lng, arrivee_lat, arrivee_lng
+     FROM courses WHERE livreur_id = $1 AND statut IN ('acceptee', 'recuperee')`, [livreurId]
+  )).rows;
+  const faits = [];
+  for (const x of courses) {
+    const dA = distanceKm(pos, { lat: x.depart_lat, lng: x.depart_lng }) * 1000;
+    const dB = distanceKm(pos, { lat: x.arrivee_lat, lng: x.arrivee_lng }) * 1000;
+    const trajet = x.service === 'trajet';
+    const payee = x.paiement === 'especes' || x.paiement_statut === 'paye';
+    if (x.statut === 'acceptee' && !x.arrive_le && dA <= rayon) {
+      const r = await c.db.query(`UPDATE courses SET arrive_le = ${MAINTENANT} WHERE id = $1 AND statut = 'acceptee' AND arrive_le IS NULL RETURNING id`, [x.id]);
+      if (!r.rows.length) continue;
+      await diffuserMaj(c, x.id, {
+        titre: trajet ? 'Votre chauffeur est là' : 'Le livreur est arrivé',
+        message: trajet ? 'Votre chauffeur est arrivé au point de départ.' : 'Le livreur est arrivé au point de départ pour récupérer le colis.',
+        urgent: true,
+      });
+      faits.push({ id: x.id, etape: 'arrive' });
+    } else if (x.statut === 'acceptee' && x.arrive_le && payee && dA > rayon + 150 && Date.now() - new Date(x.arrive_le).getTime() > 30000) {
+      const r = await c.db.query(`UPDATE courses SET statut = 'recuperee', recuperee_le = ${MAINTENANT} WHERE id = $1 AND statut = 'acceptee' RETURNING id`, [x.id]);
+      if (!r.rows.length) continue;
+      await diffuserMaj(c, x.id);
+      faits.push({ id: x.id, etape: 'recuperee' });
+    } else if (x.statut === 'recuperee' && dB <= rayon) {
+      const r = await c.db.query(`UPDATE courses SET statut = 'livree', livree_le = ${MAINTENANT} WHERE id = $1 AND statut = 'recuperee' RETURNING id`, [x.id]);
+      if (!r.rows.length) continue;
+      const course = await diffuserMaj(c, x.id);
+      await argent.inscrireCoursesLivrees(c, x.id); // part du livreur ou commission, au registre
+      c.attendre(apprendreDeLaCourse(c, course)
+        .then(() => c.io.to('admins').emit('lieux:proposes'))
+        .catch((err) => console.error('Apprentissage des lieux :', err.message)));
+      faits.push({ id: x.id, etape: 'livree' });
+    }
+  }
+  return faits;
+}
+
 export function enregistrer(r) {
   r.post('/api/livreur/disponibilite', async (req, c) => {
     await livreur(req, c);
@@ -61,7 +111,7 @@ export function enregistrer(r) {
 
   r.post('/api/livreur/position', async (req, c) => {
     await livreur(req, c);
-    const { lat, lng } = await lireCorps(req);
+    const { lat, lng, precision } = await lireCorps(req);
     if (!pointValide({ lat, lng })) throw new HttpErreur(400, 'Position invalide');
     await c.db.query(`UPDATE utilisateurs SET lat = $2, lng = $3, position_maj = ${MAINTENANT} WHERE id = $1`, [c.user.id, Number(lat), Number(lng)]);
     // le client voit sa moto / sa voiture arriver en direct (seulement pendant la course)
@@ -69,7 +119,8 @@ export function enregistrer(r) {
     if (enCours.length) {
       for (const x of enCours) c.io.to('suivi:' + x.suivi_token).emit('livreur:position', { course_id: x.id, lat: Number(lat), lng: Number(lng) });
     }
-    return json({ ok: true, en_course: enCours.length > 0 });
+    const transitions = enCours.length ? await detecterArrivees(c, c.user.id, { lat: Number(lat), lng: Number(lng) }, precision) : [];
+    return json({ ok: true, en_course: enCours.length > 0, transitions });
   });
 
   // Courses en attente, sans le téléphone du client (révélé seulement après acceptation)

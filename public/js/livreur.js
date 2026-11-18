@@ -21,6 +21,13 @@ function bip() {
 
 let maPosition = null; // dernière position connue du livreur { lat, lng }
 let maPositionInfo = { le: 0, precision: null }; // quand et avec quelle précision (pour le contrôle « sur place »)
+const debutPage = Date.now();
+// GPS actif : position reçue il y a moins de 45 s (au démarrage, on lui laisse 45 s pour trouver le premier point)
+const gpsActif = () => (maPosition ? Date.now() - maPositionInfo.le < 45000 : Date.now() - debutPage < 45000);
+let gpsAffiche = null; // état du GPS lors du dernier affichage de la course
+setInterval(() => {
+  if (gpsAffiche !== null && gpsAffiche !== gpsActif()) chargerTout(); // boutons de secours affichés / retirés
+}, 15000);
 
 /** Position fraîche (≤ 8 s) envoyée avec « Je suis arrivé » & co : le serveur vérifie que le livreur est sur place. */
 function positionPourControle() {
@@ -49,7 +56,10 @@ function envoyerPosition(p) {
   if (enCourse && derniereEnvoyee && ecart < 30000 && distanceM(derniereEnvoyee, maPosition) < 8) return;
   dernierEnvoi = Date.now();
   derniereEnvoyee = maPosition;
-  api('POST', '/api/livreur/position', maPosition).then((r) => { enCourse = !!(r && r.en_course); }).catch(() => {});
+  api('POST', '/api/livreur/position', { ...maPosition, precision: maPositionInfo.precision }).then((r) => {
+    enCourse = !!(r && r.en_course);
+    if (r && r.transitions && r.transitions.length) chargerTout();
+  }).catch(() => {});
 }
 
 // =========================================================================
@@ -218,7 +228,37 @@ function trajet(c) {
   ${c.type === 'achat' && c.montant_achat ? `<div class="meta">Avance estimée : ${fcfa(c.montant_achat)} (remboursée par le client)</div>` : ''}`;
 }
 
+/** Ce qui va se passer tout seul (le GPS détecte l'arrivée, comme Google Maps). */
+function etatAuto(c, versDepart, attendPaiement, aEncaisser) {
+  const trajet = c.service === 'trajet';
+  let texte;
+  if (!gpsActif()) {
+    texte = `<b>GPS indisponible</b><small>Activez la localisation pour que l'arrivée soit détectée toute seule. En attendant, confirmez à la main ci-dessous.</small>`;
+  } else if (versDepart && !c.arrive_le) {
+    texte = `<b>Arrivée détectée automatiquement</b><small>Dès que vous serez sur place, ${trajet ? 'le passager' : 'le client'} sera prévenu. Rien à toucher.</small>`;
+  } else if (versDepart && attendPaiement) {
+    texte = `<b>Vous êtes arrivé</b><small>Attendez le paiement du client avant de ${trajet ? 'partir avec le passager' : 'récupérer le colis'}.</small>`;
+  } else if (versDepart) {
+    texte = trajet
+      ? '<b>Vous êtes arrivé, le passager est prévenu</b><small>La course démarre toute seule quand vous partez avec lui.</small>'
+      : '<b>Vous êtes arrivé</b><small>Récupérez le colis : la livraison démarre toute seule quand vous repartez.</small>';
+  } else {
+    texte = `<b>Fin de course détectée automatiquement</b><small>À l'arrivée, la course se termine toute seule${aEncaisser ? ` : encaissez ${fcfa(aEncaisser)}` : ''}.</small>`;
+  }
+  return `<div class="etat-auto ${gpsActif() ? '' : 'alerte'}">${ico(gpsActif() ? 'navigation' : 'triangle-alert')}<div>${texte}</div></div>`;
+}
+
+/** Boutons de secours, seulement quand le GPS ne répond plus (le serveur vérifie quand même la position connue). */
+function boutonsSecours(c, versDepart, attendPaiement) {
+  const trajet = c.service === 'trajet';
+  if (!versDepart) return `<button class="jaune grand" data-etape="livree" data-id="${c.id}">${ico('circle-check')} ${trajet ? 'Arrivé à destination' : 'Livraison terminée'}</button>`;
+  if (!c.arrive_le) return `<button class="jaune grand" data-etape="arrive" data-id="${c.id}">${ico('map-pin')} Je suis arrivé</button>`;
+  return `<button class="jaune grand" data-etape="recuperee" data-id="${c.id}" ${attendPaiement ? 'disabled' : ''}>${ico(trajet ? 'user' : 'package')} ${trajet ? 'Passager à bord' : 'J\'ai récupéré le colis'}</button>`;
+}
+
 function carteActive(c) {
+  enCourse = true; // une course en cours : la position part toutes les 5 s
+  gpsAffiche = gpsActif();
   const versDepart = c.statut === 'acceptee';
   const cible = versDepart ? [c.depart_lat, c.depart_lng] : [c.arrivee_lat, c.arrivee_lng];
   const payeEnLigne = c.paiement_statut === 'paye';
@@ -248,13 +288,10 @@ function carteActive(c) {
         <button class="btn-primaire" data-guidage>${ico('navigation', 'ic-sm')} Guider jusqu'${versDepart ? 'au départ' : 'à l\'arrivée'}</button>
       </div>
       <a class="lien-secondaire" data-nav="${cible[0]},${cible[1]}" ${lienItineraire(cible[0], cible[1], maPosition)}>Ouvrir dans une autre application GPS</a>
+      ${etatAuto(c, versDepart, attendPaiement, aEncaisser)}
       <div class="actions">
-        ${versDepart
-          ? (c.service === 'trajet' && !c.arrive_le
-            ? `<button class="jaune grand" data-etape="arrive" data-id="${c.id}">${ico('map-pin')} Je suis arrivé</button>`
-            : `<button class="jaune grand" data-etape="recuperee" data-id="${c.id}" ${attendPaiement ? 'disabled' : ''}>${ico(c.service === 'trajet' ? 'user' : 'package')} ${c.service === 'trajet' ? 'Passager à bord' : 'J\'ai récupéré le colis'}</button>`)
-            + `<button class="danger" data-etape="liberer" data-id="${c.id}">Me désister</button>`
-          : `<button class="jaune grand" data-etape="livree" data-id="${c.id}">${ico('circle-check')} ${c.service === 'trajet' ? 'Arrivé à destination' : 'Livraison terminée'}</button>`}
+        ${gpsActif() ? '' : boutonsSecours(c, versDepart, attendPaiement)}
+        ${versDepart ? `<button class="danger" data-etape="liberer" data-id="${c.id}">Me désister</button>` : ''}
       </div>
     </div>`;
 }
@@ -407,6 +444,17 @@ function afficherApp(u) {
     nbAvant = n;
   });
   socket.on('course:maj', (c) => {
+    const recent = (d) => d && Date.now() - new Date(d).getTime() < 60000;
+    if (c && c.livreur_id && c.statut === 'acceptee' && recent(c.arrive_le) && !recent(c.paye_le)) {
+      bip();
+      toast(c.service === 'trajet' ? 'Vous êtes arrivé : le passager est prévenu.' : 'Vous êtes arrivé : le client est prévenu.');
+    } else if (c && c.livreur_id && c.statut === 'recuperee' && recent(c.recuperee_le)) {
+      toast(c.service === 'trajet' ? 'Course démarrée. Bonne route !' : 'Livraison démarrée. Bonne route !');
+    } else if (c && c.livreur_id && c.statut === 'livree' && recent(c.livree_le)) {
+      bip();
+      const reste = (c.paiement_statut === 'paye' ? 0 : c.prix) + (c.type === 'achat' ? (c.montant_achat || 0) : 0);
+      toast(`${c.service === 'trajet' ? 'Arrivé à destination' : 'Livraison terminée'} ✓${reste ? ` Encaissez ${fcfa(reste)}.` : ''}`);
+    }
     // course à payer en ligne : le livreur sait tout de suite si le client a payé, ou s'il a renoncé
     if (c && c.statut === 'acceptee' && c.paiement_statut === 'paye' && c.paye_le && Date.now() - new Date(c.paye_le).getTime() < 60000) {
       bip();

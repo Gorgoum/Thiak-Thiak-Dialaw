@@ -28,14 +28,15 @@ router.post('/disponibilite', a(async (req, res) => {
 }));
 
 router.post('/position', a(async (req, res) => {
-  const { lat, lng } = req.body || {};
+  const { lat, lng, precision } = req.body || {};
   if (!pointValide({ lat, lng })) return res.status(400).json({ erreur: 'Position invalide' });
   await query('UPDATE utilisateurs SET lat = $2, lng = $3, position_maj = now() WHERE id = $1', [req.user.id, lat, lng]);
   // le client voit sa moto / sa voiture arriver en direct (seulement pendant la course)
   const enCours = (await query("SELECT id, suivi_token FROM courses WHERE livreur_id = $1 AND statut IN ('acceptee', 'recuperee')", [req.user.id])).rows;
   const io = req.app.get('io');
   for (const x of enCours) io.to('suivi:' + x.suivi_token).emit('livreur:position', { course_id: x.id, lat: Number(lat), lng: Number(lng) });
-  res.json({ ok: true, en_course: enCours.length > 0 });
+  const transitions = enCours.length ? await detecterArrivees(io, req.user.id, { lat: Number(lat), lng: Number(lng) }, precision) : [];
+  res.json({ ok: true, en_course: enCours.length > 0, transitions });
 }));
 
 // Courses en attente, sans le téléphone du client (révélé seulement après acceptation)
@@ -146,6 +147,56 @@ async function controleSurPlace(req, versArrivee) {
     precision: b.precision,
     versArrivee,
   });
+}
+
+// =========================================================================
+// Arrivées détectées par le GPS, comme Google Maps (pas de bouton à toucher)
+//  - à moins de RAYON du départ A        → « arrivé » (le client est prévenu)
+//  - reparti à plus de RAYON + 150 m de A → passager à bord / colis récupéré
+//    (après au moins 30 s sur place, et seulement si la course est payée quand elle se paie en ligne)
+//  - à moins de RAYON de l'arrivée B     → course terminée
+// Une position trop imprécise (> 100 m) n'est jamais utilisée.
+// =========================================================================
+async function detecterArrivees(io, livreurId, pos, precision) {
+  if (precision !== undefined && precision !== null && precision !== '' && Number(precision) > 100) return [];
+  const p = await parametres();
+  const rayon = p.rayon_arrivee_m || 200;
+  const courses = (await query(
+    `SELECT id, statut, service, arrive_le, paiement, paiement_statut, depart_lat, depart_lng, arrivee_lat, arrivee_lng
+     FROM courses WHERE livreur_id = $1 AND statut IN ('acceptee', 'recuperee')`, [livreurId]
+  )).rows;
+  const faits = [];
+  for (const c of courses) {
+    const dA = distanceKm(pos, { lat: c.depart_lat, lng: c.depart_lng }) * 1000;
+    const dB = distanceKm(pos, { lat: c.arrivee_lat, lng: c.arrivee_lng }) * 1000;
+    const trajet = c.service === 'trajet';
+    const payee = c.paiement === 'especes' || c.paiement_statut === 'paye';
+    if (c.statut === 'acceptee' && !c.arrive_le && dA <= rayon) {
+      const r = await query(`UPDATE courses SET arrive_le = now() WHERE id = $1 AND statut = 'acceptee' AND arrive_le IS NULL RETURNING id`, [c.id]);
+      if (!r.rows.length) continue;
+      await diffuserMaj(io, c.id, {
+        titre: trajet ? 'Votre chauffeur est là' : 'Le livreur est arrivé',
+        message: trajet ? 'Votre chauffeur est arrivé au point de départ.' : 'Le livreur est arrivé au point de départ pour récupérer le colis.',
+        urgent: true,
+      });
+      faits.push({ id: c.id, etape: 'arrive' });
+    } else if (c.statut === 'acceptee' && c.arrive_le && payee && dA > rayon + 150 && Date.now() - new Date(c.arrive_le).getTime() > 30000) {
+      const r = await query(`UPDATE courses SET statut = 'recuperee', recuperee_le = now() WHERE id = $1 AND statut = 'acceptee' RETURNING id`, [c.id]);
+      if (!r.rows.length) continue;
+      await diffuserMaj(io, c.id);
+      faits.push({ id: c.id, etape: 'recuperee' });
+    } else if (c.statut === 'recuperee' && dB <= rayon) {
+      const r = await query(`UPDATE courses SET statut = 'livree', livree_le = now() WHERE id = $1 AND statut = 'recuperee' RETURNING id`, [c.id]);
+      if (!r.rows.length) continue;
+      const course = await diffuserMaj(io, c.id);
+      await argent.inscrireCoursesLivrees(c.id); // part du livreur ou commission, au registre
+      apprendreDeLaCourse(course)
+        .then(() => io.to('admins').emit('lieux:proposes'))
+        .catch((err) => console.error('Apprentissage des lieux :', err.message));
+      faits.push({ id: c.id, etape: 'livree' });
+    }
+  }
+  return faits;
 }
 
 // « Je suis arrivé » au point de départ : le client est prévenu (passager : « votre chauffeur est là »)
