@@ -512,10 +512,10 @@ function fraisAchatClient() {
   return Math.max(Number(reglagesFrais.frais_achat_min) || 0, Math.round(((Number(form.montant_achat.value) || 0) * pct) / 100));
 }
 const OPTIONS = [
-  { id: 'moto', image: '/img/3d/moto.png', nom: 'Moto', detail: 'Jakarta, 1 personne', prix: (d) => d.prix_moto || d.prix },
-  { id: 'voiture', image: '/img/3d/eco.png', nom: 'Éco', detail: 'Taxi ou clando, 4 places', prix: (d) => d.prix_voiture || d.prix },
-  { id: 'confort', image: '/img/3d/suv.png', nom: 'Confort', detail: 'Climatisée, 4 places', prix: (d) => d.prix_confort || d.prix_voiture || d.prix },
-  { id: 'colis', image: '/img/3d/colis.png', nom: 'Colis', detail: 'Un objet, des achats', prix: (d) => d.prix },
+  { id: 'moto', image: '/img/photos/moto.webp', nom: 'Moto', detail: 'Jakarta, 1 personne', prix: (d) => d.prix_moto || d.prix },
+  { id: 'voiture', image: '/img/photos/eco.webp', nom: 'Éco', detail: 'Taxi ou clando, 4 places', prix: (d) => d.prix_voiture || d.prix },
+  { id: 'confort', image: '/img/photos/confort.webp', nom: 'Confort', detail: 'Climatisée, 4 places', prix: (d) => d.prix_confort || d.prix_voiture || d.prix },
+  { id: 'colis', image: '/img/photos/livraison.webp', nom: 'Colis', detail: 'Un objet, des achats', prix: (d) => d.prix },
 ];
 
 /** La fiche apparaît dès que le départ et l'arrivée sont connus et le prix calculé. */

@@ -1377,3 +1377,25 @@ body.sur-accueil { overflow: hidden; }
 .accueil-position span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .services { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 @media (min-width: 960px) { .services { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); } }
+
+/* ----- Photos détourées (domaine public) : tailles et ombres pour des véhicules vus de profil ----- */
+.service-visuel { overflow: hidden; }
+.service-visuel img { width: 84%; height: 74px; object-fit: contain; filter: drop-shadow(0 10px 8px rgba(0, 0, 0, .18)); }
+.service[data-service="achats"] .service-visuel img, .service[data-service="food"] .service-visuel img { width: 70%; height: 80px; }
+.service[data-service="livraison"] .service-visuel img { height: 84px; }
+/* Courses : grande voiture qui déborde de la tuile, comme une affiche */
+.service-courses .service-visuel { place-items: end start; }
+.service-courses .service-visuel img { width: 175%; max-width: none; height: auto; transform: translate(4%, -18%); }
+.accueil-recherche { padding-left: 104px; }
+.recherche-auto { left: -22px; bottom: 6px; width: 118px; height: 60px; object-fit: contain; filter: drop-shadow(0 6px 5px rgba(0, 0, 0, .16)); }
+/* cartes de tarif */
+.option-visuel img { width: 88px; height: 54px; object-fit: contain; object-position: left bottom; filter: drop-shadow(0 6px 5px rgba(0, 0, 0, .18)); }
+.page-client .option .option-temps { bottom: -4px; }
+@media (min-width: 960px) {
+  .service-visuel img { height: 90px; }
+  .service-courses .service-visuel img { width: 150%; transform: translate(6%, -16%); }
+}
+@media (max-width: 360px) {
+  .accueil-recherche { padding-left: 82px; padding-right: 12px; font-size: 1.05rem; }
+  .recherche-auto { width: 96px; left: -20px; }
+}
