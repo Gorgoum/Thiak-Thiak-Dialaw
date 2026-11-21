@@ -39,7 +39,7 @@ export async function notifierNouvelleCourse(c, course) {
   const trajet = course.service === 'trajet';
   const cibles = r.rows
     .filter((l) => !trajet || peutFaire(l.vehicule, course.vehicule)) // chaque gamme à ses chauffeurs
-    .filter((l) => l.lat == null || distanceKm(depart, l) <= (p.rayon_km || 10)).map((l) => l.id);
+    .filter((l) => l.lat == null || distanceKm(depart, l) * (p.facteur_route || 1.3) <= (p.rayon_km || 10)).map((l) => l.id);
   c.io.to(['livreurs', 'admins']).emit('courses:changement');
   await envoyer(c, cibles, {
     titre: `${trajet ? `Nouveau trajet en ${course.vehicule}` : 'Nouvelle livraison'} · ${fcfa(course.prix)}`,

@@ -31,7 +31,7 @@ async function notifierNouvelleCourse(io, course) {
   const trajet = course.service === 'trajet';
   const cibles = r.rows
     .filter((l) => !trajet || peutFaire(l.vehicule, course.vehicule)) // chaque gamme à ses chauffeurs
-    .filter((l) => l.lat == null || distanceKm(depart, l) <= (p.rayon_km || 10))
+    .filter((l) => l.lat == null || distanceKm(depart, l) * (p.facteur_route || 1.3) <= (p.rayon_km || 10))
     .map((l) => l.id);
 
   io.to(['livreurs', 'admins']).emit('courses:changement');

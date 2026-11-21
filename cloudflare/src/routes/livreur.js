@@ -2,7 +2,7 @@
 import { HttpErreur, json, lireCorps } from '../outils.js';
 import { MAINTENANT, DEBUT_JOUR } from '../db.js';
 import { exiger } from '../securite.js';
-import { distanceKm, pointValide, parametres, messageSurPlace, partage, gammesDuChauffeur, peutFaire } from '../tarifs.js';
+import { distanceKm, pointValide, parametres, messageSurPlace, partage, gammesDuChauffeur, peutFaire, refusTropLoin } from '../tarifs.js';
 const messageGamme = (g) => (g === 'confort' ? 'Ce trajet est en Confort (voiture climatisée) : réservé aux chauffeurs Confort.' : g === 'voiture' ? 'Ce trajet est en Éco (voiture) : réservé aux chauffeurs en voiture.' : 'Ce trajet est à moto : réservé aux chauffeurs à moto.');
 import { SELECT_COURSE, notifierNouvelleCourse, diffuserMaj, lireCourse, prevenirDestinataire } from '../courses-service.js';
 import * as paiements from '../paiements.js';
@@ -12,7 +12,7 @@ import * as argent from '../argent.js';
 /** Livreur connecté ET validé par l'admin. */
 async function livreur(req, c) {
   await exiger(req, c, 'livreur');
-  const u = (await c.db.query('SELECT id, actif, lat, lng, vehicule FROM utilisateurs WHERE id = $1', [c.user.id])).rows[0];
+  const u = (await c.db.query('SELECT id, actif, lat, lng, vehicule, position_maj FROM utilisateurs WHERE id = $1', [c.user.id])).rows[0];
   if (!u) throw new HttpErreur(401, 'Compte introuvable');
   if (!u.actif) throw new HttpErreur(403, 'Votre compte livreur attend la validation de l\'administrateur');
   return u;
@@ -145,7 +145,8 @@ export function enregistrer(r) {
       (({ 0: a, 1: b }) => [a, b || a])(gammesDuChauffeur(moi.vehicule)) // chaque gamme à ses chauffeurs
     );
     const p = await parametres(c.db);
-    const liste = res.rows.map((x) => ({
+    // seulement les courses dans mon rayon (si ma position est connue) : pas de client qui attend des heures
+    const liste = res.rows.filter((x) => { const m = refusTropLoin(moi, { lat: x.depart_lat, lng: x.depart_lng }, p); return !m || moi.lat == null; }).map((x) => ({
       ...x,
       part_livreur: partage(x, p).part_livreur, // ce que gagnera le chauffeur
       distance_moi_km: moi.lat != null
@@ -182,10 +183,18 @@ export function enregistrer(r) {
 
   r.post('/api/livreur/courses/:id/accepter', async (req, c) => {
     const moi = await livreur(req, c);
-    const demande = (await c.db.query('SELECT service, vehicule FROM courses WHERE id = $1', [Number(c.params.id)])).rows[0];
+    const demande = (await c.db.query('SELECT service, vehicule, depart_lat, depart_lng FROM courses WHERE id = $1', [Number(c.params.id)])).rows[0];
     if (demande && demande.service === 'trajet' && !peutFaire(moi.vehicule, demande.vehicule)) {
       throw new HttpErreur(409, messageGamme(demande.vehicule));
     }
+    // position envoyée avec « Accepter » : la plus fraîche possible
+    const corps = await lireCorps(req).catch(() => ({}));
+    if (pointValide({ lat: corps.lat, lng: corps.lng })) {
+      await c.db.query(`UPDATE utilisateurs SET lat = $2, lng = $3, position_maj = ${MAINTENANT} WHERE id = $1`, [c.user.id, Number(corps.lat), Number(corps.lng)]);
+      Object.assign(moi, { lat: Number(corps.lat), lng: Number(corps.lng), position_maj: null });
+    }
+    const refus = demande && refusTropLoin(moi, { lat: demande.depart_lat, lng: demande.depart_lng }, await parametres(c.db));
+    if (refus) throw new HttpErreur(409, refus);
     const b = await argent.bloque(c, c.user.id);
     if (b) {
       throw new HttpErreur(403, `Vous devez ${Math.abs(b.solde).toLocaleString('fr-FR')} FCFA à la plateforme (plafond ${b.plafond.toLocaleString('fr-FR')} FCFA). Reversez-les pour accepter de nouvelles courses.`);

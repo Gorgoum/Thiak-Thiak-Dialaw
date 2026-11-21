@@ -400,7 +400,8 @@ document.getElementById('app').addEventListener('click', async (e) => {
   try {
     if (b.dataset.accepter) {
       b.disabled = true;
-      await api('POST', `/api/livreur/courses/${b.dataset.accepter}/accepter`);
+      // position fraîche : le serveur vérifie que le client est dans mon rayon
+      await api('POST', `/api/livreur/courses/${b.dataset.accepter}/accepter`, (await positionPourControle()) || {});
       // position envoyée tout de suite : le client voit aussitôt où est son chauffeur
       enCourse = true; dernierEnvoi = 0; derniereEnvoyee = null;
       if (maPosition) envoyerPosition({ coords: { latitude: maPosition.lat, longitude: maPosition.lng } });

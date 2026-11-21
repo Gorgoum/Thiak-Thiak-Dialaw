@@ -2,7 +2,7 @@
 const router = require('express').Router();
 const { query } = require('../db');
 const { exiger, a } = require('../auth');
-const { distanceKm, pointValide, parametres, messageSurPlace, partage, gammesDuChauffeur, peutFaire } = require('../tarifs');
+const { distanceKm, pointValide, parametres, messageSurPlace, partage, gammesDuChauffeur, peutFaire, refusTropLoin } = require('../tarifs');
 const messageGamme = (g) => (g === 'confort' ? 'Ce trajet est en Confort (voiture climatisée) : réservé aux chauffeurs Confort.' : g === 'voiture' ? 'Ce trajet est en Éco (voiture) : réservé aux chauffeurs en voiture.' : 'Ce trajet est à moto : réservé aux chauffeurs à moto.');
 const { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj, prevenirDestinataire } = require('../courses-service');
 const { apprendreDeLaCourse } = require('../lieux');
@@ -11,7 +11,7 @@ const paiements = require('../paiements');
 
 // Tout livreur doit être connecté ET validé par l'admin
 router.use(exiger('livreur'), a(async (req, res, next) => {
-  const u = (await query('SELECT id, actif, lat, lng, vehicule FROM utilisateurs WHERE id = $1', [req.user.id])).rows[0];
+  const u = (await query('SELECT id, actif, lat, lng, vehicule, position_maj FROM utilisateurs WHERE id = $1', [req.user.id])).rows[0];
   if (!u) return res.status(401).json({ erreur: 'Compte introuvable' });
   if (!u.actif) return res.status(403).json({ erreur: 'Votre compte livreur attend la validation de l\'administrateur' });
   req.livreur = u;
@@ -50,7 +50,8 @@ router.get('/courses-disponibles', a(async (req, res) => {
   );
   const moi = req.livreur;
   const p = await parametres();
-  const liste = r.rows.map((c) => ({
+  // seulement les courses dans mon rayon (si ma position est connue) : pas de client qui attend des heures
+  const liste = r.rows.filter((c) => { const m = refusTropLoin(moi, { lat: c.depart_lat, lng: c.depart_lng }, p); return !m || moi.lat == null; }).map((c) => ({
     ...c,
     part_livreur: partage(c, p).part_livreur, // ce que gagnera le chauffeur
     distance_moi_km: moi.lat != null
@@ -82,10 +83,18 @@ router.get('/gains', a(async (req, res) => {
 router.get('/argent', a(async (req, res) => res.json(await argent.argentLivreur(req.user.id))));
 
 router.post('/courses/:id/accepter', a(async (req, res) => {
-  const demande = (await query('SELECT service, vehicule FROM courses WHERE id = $1', [req.params.id])).rows[0];
+  const demande = (await query('SELECT service, vehicule, depart_lat, depart_lng FROM courses WHERE id = $1', [req.params.id])).rows[0];
   if (demande && demande.service === 'trajet' && !peutFaire(req.livreur.vehicule, demande.vehicule)) {
     return res.status(409).json({ erreur: messageGamme(demande.vehicule) });
   }
+  // position envoyée avec « Accepter » : la plus fraîche possible
+  const { lat, lng } = req.body || {};
+  if (pointValide({ lat, lng })) {
+    await query('UPDATE utilisateurs SET lat = $2, lng = $3, position_maj = now() WHERE id = $1', [req.user.id, lat, lng]);
+    Object.assign(req.livreur, { lat: Number(lat), lng: Number(lng), position_maj: new Date() });
+  }
+  const refus = demande && refusTropLoin(req.livreur, { lat: demande.depart_lat, lng: demande.depart_lng }, await parametres());
+  if (refus) return res.status(409).json({ erreur: refus });
   const b = await argent.bloque(req.user.id);
   if (b) {
     return res.status(403).json({

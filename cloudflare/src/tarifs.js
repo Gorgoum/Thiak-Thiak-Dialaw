@@ -68,6 +68,20 @@ export function partage(course, p) {
 
 
 /**
+ * Un chauffeur ne peut accepter qu'une course dont le départ est dans son rayon (réglage « rayon_km »),
+ * sinon le client attendrait des heures. Sa position doit être connue et récente (moins de 20 min).
+ * Renvoie null si c'est bon, sinon le message à afficher au chauffeur.
+ */
+export function refusTropLoin(chauffeur, depart, p) {
+  const rayon = Number(p.rayon_km) || 10;
+  const recente = chauffeur.lat != null && (!chauffeur.position_maj || Date.now() - new Date(chauffeur.position_maj).getTime() < 20 * 60000);
+  if (!recente) return 'Votre position est inconnue. Passez « Disponible » et autorisez la localisation pour accepter une course.';
+  const km = distanceKm({ lat: Number(chauffeur.lat), lng: Number(chauffeur.lng) }, depart) * (p.facteur_route || 1.3);
+  if (km <= rayon) return null;
+  return `Ce client est à environ ${Math.round(km)} km de vous (maximum ${rayon} km). La course est réservée aux chauffeurs plus proches.`;
+}
+
+/**
  * Chauffeurs libres autour du départ, par véhicule : combien, et dans combien de minutes arrive le plus proche.
  * livreurs : [{ lat, lng, vehicule, position_maj }] (disponibles, sans course en cours).
  */
