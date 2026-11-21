@@ -5,7 +5,7 @@ export const MAINTENANT = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
 export const DEBUT_JOUR = "strftime('%Y-%m-%dT00:00:00.000Z', 'now')";
 
 const BOOLEENS = new Set(['actif', 'disponible', 'valide']);
-const JSONS = new Set(['paiement_infos', 'abonnement', 'abonnement_push']);
+const JSONS = new Set(['paiement_infos', 'abonnement', 'abonnement_push', 'abonnement_dest']);
 
 function versD1(v) {
   if (v === undefined) return null;

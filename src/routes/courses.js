@@ -192,7 +192,9 @@ router.post('/suivi/:code/push', a(async (req, res) => {
   if (!ab || !ab.endpoint || !ab.keys) return res.status(400).json({ erreur: 'Abonnement invalide' });
   const id = await idDepuisCode(req.params.code);
   if (!id) return res.status(404).json({ erreur: 'Course introuvable' });
-  await query('UPDATE courses SET abonnement_push = $2 WHERE id = $1', [id, ab]);
+  // le destinataire d'un colis a sa propre place : il ne remplace pas les notifications du client
+  const colonne = req.body.role === 'destinataire' ? 'abonnement_dest' : 'abonnement_push';
+  await query(`UPDATE courses SET ${colonne} = $2 WHERE id = $1`, [id, ab]);
   res.json({ ok: true });
 }));
 

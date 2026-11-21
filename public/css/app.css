@@ -1399,3 +1399,11 @@ body.sur-accueil { overflow: hidden; }
   .accueil-recherche { padding-left: 82px; padding-right: 12px; font-size: 1.05rem; }
   .recherche-auto { width: 96px; left: -20px; }
 }
+
+/* Destinataire d'un colis : vue « pour vous », boutons pour le prévenir */
+.ligne-info.pour-moi { color: var(--brand); }
+.course .actions a.whatsapp, .prevenir-dest a.whatsapp { background: #25d366; border-color: #25d366; color: #fff; }
+.prevenir-dest { margin-top: 10px; padding: 12px; border-radius: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; display: grid; gap: 8px; }
+.prevenir-dest > b { display: flex; align-items: center; gap: 6px; color: #15803d; }
+.prevenir-dest .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
+@media (prefers-color-scheme: dark) { .prevenir-dest { background: rgba(22, 163, 74, .12); border-color: rgba(22, 163, 74, .35); } }

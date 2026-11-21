@@ -172,3 +172,7 @@ INSERT INTO parametres (cle, valeur) VALUES ('frais_om_pct', '1') ON CONFLICT (c
 ALTER TABLE courses ADD COLUMN IF NOT EXISTS rembourse_le TIMESTAMPTZ;
 ALTER TABLE courses ADD COLUMN IF NOT EXISTS rembourse_montant INTEGER;
 ALTER TABLE courses ADD COLUMN IF NOT EXISTS rembourse_ref TEXT;
+
+-- Le destinataire d'un colis peut recevoir ses propres notifications (sans prendre la place du client).
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS abonnement_dest JSONB;
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS dest_prevenu_le TIMESTAMPTZ;

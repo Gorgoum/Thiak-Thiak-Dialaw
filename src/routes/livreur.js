@@ -4,7 +4,7 @@ const { query } = require('../db');
 const { exiger, a } = require('../auth');
 const { distanceKm, pointValide, parametres, messageSurPlace, partage, gammesDuChauffeur, peutFaire } = require('../tarifs');
 const messageGamme = (g) => (g === 'confort' ? 'Ce trajet est en Confort (voiture climatisée) : réservé aux chauffeurs Confort.' : g === 'voiture' ? 'Ce trajet est en Éco (voiture) : réservé aux chauffeurs en voiture.' : 'Ce trajet est à moto : réservé aux chauffeurs à moto.');
-const { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj } = require('../courses-service');
+const { SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj, prevenirDestinataire } = require('../courses-service');
 const { apprendreDeLaCourse } = require('../lieux');
 const argent = require('../argent');
 const paiements = require('../paiements');
@@ -164,7 +164,7 @@ async function detecterArrivees(io, livreurId, pos, precision) {
   const p = await parametres();
   const rayon = p.rayon_arrivee_m || 200;
   const courses = (await query(
-    `SELECT id, statut, service, arrive_le, paiement, paiement_statut, depart_lat, depart_lng, arrivee_lat, arrivee_lng
+    `SELECT id, statut, service, arrive_le, paiement, paiement_statut, depart_lat, depart_lng, arrivee_lat, arrivee_lng, dest_prevenu_le, destinataire_nom, client_nom
      FROM courses WHERE livreur_id = $1 AND statut IN ('acceptee', 'recuperee')`, [livreurId]
   )).rows;
   const faits = [];
@@ -173,6 +173,17 @@ async function detecterArrivees(io, livreurId, pos, precision) {
     const dB = distanceKm(pos, { lat: c.arrivee_lat, lng: c.arrivee_lng }) * 1000;
     const trajet = c.service === 'trajet';
     const payee = c.paiement === 'especes' || c.paiement_statut === 'paye';
+    // colis : le destinataire (et le client) sont prévenus quand le livreur est à moins de 900 m
+    if (c.service !== 'trajet' && c.statut === 'recuperee' && !c.dest_prevenu_le && dB <= 900 && dB > rayon) {
+      const r = await query(`UPDATE courses SET dest_prevenu_le = now() WHERE id = $1 AND dest_prevenu_le IS NULL RETURNING id`, [c.id]);
+      if (r.rows.length) {
+        const min = Math.max(1, Math.round(((dB * 1.3) / 1000 / 25) * 60));
+        const qui = c.client_nom ? ` (envoyé par ${c.client_nom})` : '';
+        await prevenirDestinataire(c.id, `Votre livreur arrive dans environ ${min} min avec votre colis${qui}. Préparez-vous à le recevoir.`, 'Votre colis arrive');
+        await diffuserMaj(io, c.id, { message: `Le livreur arrive chez ${c.destinataire_nom || 'le destinataire'} dans environ ${min} min.`, titre: 'Bientôt livré', notifierDest: false });
+        faits.push({ id: c.id, etape: 'approche' });
+      }
+    }
     if (c.statut === 'acceptee' && !c.arrive_le && dA <= rayon) {
       const r = await query(`UPDATE courses SET arrive_le = now() WHERE id = $1 AND statut = 'acceptee' AND arrive_le IS NULL RETURNING id`, [c.id]);
       if (!r.rows.length) continue;

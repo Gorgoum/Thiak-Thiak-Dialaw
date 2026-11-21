@@ -293,6 +293,15 @@ function carteActive(c) {
             + blocPersonne(c.client_nom, c.client_tel, 'A commandé la course')
           : blocPersonne(c.client_nom, c.client_tel, trajet ? 'Passager' : 'Client · reçoit la livraison');
       })()}
+      ${(() => {
+        // colis en route : le livreur prévient le destinataire d'un toucher (WhatsApp ou SMS, depuis son téléphone)
+        const tel = String(c.destinataire_tel || '').replace(/\D/g, '').slice(-9);
+        if (c.service === 'trajet' || c.statut !== 'recuperee' || !/^7\d{8}$/.test(tel)) return '';
+        const texte = encodeURIComponent(`Bonjour${c.destinataire_nom ? ' ' + c.destinataire_nom : ''}, je suis le livreur Yobalema Yène. J'arrive avec votre colis${c.client_nom ? ` envoyé par ${c.client_nom}` : ''}, à ${c.arrivee_repere}. Merci d'être disponible.`);
+        return `<div class="prevenir-dest"><b>${ico('bell', 'ic-sm')} Prévenir ${esc(c.destinataire_nom || 'le destinataire')}</b>
+          <div class="actions"><a class="bouton whatsapp" href="https://wa.me/221${tel}?text=${texte}" target="_blank" rel="noopener">${ico('message-circle', 'ic-sm')} WhatsApp</a>
+          <a class="bouton" href="sms:+221${tel}?body=${texte}">${ico('message-square', 'ic-sm')} SMS</a></div></div>`;
+      })()}
       ${blocEncaisser}
       <div class="actions">
         <button class="btn-primaire" data-guidage>${ico('navigation', 'ic-sm')} Guider jusqu'${versDepart ? 'au départ' : 'à l\'arrivée'}</button>

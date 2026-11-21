@@ -153,9 +153,12 @@ export function enregistrer(r) {
   });
 
   r.post('/api/courses/suivi/:code/push', async (req, c) => {
-    const ab = (await lireCorps(req)).abonnement;
+    const b = await lireCorps(req);
+    const ab = b.abonnement;
     if (!ab || !ab.endpoint || !ab.keys) throw new HttpErreur(400, 'Abonnement invalide');
-    const res = await c.db.query('UPDATE courses SET abonnement_push = $2 WHERE suivi_token = $1 RETURNING id', [c.params.code, ab]);
+    // le destinataire d'un colis a sa propre place : il ne remplace pas les notifications du client
+    const colonne = b.role === 'destinataire' ? 'abonnement_dest' : 'abonnement_push';
+    const res = await c.db.query(`UPDATE courses SET ${colonne} = $2 WHERE suivi_token = $1 RETURNING id`, [c.params.code, ab]);
     if (!res.rows.length) throw new HttpErreur(404, 'Course introuvable');
     return json({ ok: true });
   });

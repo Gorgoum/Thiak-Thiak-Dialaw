@@ -38,6 +38,13 @@ const suiviPartage = params.get('suivi');
 const retourPaiement = suiviPartage && params.get('paiement') === 'retour';
 // Alerte « Un livreur a accepté, payez maintenant » : on ouvre directement l'écran de paiement
 const ouvrirPaiement = suiviPartage && params.get('payer') === '1';
+// Destinataire d'un colis : il suit la livraison sans pouvoir annuler ni payer, et a ses propres notifications
+const CLE_DEST = 'tt_codes_destinataire';
+const codesDest = () => lireJSON(CLE_DEST, []);
+if (suiviPartage && params.get('pour') === 'destinataire' && !codesDest().includes(suiviPartage)) {
+  Stock.set(CLE_DEST, JSON.stringify([suiviPartage, ...codesDest()].slice(0, 30)));
+}
+const lienDestinataire = (code) => `${lienSuivi(code)}&pour=destinataire`;
 if (suiviPartage) {
   ajouterCode(suiviPartage);
   history.replaceState(null, '', '/');
@@ -47,7 +54,8 @@ if (suiviPartage) {
 // eslint-disable-next-line no-global-assign
 activerNotifications = async () => {
   const ab = await obtenirAbonnement();
-  await Promise.all(lireCodes().map((c) => api('POST', `/api/courses/suivi/${encodeURIComponent(c)}/push`, { abonnement: ab }).catch(() => {})));
+  const dest = codesDest();
+  await Promise.all(lireCodes().map((c) => api('POST', `/api/courses/suivi/${encodeURIComponent(c)}/push`, { abonnement: ab, role: dest.includes(c) ? 'destinataire' : 'client' }).catch(() => {})));
 };
 
 // =========================================================================
@@ -720,16 +728,27 @@ function carteCourse(c) {
   // un livreur a accepté et attend le paiement (ou ancien fonctionnement « attente_paiement »)
   const aPayer = enLigne && !paye && (c.statut === 'attente_paiement' || (c.statut === 'acceptee' && c.paiement_statut === 'en_attente'));
   const actions = [];
-  if (aPayer) actions.push(`<button class="btn-primaire" data-payer="${code}">${ico('wallet', 'ic-sm')} Payer ${fcfa(c.montant_du || c.prix)}</button>`);
+  const pourMoi = codesDest().includes(c.suivi_token); // je suis le destinataire de ce colis
+  const telDest = String(c.destinataire_tel || '').replace(/\D/g, '').slice(-9);
+  if (!pourMoi && c.service !== 'trajet' && enCours && /^7\d{8}$/.test(telDest)) {
+    // le client prévient le destinataire d'un toucher (message WhatsApp avec le lien de suivi)
+    const texte = `Bonjour${c.destinataire_nom ? ' ' + c.destinataire_nom : ''}, je vous envoie un colis avec Yobalema Yène. Suivez la livraison et soyez prévenu quand le livreur arrive : ${lienDestinataire(c.suivi_token)}`;
+    actions.push(`<a class="bouton whatsapp" href="https://wa.me/221${telDest}?text=${encodeURIComponent(texte)}" target="_blank" rel="noopener">${ico('message-circle', 'ic-sm')} Prévenir ${esc(c.destinataire_nom || 'le destinataire')}</a>`);
+  }
+  if (pourMoi) {
+    if (enRoute(c)) actions.push(`<button data-voir-carte="${c.id}">${ico('map-pin', 'ic-sm')} Voir sur la carte</button>`);
+    if (!enCours) actions.push(`<button class="btn-ghost" data-retirer="${code}">${ico('trash-2', 'ic-sm')} Retirer</button>`);
+  }
+  if (!pourMoi && aPayer) actions.push(`<button class="btn-primaire" data-payer="${code}">${ico('wallet', 'ic-sm')} Payer ${fcfa(c.montant_du || c.prix)}</button>`);
   // annulation possible tant que rien n'est payé (une course payée se règle avec Yobalema, qui rembourse)
-  if (!paye && (['en_attente', 'attente_paiement'].includes(c.statut) || (c.statut === 'acceptee' && enLigne))) {
+  if (!pourMoi && !paye && (['en_attente', 'attente_paiement'].includes(c.statut) || (c.statut === 'acceptee' && enLigne))) {
     actions.push(`<button class="danger" data-annuler="${code}">${ico('circle-x', 'ic-sm')} Annuler</button>`);
   }
-  if (enRoute(c)) actions.push(`<button data-voir-carte="${c.id}">${ico('map-pin', 'ic-sm')} Voir sur la carte</button>`);
-  if (enCours) actions.push(`<button data-partager="${code}">${ico('share-2', 'ic-sm')} Partager le suivi</button>`);
-  if (!enCours) actions.push(`<button class="btn-ghost" data-retirer="${code}">${ico('trash-2', 'ic-sm')} Retirer</button>`);
+  if (!pourMoi && enRoute(c)) actions.push(`<button data-voir-carte="${c.id}">${ico('map-pin', 'ic-sm')} Voir sur la carte</button>`);
+  if (!pourMoi && enCours) actions.push(`<button data-partager="${code}">${ico('share-2', 'ic-sm')} Partager le suivi</button>`);
+  if (!pourMoi && !enCours) actions.push(`<button class="btn-ghost" data-retirer="${code}">${ico('trash-2', 'ic-sm')} Retirer</button>`);
   let notation = '';
-  if (c.statut === 'livree') {
+  if (c.statut === 'livree' && !pourMoi) {
     notation = c.note
       ? `<div class="etoiles">Votre note <span style="color:#f5b301">${'★'.repeat(c.note)}${'☆'.repeat(5 - c.note)}</span></div>`
       : `<div class="etoiles">Notez le livreur ${[1, 2, 3, 4, 5].map((n) => `<button data-noter="${code}" data-note="${n}" aria-label="${n} étoile${n > 1 ? 's' : ''}">☆</button>`).join('')}</div>`;
@@ -751,6 +770,7 @@ function carteCourse(c) {
     <article class="course">
       <div class="haut">${badge(c.statut, c.service)}<span class="prix-course">${fcfa(c.prix)}</span></div>
       ${frise(c.statut, c.service)}
+      ${pourMoi ? `<div class="ligne-info pour-moi">${ico('package', 'ic-sm')} <b>Colis pour vous</b>${c.client_nom ? ` · envoyé par ${esc(c.client_nom)}` : ''}</div>` : ''}
       <div class="trajet">
         <div>${esc(c.depart_repere)}</div>
         <div>${esc(c.arrivee_repere)}</div>

@@ -54,7 +54,25 @@ const MESSAGES_CLIENT = {
 };
 
 /** Diffuse un changement de statut au client (salle de suivi), au livreur, aux autres livreurs et aux admins. */
-async function diffuserMaj(io, id, { notifierClient = true, message = null, paiementRecu = false, titre = null, suffixe = '', urgent = false } = {}) {
+
+/** Messages au destinataire d'un colis (il n'a pas commandé : on lui dit qui envoie). */
+const MESSAGES_DEST = {
+  acceptee: (c) => `Un livreur a pris en charge le colis que ${c.client_nom || 'quelqu\'un'} vous envoie.`,
+  recuperee: (c) => `Votre colis est en route${c.client_nom ? ` (envoyé par ${c.client_nom})` : ''}.`,
+  livree: () => 'Votre colis a été livré. Bonne journée !',
+  annulee: () => 'La livraison de votre colis a été annulée.',
+};
+
+/** Notification au destinataire d'un colis, s'il a ouvert son lien de suivi et accepté les notifications. */
+async function prevenirDestinataire(id, corps, titre = 'Votre colis Yobalema') {
+  const x = (await query('SELECT suivi_token, abonnement_dest FROM courses WHERE id = $1', [id])).rows[0];
+  if (!x || !x.abonnement_dest) return false;
+  const ok = await push.envoyerA(x.abonnement_dest, { titre, corps, url: '/?suivi=' + x.suivi_token + '&pour=destinataire', tag: 'colis-' + id, urgent: true });
+  if (!ok) await query('UPDATE courses SET abonnement_dest = NULL WHERE id = $1', [id]);
+  return ok;
+}
+
+async function diffuserMaj(io, id, { notifierClient = true, message = null, paiementRecu = false, titre = null, suffixe = '', urgent = false, notifierDest = true } = {}) {
   const c = await lireCourse(id);
   if (!c) return;
   const prive = (await query('SELECT suivi_token, abonnement_push FROM courses WHERE id = $1', [id])).rows[0];
@@ -81,6 +99,8 @@ async function diffuserMaj(io, id, { notifierClient = true, message = null, paie
     });
     if (!valide) await query('UPDATE courses SET abonnement_push = NULL WHERE id = $1', [id]);
   }
+  // le destinataire d'un colis suit aussi les grandes étapes
+  if (notifierDest && c.service !== 'trajet' && MESSAGES_DEST[c.statut]) await prevenirDestinataire(id, MESSAGES_DEST[c.statut](c));
   return c;
 }
 
@@ -95,4 +115,4 @@ function messageExcuse(course, rembourse = null) {
     + ' Merci de votre compréhension. Yobalema Yène';
 }
 
-module.exports = { messageExcuse, SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj };
+module.exports = { prevenirDestinataire, messageExcuse, SELECT_COURSE, lireCourse, notifierNouvelleCourse, diffuserMaj };
