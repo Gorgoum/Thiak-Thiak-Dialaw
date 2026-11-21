@@ -152,8 +152,8 @@ async function demarrerGuidage() {
   if (!c) return;
   const versDepart = c.statut === 'acceptee';
   const cible = versDepart
-    ? { lat: c.depart_lat, lng: c.depart_lng, nom: c.depart_repere }
-    : { lat: c.arrivee_lat, lng: c.arrivee_lng, nom: c.arrivee_repere };
+    ? { lat: c.depart_lat, lng: c.depart_lng, nom: c.depart_repere, type: 'depart' }
+    : { lat: c.arrivee_lat, lng: c.arrivee_lng, nom: c.arrivee_repere, type: 'arrivee' };
 
   let pos = maPosition;
   if (!pos) {

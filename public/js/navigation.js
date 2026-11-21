@@ -155,7 +155,9 @@ const Guidage = {
       .setLngLat([position.lng, position.lat]).addTo(m);
 
     const pin = document.createElement('div');
-    pin.innerHTML = '<div class="pin pin-arrivee"><span>B</span></div>';
+    // A (bleu) quand on va chercher le client / le colis, B (rouge) quand on va à l'arrivée
+    const versA = this.cible.type === 'depart';
+    pin.innerHTML = `<div class="pin pin-${versA ? 'depart' : 'arrivee'}"><span>${versA ? 'A' : 'B'}</span></div>`;
     this.marqueurCible = new maplibregl.Marker({ element: pin, anchor: 'bottom', offset: [0, -4] })
       .setLngLat([this.cible.lng, this.cible.lat]).addTo(m);
     return m;
