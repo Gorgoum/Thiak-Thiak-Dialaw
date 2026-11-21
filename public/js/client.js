@@ -421,8 +421,12 @@ function dessinerTrace(d) {
 /** Zoom automatique sur tout l'itinéraire, comme un GPS (en laissant la place à la recherche et aux boutons). */
 /** Téléphone : carte plein écran sous le panneau du bas. Hauteur du panneau visible (0 sur ordinateur). */
 const estTelephone = () => window.matchMedia('(max-width: 959px)').matches;
+// téléphone tenu à l'horizontale : panneau à gauche sur toute la hauteur, carte à droite
+const REQ_PAYSAGE = '(max-width: 959px) and (orientation: landscape) and (max-height: 560px)';
+const enPaysage = () => window.matchMedia(REQ_PAYSAGE).matches;
+const largeurPanneau = () => (enPaysage() ? $('feuille').getBoundingClientRect().width : 0);
 function hauteurFeuille() {
-  if (!estTelephone()) return 0;
+  if (!estTelephone() || enPaysage()) return 0;
   const r = $('feuille').getBoundingClientRect();
   return Math.max(0, window.innerHeight - r.top);
 }
@@ -456,7 +460,7 @@ function recadrerItineraire(pts) {
   const h = carte.getSize().y;
   // marges pour la recherche (haut) et la bulle d'aide (bas), proportionnées à la hauteur de la carte
   carte.flyToBounds(zone, {
-    paddingTopLeft: [30, estTelephone() ? 130 : Math.min(large ? 130 : 80, h * 0.22)], // téléphone : place pour le logo et les bulles
+    paddingTopLeft: [30 + largeurPanneau(), estTelephone() ? (enPaysage() ? 70 : 130) : Math.min(large ? 130 : 80, h * 0.22)], // téléphone : place pour le logo et les bulles
     paddingBottomRight: [large ? 40 : 60, estTelephone() ? hauteurFeuille() + 30 : Math.min(large ? 70 : 100, h * 0.22)],
     maxZoom: 17,
     duration: 0.8,
@@ -963,7 +967,7 @@ function recadrerSurVehicule(c) {
   const v = vehicules.get(c.id);
   const zone = L.latLngBounds([[c.livreur_lat, c.livreur_lng], [cible.lat, cible.lng]]);
   if (v && v.route && v.route.pts) zone.extend(L.latLngBounds(v.route.pts));
-  carte.fitBounds(zone, { paddingTopLeft: [50, 80], paddingBottomRight: [50, hauteurFeuille() + 40], maxZoom: 17 });
+  carte.fitBounds(zone, { paddingTopLeft: [50 + largeurPanneau(), 80], paddingBottomRight: [50, hauteurFeuille() + 40], maxZoom: 17 });
 }
 
 /** Bandeau sur l'écran principal : qui arrive, dans combien de temps, avec quel véhicule. */

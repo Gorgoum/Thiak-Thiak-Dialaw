@@ -1407,3 +1407,26 @@ body.sur-accueil { overflow: hidden; }
 .prevenir-dest > b { display: flex; align-items: center; gap: 6px; color: #15803d; }
 .prevenir-dest .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
 @media (prefers-color-scheme: dark) { .prevenir-dest { background: rgba(22, 163, 74, .12); border-color: rgba(22, 163, 74, .35); } }
+
+/* Téléphone tenu à l'horizontale : panneau à gauche sur toute la hauteur, carte à droite (comme sur ordinateur) */
+@media (max-width: 959px) and (orientation: landscape) and (max-height: 560px) {
+  .page-client .volet-form, body.page-client.feuille-recherche .volet-form, body.page-client.feuille-reduite .volet-form {
+    top: 0; bottom: 0; right: auto; width: min(380px, 48vw); max-height: none; min-height: 0;
+    border-radius: 0 22px 22px 0; padding-top: calc(64px + env(safe-area-inset-top)); padding-left: max(14px, env(safe-area-inset-left));
+  }
+  .poignee { display: none; }
+  .page-client .entete { left: 0; right: auto; width: min(380px, 48vw); z-index: 1001; }
+  .page-client .carte-outils, .page-client .carte-aide, .retour-carte, body.page-client.feuille-recherche .retour-carte { bottom: 12px !important; }
+  .retour-carte { left: calc(min(380px, 48vw) + 12px); }
+  .page-client .volet-carte .leaflet-bottom { bottom: 0; }
+  .page-client .volet-carte .leaflet-bottom.leaflet-left { top: 12px; }
+  .page-client .fiche-pied { position: sticky; bottom: 0; }
+  .page-client .option { width: 96px; min-width: 96px; }
+  .accueil-cadre { max-width: 760px; gap: 10px; }
+  .services { grid-template-columns: 1.3fr 1fr 1fr; grid-template-areas: "courses liv food" "courses ach moto"; gap: 8px 10px; }
+  .service-visuel { height: 74px; border-radius: 20px; }
+  .service-visuel img { width: 60px; height: 60px; }
+  .service-courses .service-visuel { min-height: 0; }
+  .service-courses .service-visuel img { width: 120px; height: 120px; }
+  .img-colis { width: 34px !important; height: 34px !important; }
+}
