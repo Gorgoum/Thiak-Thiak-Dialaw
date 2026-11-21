@@ -9,7 +9,7 @@ import * as paiements from '../paiements.js';
 import { envoyer } from '../push.js';
 
 const MAX_PAR_HEURE = 10;          // demandes par adresse IP
-const MAX_EN_ATTENTE_PAR_TEL = 3;  // commandes en attente par numéro
+const MSG_DEJA_EN_COURS = "Vous avez déjà une commande en cours. Attendez qu'elle soit terminée, ou annulez-la, avant d'en passer une autre.";
 
 export function enregistrer(r) {
   r.post('/api/courses/devis', async (req, c) => {
@@ -61,8 +61,9 @@ export function enregistrer(r) {
       if (!destTel) throw new HttpErreur(400, 'Numéro du destinataire invalide');
     }
 
-    const enAttente = await c.db.query(`SELECT id FROM courses WHERE client_tel = $1 AND statut IN ('en_attente', 'attente_paiement')`, [clientTel]);
-    if (enAttente.rows.length >= MAX_EN_ATTENTE_PAR_TEL) throw new HttpErreur(429, 'Vous avez déjà 3 demandes en attente. Patientez ou annulez-en une.');
+    // une seule commande à la fois par numéro : en attente, à payer, acceptée ou en route
+    const enCours = await c.db.query(`SELECT id FROM courses WHERE client_tel = $1 AND statut IN ('attente_paiement', 'en_attente', 'acceptee', 'recuperee') LIMIT 1`, [clientTel]);
+    if (enCours.rows.length) throw new HttpErreur(409, MSG_DEJA_EN_COURS);
     if (await limiter(c.db, 'cmd:' + adresseIp(req), MAX_PAR_HEURE, 3600 * 1000)) throw new HttpErreur(429, 'Trop de demandes. Réessayez dans une heure.');
 
     const paiement = ['wave', 'orange_money'].includes(b.paiement) ? b.paiement : 'especes';

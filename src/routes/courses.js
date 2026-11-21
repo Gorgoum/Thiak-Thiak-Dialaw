@@ -11,10 +11,10 @@ const paiements = require('../paiements');
 const texte = (v, max = 300) => String(v || '').trim().slice(0, max);
 const nouveauCode = () => crypto.randomBytes(16).toString('base64url');
 
-// Anti-abus : au plus 10 demandes par heure par adresse IP, et 3 courses en attente par numéro
+// Anti-abus : au plus 10 demandes par heure par adresse IP, et une seule commande en cours par numéro
 const demandesParIp = new Map();
 const MAX_PAR_HEURE = 10;
-const MAX_EN_ATTENTE_PAR_TEL = 3;
+const MSG_DEJA_EN_COURS = "Vous avez déjà une commande en cours. Attendez qu'elle soit terminée, ou annulez-la, avant d'en passer une autre.";
 function tropDeDemandes(ip) {
   const maintenant = Date.now();
   const liste = (demandesParIp.get(ip) || []).filter((t) => maintenant - t < 3600 * 1000);
@@ -73,10 +73,9 @@ router.post('/', a(async (req, res) => {
     if (!destTel) return res.status(400).json({ erreur: 'Numéro du destinataire invalide' });
   }
 
-  const enAttente = await query(`SELECT id FROM courses WHERE client_tel = $1 AND statut IN ('en_attente', 'attente_paiement')`, [clientTel]);
-  if (enAttente.rows.length >= MAX_EN_ATTENTE_PAR_TEL) {
-    return res.status(429).json({ erreur: 'Vous avez déjà 3 demandes en attente. Patientez ou annulez-en une.' });
-  }
+  // une seule commande à la fois par numéro : en attente, à payer, acceptée ou en route
+  const enCours = await query(`SELECT id FROM courses WHERE client_tel = $1 AND statut IN ('attente_paiement', 'en_attente', 'acceptee', 'recuperee') LIMIT 1`, [clientTel]);
+  if (enCours.rows.length) return res.status(409).json({ erreur: MSG_DEJA_EN_COURS, course_en_cours: enCours.rows[0].id });
   if (tropDeDemandes(req.ip)) return res.status(429).json({ erreur: 'Trop de demandes. Réessayez dans une heure.' });
 
   // Le prix est toujours recalculé côté serveur
