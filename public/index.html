@@ -122,6 +122,8 @@
       <button type="button" class="poignee" id="poignee" aria-label="Agrandir ou réduire le panneau"><span></span></button>
       <!-- Course en cours : le chauffeur / livreur arrive (position en direct sur la carte) -->
       <div class="suivi-direct" id="suivi-direct" hidden aria-live="polite"></div>
+      <!-- Commande en cours : le client ne voit qu'elle (pas de nouvelle commande possible tant qu'elle n'est pas finie) -->
+      <div class="course-focus" id="course-focus" hidden></div>
 
       <!-- Première ouverture : activer les notifications de l'application (une seule fois) -->
       <div class="bandeau-alertes" id="bandeau-alertes" hidden>

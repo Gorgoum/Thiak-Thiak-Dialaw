@@ -412,8 +412,8 @@ function dessinerTrace(d) {
   effacerTrace();
   const pts = d.trace || [coord(points.depart), coord(points.arrivee)].map((p) => [p.lat, p.lng]);
   traceRoute = [
-    L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.9, interactive: false }),
-    L.polyline(pts, { color: '#2e90fa', weight: 5, opacity: 1, dashArray: d.trace ? null : '8 10', interactive: false }),
+    L.polyline(pts, { color: '#ffffff', weight: 9, opacity: 0.9, interactive: false, className: 'trace-formulaire' }),
+    L.polyline(pts, { color: '#2e90fa', weight: 5, opacity: 1, dashArray: d.trace ? null : '8 10', interactive: false, className: 'trace-formulaire' }),
   ].map((l) => l.addTo(carte));
   ptsTrace = pts;
   return pts;
@@ -1021,6 +1021,50 @@ $('suivi-direct').addEventListener('click', (e) => {
   }
 });
 
+/**
+ * Commande en cours : le client se concentre dessus. L'accueil et le formulaire de commande sont cachés
+ * jusqu'à ce qu'elle soit terminée ou annulée (une seule commande à la fois par numéro).
+ */
+var ETATS_ACTIFS = ['attente_paiement', 'en_attente', 'acceptee', 'recuperee'];
+var commandeEnCours = null; // var : lu par ouvrirAccueil() même avant cette ligne
+function afficherCommandeEnCours() {
+  const avant = commandeEnCours;
+  commandeEnCours = derniereListe.find((c) => ETATS_ACTIFS.includes(c.statut)) || null;
+  const el = $('course-focus');
+  document.body.classList.toggle('commande-en-cours', !!commandeEnCours);
+  majPointsCommande();
+  if (!commandeEnCours) {
+    el.hidden = true; el.innerHTML = '';
+    if (avant) ouvrirAccueil(); // commande terminée ou annulée : retour à l'accueil
+    return;
+  }
+  if (!$('accueil').hidden) fermerAccueil();
+  if (document.body.classList.contains('feuille-recherche')) fermerRecherche();
+  el.innerHTML = `<h2 class="course-focus-titre">Votre commande en cours</h2>${carteCourse(commandeEnCours)}
+    <p class="course-focus-note">${ico('info', 'ic-sm')} Vous pourrez passer une nouvelle commande quand celle-ci sera terminée.</p>`;
+  el.hidden = false;
+  if (!avant || avant.id !== commandeEnCours.id) setTimeout(() => { if (carte) carte.invalidateSize(); majHauteurFeuille(); }, 60);
+}
+
+/** Points A et B de la commande en cours sur la carte (les points du formulaire sont cachés) */
+var pointsCommande = null;
+var cadreCommande = null;
+function majPointsCommande() {
+  if (!carte) return;
+  if (pointsCommande) { pointsCommande.remove(); pointsCommande = null; }
+  const c = commandeEnCours;
+  if (!c) { cadreCommande = null; return; }
+  const pin = (type, lat, lng) => L.marker([Number(lat), Number(lng)], { interactive: false, keyboard: false,
+    icon: L.divIcon({ className: '', html: `<div class="pin pin-${type} pin-commande"><span>${LETTRE[type]}</span></div>`, iconSize: [34, 34], iconAnchor: [17, 41] }) });
+  pointsCommande = L.layerGroup([pin('depart', c.depart_lat, c.depart_lng), pin('arrivee', c.arrivee_lat, c.arrivee_lng)]).addTo(carte);
+  // cadrer une fois sur A et B (quand le véhicule roule, la carte suit le véhicule)
+  if (cadreCommande !== c.id && !enRoute(c)) {
+    cadreCommande = c.id;
+    setTimeout(() => carte.fitBounds(L.latLngBounds([[c.depart_lat, c.depart_lng], [c.arrivee_lat, c.arrivee_lng]]),
+      { paddingTopLeft: [50 + largeurPanneau(), 80], paddingBottomRight: [50, hauteurFeuille() + 40], maxZoom: 16 }), 150);
+  }
+}
+
 /** Nouvelle position envoyée par le téléphone du chauffeur (toutes les 5 s environ). */
 function positionVehicule(p) {
   const c = derniereListe.find((x) => x.id === p.course_id);
@@ -1061,10 +1105,11 @@ async function chargerListe() {
     $('accueil-nb').textContent = actives;
     $('liste').innerHTML = liste.length ? liste.map(carteCourse).join('') : '<p class="vide">Aucune livraison pour le moment.</p>';
     majVehicules();
+    afficherCommandeEnCours();
   } catch (e) { toast(e.message, true); }
 }
 
-$('liste').addEventListener('click', async (e) => {
+async function clicCourse(e) {
   const b = e.target.closest('button');
   if (!b) return;
   try {
@@ -1093,7 +1138,9 @@ $('liste').addEventListener('click', async (e) => {
     } else return;
     chargerListe();
   } catch (err) { toast(err.message, true); }
-});
+}
+$('liste').addEventListener('click', clicCourse);
+$('course-focus').addEventListener('click', clicCourse);
 
 // =========================================================================
 // Moyens de paiement (Nangu : Wave / Orange Money, ou espèces)
@@ -1449,6 +1496,7 @@ window.addEventListener('popstate', () => {
 });
 
 function ouvrirAccueil() {
+  if (commandeEnCours) return; // le client reste sur sa commande en cours
   $('accueil').hidden = false;
   document.body.classList.add('sur-accueil');
   majAccueil();
@@ -1544,6 +1592,7 @@ function initCarte() {
   carte = outilsCarte.carte;
   // Toucher la carte : sur un nom de lieu, on choisit ce lieu (comme Google Maps) ; ailleurs, on pose le point
   carte.on('click', (e) => {
+    if (commandeEnCours) return; // commande en cours : la carte sert seulement à la suivre
     const type = points.depart ? mode : 'depart';
     const lieu = outilsCarte.lieuSousLeDoigt(e.latlng);
     if (!lieu) { placer(type, e.latlng); apresPoint(type); return; }

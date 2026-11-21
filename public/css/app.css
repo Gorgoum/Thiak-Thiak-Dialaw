@@ -1445,3 +1445,12 @@ body.sur-accueil { overflow: hidden; }
 .badge-nb { position: absolute; top: 6px; right: 6px; z-index: 2; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 999px; background: #fff; color: #14532d; font-size: .82rem; font-weight: 800; line-height: 1.2; box-shadow: 0 1px 5px rgba(0, 0, 0, .16); pointer-events: none; }
 .badge-nb i { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, .2); }
 .option-visuel .badge-nb { top: -4px; right: -4px; font-size: .74rem; padding: 2px 7px 2px 6px; }
+
+/* Commande en cours : seulement elle (pas d'accueil, pas de formulaire de commande) */
+.commande-en-cours #f-course, .commande-en-cours #retour-carte, .commande-en-cours .appli-android { display: none !important; }
+.commande-en-cours .suivi-direct [data-details] { display: none; }
+.course-focus[hidden] { display: none; }
+.course-focus-titre { margin: 2px 0 10px; font-size: 1.1rem; font-weight: 800; }
+.course-focus .course { margin: 0; }
+.course-focus-note { display: flex; gap: 6px; align-items: flex-start; margin: 12px 2px 4px; color: var(--ink-3); font-size: .84rem; line-height: 1.35; }
+.commande-en-cours .pin:not(.pin-commande), .commande-en-cours #aide-carte, .commande-en-cours .bulle-carte, .commande-en-cours .trace-formulaire { display: none !important; }
