@@ -43,6 +43,8 @@ app.get('/api/config', async (req, res, next) => {
 });
 // Retour après paiement : Nangu ajoute ?payment_id=…&status=… ; on ramène le client sur le suivi de sa course
 // (le paiement lui-même est toujours vérifié côté serveur, jamais d'après ce retour).
+// l'application Android (Trusted Web Activity) s'ouvre en plein écran si le site la reconnaît
+app.get('/.well-known/assetlinks.json', (req, res) => res.json([{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"android_app","package_name":"sn.yobalema.yene","sha256_cert_fingerprints":["5E:45:1A:FF:99:74:60:B9:33:ED:0E:20:31:84:35:44:62:4E:94:2D:4F:63:6E:E5:77:D5:24:57:53:71:56:0A"]}}]));
 app.get('/retour-paiement/:code', (req, res) => {
   const code = String(req.params.code);
   if (!/^[A-Za-z0-9_-]{8,80}$/.test(code)) return res.redirect(302, '/');

@@ -13,6 +13,7 @@ import * as auth from './routes/auth.js';
 import * as courses from './routes/courses.js';
 import * as livreur from './routes/livreur.js';
 import * as admin from './routes/admin.js';
+import { ASSETLINKS } from './applis-android.js';
 import * as divers from './routes/divers.js';
 
 export { Diffusion } from './temps-reel.js';
@@ -71,6 +72,8 @@ export default {
     const c = { env, url, attendre, db: creerDb(env.DB), io: creerIo(env, attendre) };
     try {
       if (url.pathname === '/ws') return await connecterTempsReel(req, c);
+      // l'application Android (Trusted Web Activity) s'ouvre en plein écran si le site la reconnaît
+      if (url.pathname === '/.well-known/assetlinks.json') return json(ASSETLINKS);
       if (url.pathname === '/webhooks/nangu' && req.method === 'POST') return await webhookNangu(req, c);
       if (url.pathname.startsWith('/api/')) {
         const rep = await routeur.traiter(req, c);

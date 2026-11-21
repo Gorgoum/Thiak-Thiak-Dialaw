@@ -1,0 +1,10 @@
+# fichiers compilés et réglages propres à cet ordinateur
+.gradle/
+build/
+app/build/
+local.properties
+sortie/
+# la clé de signature ne doit JAMAIS être ici (elle est dans Documents/YOBALEMA-CLE-ANDROID)
+*.keystore
+*.jks
+mot-de-passe*.txt

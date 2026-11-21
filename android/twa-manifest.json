@@ -1,0 +1,50 @@
+{
+  "packageId": "sn.yobalema.yene",
+  "host": "thiak-thiak-dialaw.thiakthiakdialaw.workers.dev",
+  "name": "Yobalema Yène",
+  "launcherName": "Yobalema",
+  "display": "standalone",
+  "themeColor": "#0A2A62",
+  "themeColorDark": "#000000",
+  "navigationColor": "#0A2A62",
+  "navigationColorDark": "#0A2A62",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#FFFFFF",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://thiak-thiak-dialaw.thiakthiakdialaw.workers.dev/icons/icon-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "C:/Users/baye.niang/Documents/YOBALEMA-CLE-ANDROID/yobalema.keystore",
+    "alias": "yobalema"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "unknown",
+  "webManifestUrl": "https://thiak-thiak-dialaw.thiakthiakdialaw.workers.dev/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": false,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://thiak-thiak-dialaw.thiakthiakdialaw.workers.dev/",
+  "minSdkVersion": 24,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}
