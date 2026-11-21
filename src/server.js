@@ -50,6 +50,8 @@ app.get('/retour-paiement/:code', (req, res) => {
   if (!/^[A-Za-z0-9_-]{8,80}$/.test(code)) return res.redirect(302, '/');
   res.redirect(302, `/?suivi=${encodeURIComponent(code)}&paiement=retour`);
 });
+// application Android des clients
+app.get('/telecharger/yobalema-yene.apk', (req, res) => res.download(path.join(__dirname, '..', 'android', 'sortie', 'yobalema-1.0.0.apk'), 'yobalema-yene.apk'));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 // Leaflet (carte, BSD-2) servi par notre serveur : aucune dépendance à un CDN externe
 app.use('/vendor/leaflet', express.static(path.join(__dirname, '..', 'node_modules', 'leaflet', 'dist')));

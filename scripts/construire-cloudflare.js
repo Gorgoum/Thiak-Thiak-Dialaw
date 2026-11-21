@@ -32,6 +32,10 @@ fs.mkdirSync(path.join(sortie, 'vendor', 'inter'), { recursive: true });
 fs.copyFileSync(path.join(inter, 'inter-latin-wght-normal.woff2'), path.join(sortie, 'vendor', 'inter', 'inter-latin-wght-normal.woff2'));
 fs.mkdirSync(path.join(sortie, 'socket.io'), { recursive: true });
 fs.copyFileSync(path.join(racine, 'cloudflare', 'statique', 'socket.io.js'), path.join(sortie, 'socket.io', 'socket.io.js'));
+// application Android des clients (bouton « Télécharger l'application » de l'accueil)
+const apk = path.join(racine, "android", "sortie", "yobalema-1.0.0.apk");
+if (fs.existsSync(apk)) { fs.mkdirSync(path.join(sortie, "telecharger"), { recursive: true }); fs.copyFileSync(apk, path.join(sortie, "telecharger", "yobalema-yene.apk")); }
+else console.warn("ATTENTION : android/sortie/yobalema-1.0.0.apk absent, le bouton de téléchargement mènera à une erreur");
 // numéro de version publié : les pages ouvertes se rechargent d'elles-mêmes quand il change
 const versionApp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
 fs.writeFileSync(path.join(sortie, 'version.json'), JSON.stringify({ version: versionApp }) + '\n');
@@ -66,6 +70,10 @@ fs.writeFileSync(path.join(sortie, '_headers'), `/*
 /js/*
   Cache-Control: no-cache
 /css/*
+  Cache-Control: no-cache
+/telecharger/*
+  Content-Type: application/vnd.android.package-archive
+  Content-Disposition: attachment; filename="yobalema-yene.apk"
   Cache-Control: no-cache
 `);
 

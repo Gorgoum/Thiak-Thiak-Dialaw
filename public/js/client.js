@@ -1661,3 +1661,19 @@ socket.on('course:maj', (c) => {
   chargerListe();
 });
 
+
+// ---------- Bouton « Télécharger l'application » (navigateur Android seulement) ----------
+(() => {
+  const bloc = $('appli-android');
+  if (!bloc) return;
+  const ua = navigator.userAgent;
+  // ouvert depuis l'application installée : Chrome (TWA) annonce le paquet, le navigateur intégré contient « wv »
+  if (document.referrer.startsWith('android-app://')) Stock.set('tt_dans_appli', '1');
+  const dansAppli = Stock.get('tt_dans_appli') === '1' || /; wv\)/.test(ua)
+    || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches;
+  const masque = Number(Stock.get('tt_appli_masquee') || 0) > Date.now() - 7 * 86400000; // masqué 7 jours
+  if (!/Android/i.test(ua) || dansAppli || masque) return;
+  bloc.hidden = false;
+  $('appli-android-lien').addEventListener('click', () => { $('appli-android-aide').hidden = false; });
+  $('appli-android-fermer').onclick = () => { Stock.set('tt_appli_masquee', String(Date.now())); bloc.hidden = true; };
+})();

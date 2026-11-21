@@ -1430,3 +1430,14 @@ body.sur-accueil { overflow: hidden; }
   .service-courses .service-visuel img { width: 120px; height: 120px; }
   .img-colis { width: 34px !important; height: 34px !important; }
 }
+
+/* Bouton « Télécharger l'application » (accueil, navigateur Android) */
+.appli-android { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 40px 12px 12px; border-radius: 22px; background: var(--brand-50); border: 1px solid var(--brand-100); }
+.appli-android[hidden] { display: none; }
+.appli-android-icone { width: 48px; height: 48px; border-radius: 12px; flex: none; }
+.appli-android-texte { flex: 1; min-width: 120px; }
+.appli-android-texte b { display: block; font-size: 1rem; }
+.appli-android-texte small { display: block; color: var(--ink-2); font-size: .82rem; margin-top: 2px; }
+.appli-android .btn { min-height: 44px; padding: 0 16px; gap: 6px; text-decoration: none; flex: none; }
+.appli-android-fermer { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ink-2); box-shadow: none; display: grid; place-items: center; }
+.appli-android-aide { flex-basis: 100%; margin: 0; font-size: .86rem; line-height: 1.4; color: var(--ink-2); }
