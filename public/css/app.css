@@ -1441,3 +1441,8 @@ body.sur-accueil { overflow: hidden; }
 .appli-android .btn { min-height: 44px; padding: 0 16px; gap: 6px; text-decoration: none; flex: none; }
 .appli-android-fermer { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ink-2); box-shadow: none; display: grid; place-items: center; }
 .appli-android-aide { flex-basis: 100%; margin: 0; font-size: .86rem; line-height: 1.4; color: var(--ink-2); }
+
+/* Pastille « 5 » : chauffeurs / livreurs libres autour du client */
+.badge-nb { position: absolute; top: 6px; right: 6px; z-index: 2; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 999px; background: #fff; color: #14532d; font-size: .82rem; font-weight: 800; line-height: 1.2; box-shadow: 0 1px 5px rgba(0, 0, 0, .16); pointer-events: none; }
+.badge-nb i { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, .2); }
+.option-visuel .badge-nb { top: -4px; right: -4px; font-size: .74rem; padding: 2px 7px 2px 6px; }

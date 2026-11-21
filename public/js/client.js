@@ -509,6 +509,8 @@ async function majDevis(recadrer = false) {
 
 // ---------- Ce que veut le client : moto, voiture ou colis ----------
 const MAX_MIN_AFFICHE = 45; // temps d'arrivée affiché au plus (sinon « Loin »)
+/** Pastille « 5 » : nombre de chauffeurs / livreurs libres autour du client (rien si aucun) */
+const badgeNb = (nb) => (nb ? `<span class="badge-nb" title="${nb} disponible${nb > 1 ? 's' : ''} autour de vous" aria-label="${nb} disponible${nb > 1 ? 's' : ''}"><i></i>${nb > 99 ? '99+' : nb}</span>` : '');
 const CLE_CHOIX = 'tt_choix';
 let choix = ['moto', 'voiture', 'confort', 'colis'].includes(Stock.get(CLE_CHOIX)) ? Stock.get(CLE_CHOIX) : 'moto';
 const estTrajet = () => choix !== 'colis';
@@ -577,7 +579,7 @@ function majFiche() {
     const temps = !x ? '' : x.nb ? (x.minutes <= MAX_MIN_AFFICHE ? `${x.minutes} min` : 'Loin') : 'Occupé';
     return `
     <button type="button" class="option ${choix === o.id ? 'choisi' : ''} ${x && !x.nb ? 'occupe' : ''}" data-choix="${o.id}" role="radio" aria-checked="${choix === o.id}">
-      <span class="option-visuel"><img src="${o.image}" alt="" loading="lazy">${temps ? `<span class="option-temps">${temps}</span>` : ''}</span>
+      <span class="option-visuel"><img src="${o.image}" alt="" loading="lazy">${temps ? `<span class="option-temps">${temps}</span>` : ''}${badgeNb(x && x.nb)}</span>
       <span class="option-nom">${o.nom}</span>
       <b class="option-prix">${fcfa(o.prix(d))}</b>
     </button>`;
@@ -1480,6 +1482,16 @@ async function majAccueil() {
     if (jeton !== jetonAccueil) return;
     const m = ['moto', 'voiture', 'confort'].map((v) => ch[v] && ch[v].minutes).filter((x) => x != null && x <= MAX_MIN_AFFICHE);
     $('tuile-courses-temps').textContent = m.length ? `· dès ${Math.min(...m)} min` : '';
+    // pastille sur chaque tuile : véhicules libres autour (Courses = motos + voitures ; les Confort sont déjà comptés dans « voiture »)
+    const nb = (v) => (ch[v] && ch[v].nb) || 0;
+    const parTuile = { courses: nb('moto') + nb('voiture'), moto: nb('moto'), livraison: nb('colis'), achats: nb('colis') };
+    for (const [service, n] of Object.entries(parTuile)) {
+      const visuel = document.querySelector(`.service[data-service="${service}"] .service-visuel`);
+      if (!visuel) continue;
+      const ancien = visuel.querySelector('.badge-nb');
+      if (ancien) ancien.remove();
+      if (n) visuel.insertAdjacentHTML('beforeend', badgeNb(n));
+    }
   } catch { /* pas grave : texte par défaut */ }
 }
 /** Courses ou Livraison : on passe à l'écran de commande, réglé sur trajet ou colis. */
