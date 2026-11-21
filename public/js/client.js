@@ -504,6 +504,7 @@ async function majDevis(recadrer = false) {
 }
 
 // ---------- Ce que veut le client : moto, voiture ou colis ----------
+const MAX_MIN_AFFICHE = 45; // temps d'arrivée affiché au plus (sinon « Loin »)
 const CLE_CHOIX = 'tt_choix';
 let choix = ['moto', 'voiture', 'confort', 'colis'].includes(Stock.get(CLE_CHOIX)) ? Stock.get(CLE_CHOIX) : 'moto';
 const estTrajet = () => choix !== 'colis';
@@ -568,7 +569,8 @@ function majFiche() {
   const ch = d.chauffeurs || {};
   $('options').innerHTML = OPTIONS.map((o) => {
     const x = ch[o.id];
-    const temps = !x ? '' : x.nb ? `${x.minutes} min` : 'Occupé';
+    // au-delà de 45 min, un temps d'arrivée n'a plus de sens pour le client : on ne l'affiche pas
+    const temps = !x ? '' : x.nb ? (x.minutes <= MAX_MIN_AFFICHE ? `${x.minutes} min` : 'Loin') : 'Occupé';
     return `
     <button type="button" class="option ${choix === o.id ? 'choisi' : ''} ${x && !x.nb ? 'occupe' : ''}" data-choix="${o.id}" role="radio" aria-checked="${choix === o.id}">
       <span class="option-visuel"><img src="${o.image}" alt="" loading="lazy">${temps ? `<span class="option-temps">${temps}</span>` : ''}</span>
@@ -1472,7 +1474,7 @@ async function majAccueil() {
     const p = coord(points.depart);
     const ch = await api('GET', `/api/courses/chauffeurs-proches?lat=${p.lat}&lng=${p.lng}`);
     if (jeton !== jetonAccueil) return;
-    const m = ['moto', 'voiture', 'confort'].map((v) => ch[v] && ch[v].minutes).filter((x) => x != null);
+    const m = ['moto', 'voiture', 'confort'].map((v) => ch[v] && ch[v].minutes).filter((x) => x != null && x <= MAX_MIN_AFFICHE);
     $('tuile-courses-temps').textContent = m.length ? `· dès ${Math.min(...m)} min` : '';
   } catch { /* pas grave : texte par défaut */ }
 }
