@@ -39,7 +39,7 @@ function lireRestaurant(b, creation) {
 export function enregistrer(r) {
   // liste publique des restaurants partenaires (tuile « Food » de l'accueil)
   r.get('/api/restaurants', async (req, c) => {
-    const res = await c.db.query('SELECT nom, adresse, site FROM restaurants WHERE actif = 1 AND site IS NOT NULL ORDER BY nom');
+    const res = await c.db.query('SELECT code, nom, adresse, site, lat, lng FROM restaurants WHERE actif = 1 AND site IS NOT NULL ORDER BY nom');
     return json(res.rows);
   });
 

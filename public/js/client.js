@@ -732,25 +732,119 @@ $('ouvrir-suivi').onclick = () => { ouvrirTiroir(); chargerListe(); };
 $('tiroir').addEventListener('click', (e) => { if (e.target.closest('[data-fermer]')) fermerTiroir(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('tiroir').hidden) fermerTiroir(); });
 
-/** Tuile « Food » : les restaurants partenaires ; « Voir le menu » ouvre le site du restaurant. */
+/**
+ * Tuile « Food » : les restaurants partenaires, puis le menu du restaurant choisi, affiché dans l'application
+ * (lu sur son site, sans le quitter). Le panier mène directement à la commande Yobalema.
+ */
+let restosFood = [];
+let restoOuvert = null;   // { resto, menu, infos }
+let panierFood = {};      // id du plat → quantité
+const JOURS_FOOD = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+const platDispo = (p, infos) => p.disponible !== false && (!p.jour || p.jour === JOURS_FOOD[new Date().getDay()]) && !(infos && infos.commandes_fermees);
+
 async function ouvrirFood() {
   const el = $('liste-restaurants');
+  restoOuvert = null;
+  $('titre-food').textContent = 'Restaurants';
+  $('food-intro').hidden = false;
+  $('food-panier').hidden = true;
   el.innerHTML = `<p class="vide">${ico('loader-circle', 'tourne')} Chargement…</p>`;
   if ($('tiroir-food').hidden) empiler('food');
   $('tiroir-food').hidden = false;
   document.body.classList.add('sans-defilement');
   try {
-    const liste = await api('GET', '/api/restaurants');
-    el.innerHTML = liste.length ? liste.map((r) => `
-      <a class="resto-carte" href="${esc(r.site)}">
+    restosFood = await api('GET', '/api/restaurants');
+    el.innerHTML = restosFood.length ? restosFood.map((r, i) => `
+      <button type="button" class="resto-carte" data-resto="${i}">
         <span class="resto-pic">${ico('utensils')}</span>
         <span class="resto-texte"><b>${esc(r.nom)}</b>${r.adresse ? `<small>${esc(r.adresse)}</small>` : ''}</span>
         <span class="resto-voir">Voir le menu ${ico('chevron-right', 'ic-sm')}</span>
-      </a>`).join('') : '<p class="vide">Aucun restaurant pour le moment. Revenez bientôt !</p>';
+      </button>`).join('') : '<p class="vide">Aucun restaurant pour le moment. Revenez bientôt !</p>';
   } catch (e) { el.innerHTML = `<p class="vide">${esc(e.message)}</p>`; }
 }
+
+async function ouvrirMenu(resto) {
+  const el = $('liste-restaurants');
+  $('titre-food').textContent = resto.nom;
+  $('food-intro').hidden = true;
+  el.innerHTML = `<p class="vide">${ico('loader-circle', 'tourne')} Chargement du menu…</p>`;
+  try {
+    const base = resto.site.replace(/\/$/, '');
+    const r = await fetch(`${base}/api/resto`);
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    restoOuvert = { resto, base, infos: d.infos || {}, menu: d.menu || [] };
+    panierFood = {};
+    afficherMenu();
+  } catch { el.innerHTML = '<p class="vide">Le menu ne se charge pas. Vérifiez votre connexion et réessayez.</p>'; }
+}
+
+function afficherMenu() {
+  const { infos, menu, base } = restoOuvert;
+  const fermes = infos.commandes_fermees;
+  $('liste-restaurants').innerHTML = `
+    <button type="button" class="lien-retour" data-food-retour>${ico('chevron-left', 'ic-sm')} Tous les restaurants</button>
+    ${fermes ? `<p class="occupe-note">${ico('clock', 'ic-sm')} Le restaurant ne prend pas de commandes pour le moment.</p>` : ''}
+    ${menu.map((c) => `
+      <h3 class="food-categorie">${esc(c.nom)}</h3>
+      ${c.plats.map((p) => {
+        const dispo = platDispo(p, infos);
+        const q = panierFood[p.id] || 0;
+        return `<div class="food-plat ${dispo ? '' : 'indispo'}">
+          ${p.photo ? `<img src="${esc(base + p.photo)}" alt="" loading="lazy">` : `<span class="food-vignette">${esc(initialesPlat(p.nom))}</span>`}
+          <span class="food-texte"><b>${esc(p.nom)}</b>${p.description ? `<small>${esc(p.description)}</small>` : ''}
+            <span class="food-prix">${fcfa(p.prix)}${!dispo && !fermes ? ` · ${p.disponible === false ? 'Épuisé' : `servi le ${esc(String(p.jour).toLowerCase())}`}` : ''}</span></span>
+          ${dispo ? `<span class="food-qte">
+            ${q ? `<button type="button" data-moins="${p.id}" aria-label="Retirer">−</button><b>${q}</b>` : ''}
+            <button type="button" class="plus" data-plus="${p.id}" aria-label="Ajouter ${esc(p.nom)}">+</button></span>` : ''}
+        </div>`;
+      }).join('')}`).join('')}`;
+  majPanierFood();
+}
+
+/** « Fataya (4) » → « F », « Yassa poulet » → « YP » (mots qui commencent par une lettre) */
+const initialesPlat = (nom) => String(nom).split(' ').filter((m) => m && m[0].toLowerCase() !== m[0].toUpperCase()).slice(0, 2).map((m) => m[0].toUpperCase()).join('');
+const platsFood = () => restoOuvert.menu.flatMap((c) => c.plats);
+function lignesFood() { return Object.entries(panierFood).map(([id, q]) => ({ p: platsFood().find((x) => String(x.id) === id), q })).filter((l) => l.p && l.q > 0); }
+function majPanierFood() {
+  const lignes = lignesFood();
+  const total = lignes.reduce((s, l) => s + l.p.prix * l.q, 0);
+  const nb = lignes.reduce((s, l) => s + l.q, 0);
+  $('food-panier').hidden = !nb;
+  $('food-panier').innerHTML = `<span class="food-nb">${nb}</span><span>Commander</span><b>${fcfa(total)}</b>`;
+}
+
+/** Panier validé : la commande Yobalema est remplie (départ = le restaurant), le client indique où livrer. */
+function commanderFood() {
+  const lignes = lignesFood();
+  if (!lignes.length || !restoOuvert) return;
+  const { resto } = restoOuvert;
+  commandeResto = {
+    nom: resto.nom, adresse: resto.adresse || '', code: resto.code,
+    plats: lignes.map(({ p, q }) => `${q} × ${p.nom}`).join(', ').slice(0, 400),
+    montant: lignes.reduce((s, l) => s + l.p.prix * l.q, 0),
+    lat: Number(resto.lat), lng: Number(resto.lng),
+  };
+  fermerFood();
+  preparerCommandeResto();
+}
+
 function fermerFood() { $('tiroir-food').hidden = true; document.body.classList.remove('sans-defilement'); }
-$('tiroir-food').addEventListener('click', (e) => { if (e.target.closest('[data-fermer-food]')) fermerFood(); });
+$('tiroir-food').addEventListener('click', (e) => {
+  if (e.target.closest('[data-fermer-food]')) { fermerFood(); return; }
+  const r = e.target.closest('[data-resto]');
+  if (r) { ouvrirMenu(restosFood[Number(r.dataset.resto)]); return; }
+  if (e.target.closest('[data-food-retour]')) { ouvrirFood(); return; }
+  const plus = e.target.closest('[data-plus]');
+  const moins = e.target.closest('[data-moins]');
+  if (plus || moins) {
+    const id = (plus || moins).dataset[plus ? 'plus' : 'moins'];
+    panierFood[id] = Math.max(0, Math.min(20, (panierFood[id] || 0) + (plus ? 1 : -1)));
+    afficherMenu();
+    return;
+  }
+  if (e.target.closest('#food-panier')) commanderFood();
+});
 
 function carteCourse(c) {
   const code = esc(c.suivi_token);

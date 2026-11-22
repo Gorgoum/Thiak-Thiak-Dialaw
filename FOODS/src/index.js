@@ -112,7 +112,8 @@ async function api(req, env, url) {
 
   if (m === 'GET' && p === '/api/resto') {
     await preparer(db);
-    return json(await lireMenu(db), 200, { 'Cache-Control': 'no-cache' });
+    // lisible depuis l'application Yobalema (le menu s'affiche dans l'application, sans quitter Yobalema)
+    return json(await lireMenu(db), 200, { 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
   }
   if (m === 'GET' && (r = p.match(/^\/photos\/(\d+)\.jpg$/))) {
     const l = await un(db, 'SELECT photo FROM plats WHERE id = ?', Number(r[1]));
@@ -226,6 +227,9 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === '/sante') return json({ ok: true });
+    if (req.method === 'OPTIONS' && url.pathname === '/api/resto') {
+      return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET' } });
+    }
     if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/photos/')) {
       try {
         const rep = await api(req, env, url);

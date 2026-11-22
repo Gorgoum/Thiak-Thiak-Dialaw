@@ -132,7 +132,7 @@ gestion.put('/:id', a(async (req, res) => {
 // ---------------------------------------------------------------- liste publique (tuile « Food » de l'accueil)
 const publics = express.Router();
 publics.get('/', a(async (req, res) => {
-  const r = await query('SELECT nom, adresse, site FROM restaurants WHERE actif AND site IS NOT NULL ORDER BY nom');
+  const r = await query('SELECT code, nom, adresse, site, lat, lng FROM restaurants WHERE actif AND site IS NOT NULL ORDER BY nom');
   res.json(r.rows);
 }));
 
