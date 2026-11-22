@@ -25,7 +25,7 @@ function horsZone(point, p, nom) {
   const zone = p.zone_km || 15;
   const d = distanceKm(CENTRE_YENE, point);
   if (d <= zone) return null;
-  return `${nom} est hors zone (${Math.round(d)} km de Yène). Yobalema Yène livre à Yène et jusqu'à ${zone} km autour.`;
+  return `${nom} est hors zone (${Math.round(d)} km de Yène). Les courses partent de Yène et jusqu'à ${zone} km autour.`;
 }
 
 // Itinéraire par la route : OSRM sur OpenStreetMap (serveur public gratuit de la FOSSGIS).
@@ -58,7 +58,8 @@ async function itineraireRoute(depart, arrivee) {
  */
 async function devis(depart, arrivee) {
   const p = await parametres();
-  const erreur = horsZone(depart, p, 'Le départ') || horsZone(arrivee, p, 'L\'arrivée');
+  // seul le départ doit être dans la zone (là où sont les chauffeurs) : l'arrivée peut être à Dakar, Thiès…
+  const erreur = horsZone(depart, p, 'Le départ');
   if (erreur) {
     const e = new Error(erreur);
     e.statut = 400;

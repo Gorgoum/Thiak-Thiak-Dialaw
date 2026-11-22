@@ -256,6 +256,42 @@ function lireCoordonnees(texte) {
   return null;
 }
 
+// Recherche dans tout le Sénégal (Ouakam, Rufisque, Thiès…) : Photon, géocodeur libre et gratuit basé sur OpenStreetMap.
+// Les lieux de Yène (base de l'application) restent proposés en premier.
+const PHOTON = 'https://photon.komoot.io/api/';
+const BBOX_SENEGAL = '-17.6,12.2,-11.3,16.8';
+const cachePhoton = new Map();
+function categoriePhoton(p) {
+  const k = p.osm_key; const v = p.osm_value;
+  if (k === 'place' && ['city', 'town', 'village', 'hamlet', 'municipality'].includes(v)) return 'village';
+  if (k === 'place') return 'quartier';
+  if (k === 'highway') return 'rue';
+  if (v === 'place_of_worship') return 'culte';
+  if (['school', 'college', 'university', 'kindergarten'].includes(v)) return 'ecole';
+  if (['hospital', 'clinic', 'pharmacy', 'doctors', 'dentist'].includes(v)) return 'sante';
+  if (v === 'marketplace') return 'marche';
+  if (k === 'shop') return 'commerce';
+  return 'autre';
+}
+async function chercherPhoton(q) {
+  if (cachePhoton.has(q)) return cachePhoton.get(q);
+  const url = `${PHOTON}?q=${encodeURIComponent(q)}&lat=${CENTRE_YENE[0]}&lon=${CENTRE_YENE[1]}&limit=10&bbox=${BBOX_SENEGAL}`;
+  const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+  if (!r.ok) throw new Error('Photon ' + r.status);
+  const res = ((await r.json()).features || []).filter((f) => f.properties && f.properties.name && f.properties.countrycode === 'SN').map((f) => {
+    const p = f.properties;
+    const nom = p.name;
+    // où se trouve le lieu : « Ouakam · Dakar », « Pharmacie … · Rufisque »
+    const ou = [p.district || p.locality, p.city || p.county || p.state].filter((x, i, t) => x && x !== nom && t.indexOf(x) === i);
+    return { nom, lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], categorie: categoriePhoton(p), village: ou.join(', ') || null, externe: true };
+  });
+  // un seul résultat par nom et par endroit (OpenStreetMap a souvent la ville, la commune et le département)
+  const vus = new Set();
+  const uniques = res.filter((l) => { const k = simplifier(l.nom + ' ' + (l.village || '').split(',').pop()); if (vus.has(k)) return false; vus.add(k); return true; });
+  cachePhoton.set(q, uniques);
+  return uniques;
+}
+
 /**
  * Champ avec suggestions de lieux. onChoix(lieu) est appelé au choix d'une suggestion.
  * Option discret : pas de message « aucun lieu trouvé » (champ où l'on écrit aussi du texte libre).
@@ -263,6 +299,8 @@ function lireCoordonnees(texte) {
 function brancherRecherche(champ, liste, onChoix, { discret = false } = {}) {
   let resultats = [];
   let actif = -1;
+  let jetonPhoton = 0;
+  let minuteurPhoton = null;
   const fermer = () => { liste.hidden = true; liste.innerHTML = ''; actif = -1; };
   const choisir = (i) => {
     const l = resultats[i];
@@ -308,6 +346,22 @@ function brancherRecherche(champ, liste, onChoix, { discret = false } = {}) {
       .slice(0, 8);
     actif = -1;
     rendre();
+    // pas assez de lieux de Yène : on cherche aussi dans tout le Sénégal (après une courte pause de frappe)
+    clearTimeout(minuteurPhoton);
+    if (q.length < 3 || resultats.length >= 8) return;
+    const jeton = ++jetonPhoton;
+    const texte = champ.value.trim();
+    minuteurPhoton = setTimeout(async () => {
+      try {
+        const loin = await chercherPhoton(texte);
+        if (jeton !== jetonPhoton || document.activeElement !== champ) return;
+        // sans doublon avec un lieu de Yène du même nom à moins de 300 m
+        const nouveaux = loin.filter((l) => !resultats.some((r) => simplifier(r.nom) === simplifier(l.nom) && distanceM(r, l) < 300));
+        if (!nouveaux.length) return;
+        resultats = resultats.concat(nouveaux).slice(0, 10);
+        rendre();
+      } catch { /* hors ligne ou service indisponible : les lieux de Yène suffisent */ }
+    }, 350);
   });
   champ.addEventListener('keydown', (e) => {
     if (liste.hidden) return;
