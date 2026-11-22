@@ -224,8 +224,12 @@ function trajet(c) {
   </div>
   ${c.service === 'trajet'
     ? `<div class="ligne-info">${ico(gamme(c.vehicule).icone, 'ic-sm')} <b>Passager · ${gamme(c.vehicule).nom}</b> · ${esc(c.description)}</div>`
-    : `<div class="ligne-info">${ico(c.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${c.type === 'achat' ? '<b>Achat :</b> ' : ''}${esc(c.description)}</div>`}
-  ${c.type === 'achat' && c.montant_achat ? `<div class="meta">Avance estimée : ${fcfa(c.montant_achat)} (remboursée par le client)</div>` : ''}`;
+    : c.restaurant_id
+      // commande de plats d'un restaurant partenaire : le restaurant signale quand c'est prêt
+      ? `<div class="ligne-info">${ico('utensils', 'ic-sm')} <b>${esc(c.restaurant_nom || 'Restaurant')} :</b> ${esc(c.description)}</div>
+         <div class="plats-etat ${c.plats_prets_le ? 'prets' : ''}">${c.plats_prets_le ? `${ico('circle-check', 'ic-sm')} Plats prêts, vous pouvez les récupérer` : `${ico('clock', 'ic-sm')} En préparation au restaurant`}</div>`
+      : `<div class="ligne-info">${ico(c.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${c.type === 'achat' ? '<b>Achat :</b> ' : ''}${esc(c.description)}</div>`}
+  ${c.type === 'achat' && c.montant_achat ? `<div class="meta">${c.restaurant_id ? `À payer au restaurant : ${fcfa(c.montant_achat)} (remboursé par le client)` : `Avance estimée : ${fcfa(c.montant_achat)} (remboursée par le client)`}</div>` : ''}`;
 }
 
 /** Ce qui va se passer tout seul (le GPS détecte l'arrivée, comme Google Maps). */

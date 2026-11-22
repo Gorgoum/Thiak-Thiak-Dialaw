@@ -15,11 +15,12 @@ import * as livreur from './routes/livreur.js';
 import * as admin from './routes/admin.js';
 import { ASSETLINKS } from './applis-android.js';
 import * as divers from './routes/divers.js';
+import * as restaurant from './routes/restaurant.js';
 
 export { Diffusion } from './temps-reel.js';
 
 const routeur = new Routeur();
-[auth, courses, livreur, admin, divers].forEach((m) => m.enregistrer(routeur));
+[auth, courses, livreur, restaurant, admin, divers].forEach((m) => m.enregistrer(routeur));
 
 /** Connexion temps réel : on calcule les salles du visiteur, puis le Durable Object garde la connexion. */
 async function connecterTempsReel(req, c) {

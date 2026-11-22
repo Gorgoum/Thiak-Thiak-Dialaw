@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="version-app" content="__VERSION_APP__">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Yobalema Restaurant</title>
+  <meta name="theme-color" content="#0a2a62">
+  <link rel="icon" href="/icons/icon-96.png">
+  <link rel="apple-touch-icon" href="/icons/icon-180.png">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="page-livreur page-restaurant">
+  <header class="entete">
+    <a class="marque" href="#"><span class="logo"><img src="/icons/icon-96.png" alt="" width="36" height="36"></span><span>Yobalema <b>Restaurant</b></span></a>
+    <button id="deco" hidden>Déconnexion</button>
+  </header>
+  <main>
+    <!-- Connexion du restaurant (téléphone + PIN donnés par Yobalema) -->
+    <section id="auth" hidden>
+      <div class="card auth">
+        <p class="sous-titre">Espace des restaurants partenaires</p>
+        <h2>Connexion</h2>
+        <form id="f-connexion">
+          <label>Téléphone<input name="telephone" type="tel" required placeholder="77 123 45 67" autocomplete="tel"></label>
+          <label>Code PIN (4 chiffres)<input name="pin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" required></label>
+          <button class="primaire">Se connecter</button>
+        </form>
+        <p class="meta">Pas de compte ? Demandez-le à Yobalema Yène.</p>
+      </div>
+    </section>
+
+    <section id="app" hidden>
+      <div class="barre">
+        <div class="bonjour"><span class="avatar" id="avatar"></span><span><b id="nom-resto"></b><br><small class="meta">Commandes livrées par Yobalema</small></span></div>
+        <button type="button" id="btn-son" class="btn-ghost" hidden>🔔 Activer le son</button>
+      </div>
+      <h2 class="titre-section">En cours <span class="pastille" id="nb-cours" hidden></span></h2>
+      <div id="en-cours"></div>
+      <h2 class="titre-section">Dernières 24 heures</h2>
+      <div id="historique"></div>
+    </section>
+  </main>
+
+  <script>window.ROLE = 'restaurant';</script>
+  <script src="/js/commun.js"></script>
+  <script src="/js/restaurant.js"></script>
+</body>
+</html>

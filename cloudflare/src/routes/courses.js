@@ -37,6 +37,16 @@ export function enregistrer(r) {
 
   r.post('/api/courses', async (req, c) => {
     const b = await lireCorps(req);
+    // commande de plats depuis le site d'un restaurant partenaire : le départ est le restaurant (pas ce qu'envoie le téléphone)
+    let resto = null;
+    if (b.restaurant) {
+      resto = (await c.db.query('SELECT id, nom, adresse, lat, lng FROM restaurants WHERE code = $1 AND actif = 1', [texte(b.restaurant, 40)])).rows[0];
+      if (!resto) throw new HttpErreur(400, 'Ce restaurant ne prend pas de commandes pour le moment');
+      b.depart = { lat: Number(resto.lat), lng: Number(resto.lng) };
+      b.depart_repere = resto.adresse ? `${resto.nom} · ${resto.adresse}` : resto.nom;
+      b.service = 'livraison';
+      b.type = 'achat';
+    }
     const clientNom = texte(b.client_nom, 100);
     const clientTel = normaliserTel(b.client_tel);
     if (clientNom.length < 2) throw new HttpErreur(400, 'Indiquez votre nom');
@@ -87,6 +97,7 @@ export function enregistrer(r) {
         paiement, enLigne ? 'en_attente' : 'a_la_livraison', 'en_attente', service, vehicule, d.frais_service || 0, fAchat]
     );
     const id = ins.rows[0].id;
+    if (resto) await c.db.query('UPDATE courses SET restaurant_id = $2 WHERE id = $1', [id, resto.id]);
     const course = await lireCourse(c, id);
     c.attendre(notifierNouvelleCourse(c, course).catch((e) => console.error('Notification :', e.message)));
     return json({ ...course, suivi_token: code }, 201);

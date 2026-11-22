@@ -151,7 +151,7 @@ async function api(req, env, url) {
     if (yobalema && !/^https?:\/\//.test(yobalema)) throw new Erreur(400, 'Adresse Yobalema invalide (https://…)');
     const infos = {
       nom: texte(b.nom, 80), slogan: texte(b.slogan, 160), presentation: texte(b.presentation, 600),
-      telephone: tel(b.telephone), whatsapp: tel(b.whatsapp), adresse: texte(b.adresse, 160), position: { lat, lng },
+      telephone: tel(b.telephone), code_yobalema: texte(b.code_yobalema, 40).toLowerCase().replace(/[^a-z0-9-]/g, ''), adresse: texte(b.adresse, 160), position: { lat, lng },
       horaires: (Array.isArray(b.horaires) ? b.horaires : []).map((h) => [texte(h && h[0], 40), texte(h && h[1], 40)]).filter((h) => h[0] && h[1]).slice(0, 10),
       yobalema, commandes_fermees: !!b.commandes_fermees,
     };

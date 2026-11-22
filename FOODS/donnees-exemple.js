@@ -7,7 +7,7 @@ export default {
 
   // Coordonnées (À REMPLACER)
   telephone: '770000000',       // numéro à appeler, sans espaces
-  whatsapp: '770000000',        // numéro WhatsApp qui reçoit les commandes à emporter
+  code_yobalema: 'oumy-djiamil', // code du restaurant dans Yobalema (les commandes arrivent dans son espace)
   adresse: 'Yène, Sénégal',     // repère connu : « Face à la mosquée de Yène Kao », etc.
   // Position exacte du restaurant (le livreur Yobalema vient la chercher ici)
   position: { lat: 14.6391, lng: -17.1734 },

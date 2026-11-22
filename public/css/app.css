@@ -1457,3 +1457,26 @@ body.sur-accueil { overflow: hidden; }
 
 /* Bouton sur toute la largeur dans une carte (ex. : « Envoyer ma commande au restaurant ») */
 .course .actions > .pleine-largeur { flex-basis: 100%; }
+
+/* Espace restaurant : commandes de plats à préparer */
+.page-restaurant .titre-section { margin: 18px 4px 8px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
+.commande-resto { margin-bottom: 12px; border-left: 4px solid var(--brand); }
+.commande-resto.passee { border-left-color: var(--line, #e4e7ec); opacity: .8; }
+.commande-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.plats-commande { margin: 4px 0 10px; padding-left: 20px; font-size: 1.05rem; font-weight: 600; line-height: 1.5; }
+.commande-total { margin-bottom: 10px; color: var(--ink-2); }
+.etape-resto { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: var(--surface-2, #f2f4f7); font-weight: 600; }
+.etape-resto.en_attente { background: #fff7e6; color: #b54708; }
+.etape-resto.acceptee, .etape-resto.arrive { background: #eef4fd; color: #0a2a62; }
+.etape-resto.livree { background: #ecfdf3; color: #067647; }
+.etape-resto.annulee { background: #fef3f2; color: #b42318; }
+.prets-ok { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; color: #067647; font-weight: 700; }
+.commande-resto .bouton { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 8px; }
+
+/* Livreur : état des plats chez le restaurant */
+.plats-etat { display: flex; align-items: center; gap: 6px; margin: 4px 0; padding: 6px 10px; border-radius: 10px; background: #fff7e6; color: #b54708; font-weight: 700; font-size: .9rem; }
+.plats-etat.prets { background: #ecfdf3; color: #067647; }
+
+/* Case à cocher dans les fenêtres de l admin */
+label.case { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+label.case input { width: 20px; height: 20px; margin: 0; }

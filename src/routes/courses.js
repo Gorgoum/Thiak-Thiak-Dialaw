@@ -45,6 +45,16 @@ router.get('/chauffeurs-proches', a(async (req, res) => {
 
 router.post('/', a(async (req, res) => {
   const b = req.body || {};
+  // commande de plats depuis le site d'un restaurant partenaire : le départ est le restaurant (pas ce qu'envoie le téléphone)
+  let resto = null;
+  if (b.restaurant) {
+    resto = (await query('SELECT id, nom, adresse, lat, lng FROM restaurants WHERE code = $1 AND actif', [texte(b.restaurant, 40)])).rows[0];
+    if (!resto) return res.status(400).json({ erreur: 'Ce restaurant ne prend pas de commandes pour le moment' });
+    b.depart = { lat: Number(resto.lat), lng: Number(resto.lng) };
+    b.depart_repere = resto.adresse ? `${resto.nom} · ${resto.adresse}` : resto.nom;
+    b.service = 'livraison';
+    b.type = 'achat';
+  }
   const clientNom = texte(b.client_nom, 100);
   const clientTel = normaliserTel(b.client_tel);
   if (clientNom.length < 2) return res.status(400).json({ erreur: 'Indiquez votre nom' });
@@ -101,6 +111,7 @@ router.post('/', a(async (req, res) => {
       paiement, enLigne ? 'en_attente' : 'a_la_livraison', 'en_attente', service, vehicule, d.frais_service || 0, fAchat]
   );
   const id = r.rows[0].id;
+  if (resto) await query('UPDATE courses SET restaurant_id = $2 WHERE id = $1', [id, resto.id]);
   const course = await lireCourse(id);
   notifierNouvelleCourse(req.app.get('io'), course).catch((e) => console.error('Notification :', e.message));
   res.status(201).json({ ...course, suivi_token: code });

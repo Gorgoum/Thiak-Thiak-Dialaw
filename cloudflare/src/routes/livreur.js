@@ -140,14 +140,18 @@ export function enregistrer(r) {
     const moi = await livreur(req, c);
     const res = await c.db.query(
       `SELECT id, type, description, montant_achat, depart_lat, depart_lng, depart_repere,
-              arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule, frais_service, frais_achat
+              arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule, frais_service, frais_achat,
+              restaurant_id, plats_prets_le
        FROM courses WHERE statut = 'en_attente' AND (service = 'livraison' OR vehicule IN ($1, $2)) ORDER BY cree_le DESC LIMIT 50`,
       (({ 0: a, 1: b }) => [a, b || a])(gammesDuChauffeur(moi.vehicule)) // chaque gamme à ses chauffeurs
     );
     const p = await parametres(c.db);
+    // nom des restaurants partenaires (commandes de plats)
+    const nomsResto = new Map((await c.db.query('SELECT id, nom FROM restaurants')).rows.map((x) => [x.id, x.nom]));
     // seulement les courses dans mon rayon (si ma position est connue) : pas de client qui attend des heures
     const liste = res.rows.filter((x) => { const m = refusTropLoin(moi, { lat: x.depart_lat, lng: x.depart_lng }, p); return !m || moi.lat == null; }).map((x) => ({
       ...x,
+      restaurant_nom: x.restaurant_id ? nomsResto.get(x.restaurant_id) || null : null,
       part_livreur: partage(x, p).part_livreur, // ce que gagnera le chauffeur
       distance_moi_km: moi.lat != null
         ? Math.round(distanceKm(moi, { lat: x.depart_lat, lng: x.depart_lng }) * (p.facteur_route || 1) * 10) / 10

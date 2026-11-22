@@ -176,3 +176,20 @@ ALTER TABLE courses ADD COLUMN IF NOT EXISTS rembourse_ref TEXT;
 -- Le destinataire d'un colis peut recevoir ses propres notifications (sans prendre la place du client).
 ALTER TABLE courses ADD COLUMN IF NOT EXISTS abonnement_dest JSONB;
 ALTER TABLE courses ADD COLUMN IF NOT EXISTS dest_prevenu_le TIMESTAMPTZ;
+
+-- Restaurants partenaires : ils reçoivent dans Yobalema les commandes passées depuis leur site
+-- et signalent quand les plats sont prêts (compte à part des livreurs : téléphone + PIN).
+CREATE TABLE IF NOT EXISTS restaurants (
+  id         SERIAL PRIMARY KEY,
+  code       TEXT NOT NULL UNIQUE,
+  nom        TEXT NOT NULL,
+  telephone  TEXT NOT NULL UNIQUE,
+  pin_hash   TEXT NOT NULL,
+  lat        DOUBLE PRECISION NOT NULL,
+  lng        DOUBLE PRECISION NOT NULL,
+  adresse    TEXT,
+  actif      BOOLEAN NOT NULL DEFAULT TRUE,
+  cree_le    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS restaurant_id INTEGER;
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS plats_prets_le TIMESTAMPTZ;

@@ -142,6 +142,45 @@ async function chargerAdmins() {
     </tr>`).join('')}`;
 }
 
+// ---------- Restaurants partenaires ----------
+let restaurants = [];
+async function chargerRestaurants() {
+  restaurants = await api('GET', '/api/admin/restaurants');
+  document.getElementById('restaurants').innerHTML = restaurants.length ? `
+    <tr><th>Restaurant</th><th>Téléphone</th><th>Code du site</th><th>Commandes</th><th>État</th><th>Actions</th></tr>
+    ${restaurants.map((r) => `<tr>
+      <td><b>${esc(r.nom)}</b>${r.adresse ? `<br><small class="meta">${esc(r.adresse)}</small>` : ''}</td>
+      <td>${lienTel(r.telephone)}</td>
+      <td><code>${esc(r.code)}</code></td>
+      <td>${Number(r.nb_commandes) || 0}</td>
+      <td>${r.actif ? '<span class="badge b-livree">Actif</span>' : '<span class="badge b-annulee">Désactivé</span>'}</td>
+      <td class="actions-ligne"><button data-modifier-resto="${r.id}">${ico('settings', 'ic-sm')} Modifier</button></td>
+    </tr>`).join('')}` : '<tr><td class="meta">Aucun restaurant pour le moment.</td></tr>';
+}
+function fenetreRestaurant(r = null) {
+  const x = r || {};
+  const contenu = `
+    ${champ('Nom du restaurant', 'nom', x.nom, 'required maxlength="80" autocomplete="off"')}
+    ${r ? '' : champ('Code du site (lettres minuscules et tirets, ex : oumy-djiamil)', 'code', '', 'required pattern="[a-z0-9-]{3,40}" autocomplete="off"')}
+    ${r ? '' : champ('Téléphone (connexion)', 'telephone', '', 'required type="tel" inputmode="tel" placeholder="77 123 45 67"')}
+    ${champ(r ? 'Nouveau code PIN (laisser vide pour ne pas changer)' : 'Code PIN (4 chiffres)', 'pin', '', `${r ? '' : 'required'} inputmode="numeric" pattern="\\d{4}" maxlength="4" autocomplete="new-password"`)}
+    ${champ('Adresse (repère connu)', 'adresse', x.adresse, 'maxlength="160" placeholder="Face à la mosquée de Yène Kao"')}
+    <div class="grille-2">
+      ${champ('Latitude', 'lat', x.lat, 'required inputmode="decimal" placeholder="14.6391"')}
+      ${champ('Longitude', 'lng', x.lng, 'required inputmode="decimal" placeholder="-17.1734"')}
+    </div>
+    <p class="meta">Position exacte du restaurant : le livreur vient y chercher les plats.</p>
+    <label class="case"><input type="checkbox" name="actif" ${!r || r.actif ? 'checked' : ''}> Compte actif (reçoit les commandes)</label>`;
+  ouvrirFenetre(r ? `Modifier ${r.nom}` : 'Ajouter un restaurant', contenu, async (d) => {
+    const corps = { ...d, lat: Number(String(d.lat).replace(',', '.')), lng: Number(String(d.lng).replace(',', '.')), actif: d.actif === 'on' };
+    if (!corps.pin) delete corps.pin;
+    if (r) await api('PUT', `/api/admin/restaurants/${r.id}`, corps);
+    else await api('POST', '/api/admin/restaurants', corps);
+    toast(r ? 'Restaurant enregistré' : `${d.nom} ajouté. Donnez-lui son numéro et son code PIN pour se connecter sur /restaurant.html.`);
+    chargerRestaurants();
+  }, r ? 'Enregistrer' : 'Ajouter');
+}
+
 // =========================================================================
 // Fenêtre de modification
 // =========================================================================
@@ -372,7 +411,7 @@ async function chargerTransactions() {
 }
 document.getElementById('mois-transactions').addEventListener('change', () => chargerTransactions().catch((e) => toast(e.message, true)));
 
-const toutCharger = () => Promise.all([chargerStats(), chargerLivreurs(), chargerCourses(), chargerAdmins(), chargerSoldes(), chargerTransactions()]).catch((e) => toast(e.message, true));
+const toutCharger = () => Promise.all([chargerStats(), chargerLivreurs(), chargerRestaurants(), chargerCourses(), chargerAdmins(), chargerSoldes(), chargerTransactions()]).catch((e) => toast(e.message, true));
 
 document.getElementById('livreurs').addEventListener('click', async (e) => {
   const b = e.target.closest('button');
@@ -395,6 +434,11 @@ document.getElementById('livreurs').addEventListener('click', async (e) => {
 });
 document.getElementById('ajout-livreur').onclick = () => fenetreCompte('livreur');
 document.getElementById('ajout-admin').onclick = () => fenetreCompte('admin');
+document.getElementById('ajout-restaurant').onclick = () => fenetreRestaurant();
+document.getElementById('restaurants').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-modifier-resto]');
+  if (b) fenetreRestaurant(restaurants.find((r) => r.id === Number(b.dataset.modifierResto)));
+});
 
 document.getElementById('courses').addEventListener('click', (e) => {
   if (e.target.closest('a')) return; // un toucher sur un numéro lance l'appel, sans ouvrir la fenêtre

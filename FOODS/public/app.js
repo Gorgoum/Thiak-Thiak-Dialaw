@@ -1,4 +1,4 @@
-// Resto OUMY DJIAMIL : affichage du menu, panier, commande (livraison Yobalema ou à emporter sur WhatsApp).
+// Resto OUMY DJIAMIL : affichage du menu, panier, commande livrée par Yobalema Yène.
 // Les informations et le menu viennent de la base (modifiables depuis la page admin).
 async function demarrer() {
   let donnees;
@@ -34,7 +34,6 @@ async function demarrer() {
   $('lien-tel').href = `tel:+${tel221(R.telephone)}`;
   $('lien-tel').textContent = telAffiche(R.telephone);
   $('nav-appel').href = `tel:+${tel221(R.telephone)}`;
-  $('lien-wa').href = `https://wa.me/${tel221(R.whatsapp)}`;
   $('lien-yobalema').href = R.yobalema;
   $('annee').textContent = new Date().getFullYear();
 
@@ -139,7 +138,6 @@ async function demarrer() {
         </div>`).join('')
       : '<p class="vide">Votre commande est vide.</p>';
     $('btn-livraison').disabled = !n;
-    $('btn-emporter').disabled = !n;
     if (!n && !$('tiroir').hidden) fermerPanier();
   }
   function ouvrirPanier() { $('tiroir').hidden = false; document.body.style.overflow = 'hidden'; }
@@ -155,25 +153,19 @@ async function demarrer() {
 
   // Livraison : on ouvre Yobalema Yène avec la commande déjà remplie.
   // Départ = le restaurant ; le client indique où livrer, voit le prix de la livraison et valide.
-  // Le livreur avance le prix des plats au restaurant et le client le rembourse à la livraison.
+  // La commande arrive dans l'espace restaurant de Yobalema (code du restaurant) ; le livreur avance
+  // le prix des plats au restaurant et le client le rembourse à la livraison.
   $('btn-livraison').onclick = () => {
     const q = new URLSearchParams({
+      restaurant: R.code_yobalema || '',
       resto: R.nom,
       resto_lat: R.position.lat,
       resto_lng: R.position.lng,
       resto_adresse: R.adresse,
-      resto_tel: String(R.whatsapp || R.telephone).replace(/\D/g, ''),
       plats: texteCommande(),
       montant: total(),
     });
     location.href = `${R.yobalema.replace(/\/$/, '')}/?${q}`;
-  };
-
-  // À emporter : message WhatsApp au restaurant
-  $('btn-emporter').onclick = () => {
-    const msg = `Bonjour ${R.nom}, je voudrais commander à emporter :\n${lignes().map(({ p, q }) => `• ${q} × ${p.nom} (${fcfa(p.prix * q)})`).join('\n')}`
-      + `${$('panier-note').value.trim() ? `\nPrécision : ${$('panier-note').value.trim()}` : ''}\nTotal : ${fcfa(total())}\nMerci !`;
-    window.open(`https://wa.me/${tel221(R.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
   };
 
   if (R.commandes_fermees) {

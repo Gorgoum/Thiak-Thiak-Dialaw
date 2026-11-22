@@ -226,7 +226,7 @@
   function remplirResto() {
     const i = donnees.infos || {};
     const f = $('f-resto');
-    for (const k of ['nom', 'slogan', 'presentation', 'telephone', 'whatsapp', 'adresse', 'yobalema']) f[k].value = i[k] || '';
+    for (const k of ['nom', 'slogan', 'presentation', 'telephone', 'code_yobalema', 'adresse', 'yobalema']) f[k].value = i[k] || '';
     f.lat.value = i.position ? i.position.lat : '';
     f.lng.value = i.position ? i.position.lng : '';
     f.commandes_fermees.checked = !!i.commandes_fermees;
@@ -257,7 +257,7 @@
     const horaires = [...document.querySelectorAll('.ligne-horaire')].map((l) => [...l.querySelectorAll('input')].map((x) => x.value));
     const corps = {
       nom: f.nom.value, slogan: f.slogan.value, presentation: f.presentation.value,
-      telephone: f.telephone.value, whatsapp: f.whatsapp.value, adresse: f.adresse.value,
+      telephone: f.telephone.value, code_yobalema: f.code_yobalema.value, adresse: f.adresse.value,
       position: { lat: Number(String(f.lat.value).replace(',', '.')), lng: Number(String(f.lng.value).replace(',', '.')) },
       horaires, yobalema: f.yobalema.value, commandes_fermees: f.commandes_fermees.checked,
     };

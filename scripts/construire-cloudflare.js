@@ -42,7 +42,7 @@ fs.writeFileSync(path.join(sortie, 'version.json'), JSON.stringify({ version: ve
 const communJs = path.join(sortie, 'js', 'commun.js');
 fs.writeFileSync(communJs, fs.readFileSync(communJs, 'utf8').replace("'__VERSION_APP__'", `'${versionApp}'`));
 // même version dans chaque page : une page restaurée depuis la mémoire du téléphone se recharge si elle ne correspond plus aux scripts
-for (const h of ['index.html', 'livreur.html', 'admin.html', 'position.html']) {
+for (const h of ['index.html', 'livreur.html', 'admin.html', 'position.html', 'restaurant.html']) {
   const p = path.join(sortie, h);
   if (fs.existsSync(p)) fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace('__VERSION_APP__', versionApp));
 }
@@ -66,6 +66,8 @@ fs.writeFileSync(path.join(sortie, '_headers'), `/*
 /admin.html
   Cache-Control: no-store
 /position.html
+  Cache-Control: no-store
+/restaurant.html
   Cache-Control: no-store
 /js/*
   Cache-Control: no-cache

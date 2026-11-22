@@ -44,15 +44,19 @@ router.post('/position', a(async (req, res) => {
 router.get('/courses-disponibles', a(async (req, res) => {
   const r = await query(
     `SELECT id, type, description, montant_achat, depart_lat, depart_lng, depart_repere,
-            arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule, frais_service, frais_achat
+            arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule, frais_service, frais_achat,
+              restaurant_id, plats_prets_le
      FROM courses WHERE statut = 'en_attente' AND (service = 'livraison' OR vehicule IN ($1, $2)) ORDER BY cree_le DESC LIMIT 50`,
     (({ 0: a, 1: b }) => [a, b || a])(gammesDuChauffeur(req.livreur.vehicule)) // chaque gamme à ses chauffeurs
   );
   const moi = req.livreur;
   const p = await parametres();
+  // nom des restaurants partenaires (commandes de plats)
+  const nomsResto = new Map((await query('SELECT id, nom FROM restaurants')).rows.map((x) => [x.id, x.nom]));
   // seulement les courses dans mon rayon (si ma position est connue) : pas de client qui attend des heures
   const liste = r.rows.filter((c) => { const m = refusTropLoin(moi, { lat: c.depart_lat, lng: c.depart_lng }, p); return !m || moi.lat == null; }).map((c) => ({
     ...c,
+    restaurant_nom: c.restaurant_id ? nomsResto.get(c.restaurant_id) || null : null,
     part_livreur: partage(c, p).part_livreur, // ce que gagnera le chauffeur
     distance_moi_km: moi.lat != null
       ? Math.round(distanceKm(moi, { lat: c.depart_lat, lng: c.depart_lng }) * (p.facteur_route || 1) * 10) / 10

@@ -7,14 +7,17 @@ const COLONNES = `c.id, c.client_nom, c.client_tel, c.livreur_id, c.type, c.desc
   c.depart_lat, c.depart_lng, c.depart_repere, c.arrivee_lat, c.arrivee_lng, c.arrivee_repere,
   c.destinataire_nom, c.destinataire_tel, c.distance_km, c.prix, c.paiement, c.paiement_statut, c.montant_du, c.paye_le, c.statut, c.note,
   c.cree_le, c.acceptee_le, c.recuperee_le, c.livree_le, c.annulee_le,
-  c.service, c.vehicule, c.arrive_le, c.frais_service, c.frais_achat, c.rembourse_le, c.rembourse_montant, c.rembourse_ref`;
+  c.service, c.vehicule, c.arrive_le, c.frais_service, c.frais_achat, c.rembourse_le, c.rembourse_montant, c.rembourse_ref,
+  c.restaurant_id, c.plats_prets_le`;
 
 const SELECT_COURSE = `
   SELECT ${COLONNES}, l.nom AS livreur_nom, l.telephone AS livreur_tel, l.vehicule AS livreur_vehicule, l.plaque AS livreur_plaque, l.modele AS livreur_modele,
          CASE WHEN c.statut IN ('acceptee', 'recuperee') THEN l.lat END AS livreur_lat,
          CASE WHEN c.statut IN ('acceptee', 'recuperee') THEN l.lng END AS livreur_lng
+         , rs.nom AS restaurant_nom
   FROM courses c
-  LEFT JOIN utilisateurs l ON l.id = c.livreur_id`;
+  LEFT JOIN utilisateurs l ON l.id = c.livreur_id
+  LEFT JOIN restaurants rs ON rs.id = c.restaurant_id`;
 
 async function lireCourse(id) {
   const r = await query(SELECT_COURSE + ' WHERE c.id = $1', [id]);

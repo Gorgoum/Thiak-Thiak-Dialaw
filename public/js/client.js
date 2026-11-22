@@ -743,12 +743,6 @@ function carteCourse(c) {
     const texte = `Bonjour${c.destinataire_nom ? ' ' + c.destinataire_nom : ''}, je vous envoie un colis avec Yobalema Yène. Suivez la livraison et soyez prévenu quand le livreur arrive : ${lienDestinataire(c.suivi_token)}`;
     actions.push(`<a class="bouton whatsapp" href="https://wa.me/221${telDest}?text=${encodeURIComponent(texte)}" target="_blank" rel="noopener">${ico('message-circle', 'ic-sm')} Prévenir ${esc(c.destinataire_nom || 'le destinataire')}</a>`);
   }
-  // commande passée depuis le site d'un restaurant : le client lui envoie la commande et le lien de suivi
-  const resto = lireJSON('tt_resto_' + c.suivi_token, null);
-  if (!pourMoi && resto && /^7\d{8}$/.test(resto.tel || '') && enCours) {
-    const texte = `Bonjour ${resto.nom}, je viens de commander : ${c.description}. Total des plats : ${fcfa(c.montant_achat)}. Un livreur Yobalema Yène passera la chercher. Suivi de la livraison : ${lienSuivi(c.suivi_token)}`;
-    actions.push(`<a class="bouton whatsapp pleine-largeur" href="https://wa.me/221${resto.tel}?text=${encodeURIComponent(texte)}" target="_blank" rel="noopener">${ico('message-circle', 'ic-sm')} Envoyer ma commande au restaurant</a>`);
-  }
   if (pourMoi) {
     if (enRoute(c)) actions.push(`<button data-voir-carte="${c.id}">${ico('map-pin', 'ic-sm')} Voir sur la carte</button>`);
     if (!enCours) actions.push(`<button class="btn-ghost" data-retirer="${code}">${ico('trash-2', 'ic-sm')} Retirer</button>`);
@@ -790,7 +784,8 @@ function carteCourse(c) {
         <div>${esc(c.arrivee_repere)}</div>
       </div>
       <div class="ligne-info">${ico(c.service === 'trajet' ? gamme(c.vehicule).icone : c.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${esc(c.description)}</div>
-      ${c.type === 'achat' && c.montant_achat ? `<div class="ligne-info">${ico('banknote', 'ic-sm')} Budget achats : ${fcfa(c.montant_achat)}</div>` : ''}
+      ${c.restaurant_id && !['livree', 'annulee', 'recuperee'].includes(c.statut) ? `<div class="ligne-info">${ico(c.plats_prets_le ? 'circle-check' : 'utensils', 'ic-sm')} ${esc(c.restaurant_nom || 'Le restaurant')}${c.plats_prets_le ? ' : vos plats sont prêts' : ' prépare vos plats'}</div>` : ''}
+      ${c.type === 'achat' && c.montant_achat ? `<div class="ligne-info">${ico('banknote', 'ic-sm')} ${c.restaurant_id ? 'Prix des plats' : 'Budget achats'} : ${fcfa(c.montant_achat)}</div>` : ''}
       ${attente}
       ${c.livreur_nom && ['acceptee', 'recuperee'].includes(c.statut) ? blocPersonne(c.livreur_nom, c.livreur_tel, c.service === 'trajet' ? 'Votre chauffeur' : 'Votre livreur') : ''}
       ${c.livreur_nom && c.service === 'trajet' && ['acceptee', 'recuperee'].includes(c.statut)
@@ -1380,9 +1375,10 @@ async function envoyerCommande() {
   bouton.disabled = true;
   bouton.innerHTML = `${ico('loader-circle', 'tourne')} Envoi…`;
   try {
-    const course = await api('POST', '/api/courses', { ...d, depart: coord(points.depart), arrivee: coord(points.arrivee) });
+    // commande d'un restaurant partenaire : le serveur prend lui-même la position du restaurant
+    const course = await api('POST', '/api/courses', { ...d, depart: coord(points.depart), arrivee: coord(points.arrivee), ...(commandeResto && commandeResto.code ? { restaurant: commandeResto.code } : {}) });
     ajouterCode(course.suivi_token);
-    if (commandeResto) { Stock.set('tt_resto_' + course.suivi_token, JSON.stringify({ nom: commandeResto.nom, tel: commandeResto.tel })); commandeResto = null; }
+    commandeResto = null;
     Stock.set(CLE_COORD, JSON.stringify({ nom: d.client_nom, tel: d.client_tel }));
     memoriserAdresse(coord(points.arrivee), d.arrivee_repere);
     memoriserAdresse(coord(points.depart), d.depart_repere);
@@ -1658,7 +1654,7 @@ var commandeResto = (() => {
   return {
     nom: String(q.get('resto')).trim().slice(0, 60),
     adresse: String(q.get('resto_adresse') || '').trim().slice(0, 80),
-    tel: String(q.get('resto_tel') || '').replace(/\D/g, '').slice(-9),
+    code: String(q.get('restaurant') || '').trim().toLowerCase().slice(0, 40),
     plats: String(q.get('plats') || '').trim().slice(0, 400),
     montant: Math.max(0, Math.round(Number(q.get('montant')) || 0)),
     lat, lng,
