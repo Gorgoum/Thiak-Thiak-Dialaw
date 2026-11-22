@@ -2,22 +2,10 @@
   "name": "resto-oumy-djiamil",
   "version": "1.0.0",
   "private": true,
-  "description": "Site du Resto OUMY DJIAMIL : menu en ligne, commande livrée par Yobalema Yène, page admin",
-  "main": "server.js",
+  "description": "Site du Resto OUMY DJIAMIL (Cloudflare Workers + D1) : menu en ligne, commande livrée par Yobalema Yène, page admin",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "express": "^4.21.1",
-    "jsonwebtoken": "^9.0.2",
-    "pg": "^8.13.1"
-  },
-  "devDependencies": {
-    "pg-mem": "^3.0.5"
+    "dev": "wrangler d1 migrations apply resto-oumy-djiamil --local && wrangler dev",
+    "deployer": "wrangler deploy",
+    "migrer": "wrangler d1 migrations apply resto-oumy-djiamil --remote"
   }
 }

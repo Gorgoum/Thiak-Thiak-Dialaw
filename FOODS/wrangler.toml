@@ -1,0 +1,24 @@
+# Resto OUMY DJIAMIL sur Cloudflare Workers (plan gratuit)
+# Projet séparé de Yobalema Yène : son propre Worker et sa propre base D1.
+name = "resto-oumy-djiamil"
+main = "src/index.js"
+compatibility_date = "2025-10-01"
+workers_dev = true
+# Compte Cloudflare « Thiak Thiak Dialaw »
+account_id = "076bb060c32e5b547c99815e36d127fa"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+html_handling = "none"   # garder les adresses exactes (/admin.html)
+
+[[d1_databases]]
+binding = "DB"
+database_name = "resto-oumy-djiamil"
+database_id = "a-remplir-apres-creation"
+migrations_dir = "migrations"
+
+# Secrets (jamais dans ce fichier) : wrangler secret put ADMIN_MOT_DE_PASSE / JWT_SECRET
+
+[observability]
+enabled = true
