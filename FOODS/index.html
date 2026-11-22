@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Resto OUMY DJIAMIL · Cuisine sénégalaise à Yène</title>
+  <meta name="description" content="Resto OUMY DJIAMIL : thiéboudienne, yassa, mafé et jus frais, à Yène. Commandez et faites-vous livrer par Yobalema Yène.">
+  <meta name="theme-color" content="#7a2e1d">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%237a2e1d'/%3E%3Ctext x='32' y='42' font-size='28' text-anchor='middle' fill='%23f3c46b' font-family='Georgia' font-weight='700'%3EOD%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="entete">
+    <a class="marque" href="#accueil">
+      <span class="sceau">OD</span>
+      <span class="marque-nom">Resto <b>OUMY DJIAMIL</b></span>
+    </a>
+    <nav class="nav">
+      <a href="#menu">Menu</a>
+      <a href="#infos">Infos</a>
+      <a class="nav-appel" id="nav-appel" href="#">Appeler</a>
+    </nav>
+  </header>
+
+  <section class="hero" id="accueil">
+    <div class="hero-motif" aria-hidden="true"></div>
+    <div class="hero-contenu">
+      <p class="hero-sur">Cuisine sénégalaise · Yène</p>
+      <h1 id="hero-titre">Resto OUMY DJIAMIL</h1>
+      <p class="hero-slogan" id="hero-slogan"></p>
+      <div class="hero-actions">
+        <a class="btn btn-principal" href="#menu">Voir le menu</a>
+        <span class="hero-etat" id="hero-etat"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloc presentation">
+    <p id="presentation"></p>
+    <ul class="atouts">
+      <li><b>Fait maison</b><span>Préparé le jour même</span></li>
+      <li><b>Livré chez vous</b><span>Par les livreurs Yobalema Yène</span></li>
+      <li><b>À emporter</b><span>Commande sur WhatsApp</span></li>
+    </ul>
+  </section>
+
+  <section class="bloc" id="menu">
+    <h2>Le menu</h2>
+    <div class="onglets" id="onglets" role="tablist"></div>
+    <div id="carte-menu"></div>
+  </section>
+
+  <section class="bloc infos" id="infos">
+    <h2>Nous trouver</h2>
+    <div class="infos-grille">
+      <div class="info-carte">
+        <h3>Adresse</h3>
+        <p id="adresse"></p>
+        <a class="lien" id="lien-itineraire" target="_blank" rel="noopener">Itinéraire</a>
+      </div>
+      <div class="info-carte">
+        <h3>Horaires</h3>
+        <dl id="horaires"></dl>
+      </div>
+      <div class="info-carte">
+        <h3>Contact</h3>
+        <p><a class="lien" id="lien-tel" href="#"></a></p>
+        <p><a class="lien" id="lien-wa" target="_blank" rel="noopener">WhatsApp</a></p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="pied">
+    <p>© <span id="annee"></span> Resto OUMY DJIAMIL · Livraison assurée par <a id="lien-yobalema" target="_blank" rel="noopener">Yobalema Yène</a></p>
+  </footer>
+
+  <!-- Barre du panier -->
+  <button type="button" class="barre-panier" id="barre-panier" hidden>
+    <span class="barre-nb" id="barre-nb">0</span>
+    <span>Voir ma commande</span>
+    <b id="barre-total">0 FCFA</b>
+  </button>
+
+  <!-- Panier -->
+  <div class="tiroir" id="tiroir" hidden>
+    <div class="tiroir-fond" data-fermer></div>
+    <aside class="tiroir-panneau" role="dialog" aria-modal="true" aria-labelledby="titre-panier">
+      <header class="tiroir-tete">
+        <h2 id="titre-panier">Ma commande</h2>
+        <button type="button" class="btn-rond" data-fermer aria-label="Fermer">✕</button>
+      </header>
+      <div id="panier-liste"></div>
+      <label class="note">Une précision ? (facultatif)
+        <input id="panier-note" maxlength="120" placeholder="Sans piment, bien cuit…">
+      </label>
+      <div class="panier-total"><span>Total des plats</span><b id="panier-total">0 FCFA</b></div>
+      <div class="panier-actions">
+        <button type="button" class="btn btn-principal btn-large" id="btn-livraison">
+          Me faire livrer
+          <small>avec Yobalema Yène · frais de livraison affichés avant de valider</small>
+        </button>
+        <button type="button" class="btn btn-secondaire btn-large" id="btn-emporter">
+          À emporter
+          <small>j'envoie ma commande sur WhatsApp et je passe la chercher</small>
+        </button>
+      </div>
+    </aside>
+  </div>
+
+  <script src="menu.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

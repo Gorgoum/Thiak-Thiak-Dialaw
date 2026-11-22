@@ -1454,3 +1454,6 @@ body.sur-accueil { overflow: hidden; }
 .course-focus .course { margin: 0; }
 .course-focus-note { display: flex; gap: 6px; align-items: flex-start; margin: 12px 2px 4px; color: var(--ink-3); font-size: .84rem; line-height: 1.35; }
 .commande-en-cours .pin:not(.pin-commande), .commande-en-cours #aide-carte, .commande-en-cours .bulle-carte, .commande-en-cours .trace-formulaire { display: none !important; }
+
+/* Bouton sur toute la largeur dans une carte (ex. : « Envoyer ma commande au restaurant ») */
+.course .actions > .pleine-largeur { flex-basis: 100%; }

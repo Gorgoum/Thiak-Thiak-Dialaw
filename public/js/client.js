@@ -743,6 +743,12 @@ function carteCourse(c) {
     const texte = `Bonjour${c.destinataire_nom ? ' ' + c.destinataire_nom : ''}, je vous envoie un colis avec Yobalema Yène. Suivez la livraison et soyez prévenu quand le livreur arrive : ${lienDestinataire(c.suivi_token)}`;
     actions.push(`<a class="bouton whatsapp" href="https://wa.me/221${telDest}?text=${encodeURIComponent(texte)}" target="_blank" rel="noopener">${ico('message-circle', 'ic-sm')} Prévenir ${esc(c.destinataire_nom || 'le destinataire')}</a>`);
   }
+  // commande passée depuis le site d'un restaurant : le client lui envoie la commande et le lien de suivi
+  const resto = lireJSON('tt_resto_' + c.suivi_token, null);
+  if (!pourMoi && resto && /^7\d{8}$/.test(resto.tel || '') && enCours) {
+    const texte = `Bonjour ${resto.nom}, je viens de commander : ${c.description}. Total des plats : ${fcfa(c.montant_achat)}. Un livreur Yobalema Yène passera la chercher. Suivi de la livraison : ${lienSuivi(c.suivi_token)}`;
+    actions.push(`<a class="bouton whatsapp pleine-largeur" href="https://wa.me/221${resto.tel}?text=${encodeURIComponent(texte)}" target="_blank" rel="noopener">${ico('message-circle', 'ic-sm')} Envoyer ma commande au restaurant</a>`);
+  }
   if (pourMoi) {
     if (enRoute(c)) actions.push(`<button data-voir-carte="${c.id}">${ico('map-pin', 'ic-sm')} Voir sur la carte</button>`);
     if (!enCours) actions.push(`<button class="btn-ghost" data-retirer="${code}">${ico('trash-2', 'ic-sm')} Retirer</button>`);
@@ -1376,6 +1382,7 @@ async function envoyerCommande() {
   try {
     const course = await api('POST', '/api/courses', { ...d, depart: coord(points.depart), arrivee: coord(points.arrivee) });
     ajouterCode(course.suivi_token);
+    if (commandeResto) { Stock.set('tt_resto_' + course.suivi_token, JSON.stringify({ nom: commandeResto.nom, tel: commandeResto.tel })); commandeResto = null; }
     Stock.set(CLE_COORD, JSON.stringify({ nom: d.client_nom, tel: d.client_tel }));
     memoriserAdresse(coord(points.arrivee), d.arrivee_repere);
     memoriserAdresse(coord(points.depart), d.depart_repere);
@@ -1637,6 +1644,48 @@ function initCarte() {
   });
 }
 
+/**
+ * Commande venue du site d'un restaurant (Resto OUMY DJIAMIL…) : ?resto=…&resto_lat=…&resto_lng=…&plats=…&montant=…
+ * Départ = le restaurant, type « achat » (le livreur avance le prix des plats, le client le rembourse),
+ * arrivée = la position du client. Il ne reste qu'à vérifier l'adresse et à commander.
+ */
+var commandeResto = (() => {
+  const q = new URLSearchParams(location.search);
+  if (!q.get('resto')) return null;
+  const lat = Number(q.get('resto_lat'));
+  const lng = Number(q.get('resto_lng'));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return {
+    nom: String(q.get('resto')).trim().slice(0, 60),
+    adresse: String(q.get('resto_adresse') || '').trim().slice(0, 80),
+    tel: String(q.get('resto_tel') || '').replace(/\D/g, '').slice(-9),
+    plats: String(q.get('plats') || '').trim().slice(0, 400),
+    montant: Math.max(0, Math.round(Number(q.get('montant')) || 0)),
+    lat, lng,
+  };
+})();
+if (commandeResto) try { history.replaceState(null, '', location.pathname); } catch { /* rien */ } // un rechargement ne recommence pas
+async function preparerCommandeResto() {
+  const r = commandeResto;
+  choisirService('achats', false);
+  form.description.value = r.plats;
+  form.montant_achat.value = r.montant || '';
+  const nom = r.adresse && !r.adresse.toLowerCase().includes(r.nom.toLowerCase()) ? `${r.nom} · ${r.adresse}` : r.nom;
+  form.depart_repere.dataset.ancre = JSON.stringify({ nom, lat: r.lat, lng: r.lng });
+  placerAvecRepere('depart', r.lat, r.lng, nom, true);
+  choisirMode('arrivee');
+  toast(`Commande ${r.nom} : indiquez où vous livrer.`);
+  // arrivée = là où se trouve le client (il peut la déplacer ou chercher une autre adresse)
+  try {
+    const p = await positionGPS();
+    placerAvecRepere('arrivee', p.coords.latitude, p.coords.longitude, null);
+    parGPS.arrivee = true;
+    await proposerRepere('arrivee', 'Ma position');
+  } catch (err) { toast(err.message + ' Indiquez où vous livrer.', true); }
+  majFiche();
+  majCommander();
+}
+
 initCarte();
 chargerConfig().then(() => { majPaiement(); if (!$('fiche').hidden) majCommander(); });
 afficherCoordonnees();
@@ -1645,8 +1694,8 @@ afficherAdresses();
 choisirMode('depart');
 majDevis();
 // le départ est pris automatiquement à la position du téléphone (sauf si l'on vient suivre une course)
-if (!suiviPartage) utiliserMaPosition(true).then(majAccueil);
-if (!suiviPartage) ouvrirAccueil();
+if (commandeResto && !suiviPartage) preparerCommandeResto();
+else if (!suiviPartage) { utiliserMaPosition(true).then(majAccueil); ouvrirAccueil(); }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('confirmation').hidden) fermerConfirmation(); });
 brancherBoutonNotif($('btn-notif'));
 proposerNotifications();
