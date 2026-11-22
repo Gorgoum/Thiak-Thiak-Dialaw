@@ -1,9 +1,6 @@
-// =============================================================================
-//  Resto OUMY DJIAMIL : informations du restaurant et menu
-//  C'est le SEUL fichier à modifier pour changer les plats, les prix, le téléphone…
-//  Les plats et les prix ci-dessous sont des EXEMPLES, à remplacer par les vrais.
-// =============================================================================
-window.RESTO = {
+// Menu et informations d'EXEMPLE, chargés dans la base au tout premier démarrage (base vide).
+// Ensuite, tout se modifie depuis la page admin (/admin.html) : ce fichier ne sert plus.
+module.exports = {
   nom: 'Resto OUMY DJIAMIL',
   slogan: 'La cuisine sénégalaise faite maison, comme à la maison',
   presentation: 'Thiéboudienne du jour, yassa, mafé et jus frais : chez Oumy Djiamil, tout est préparé le jour même avec des produits du marché de Yène.',

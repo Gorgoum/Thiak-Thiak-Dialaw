@@ -1,7 +1,18 @@
 // Resto OUMY DJIAMIL : affichage du menu, panier, commande (livraison Yobalema ou à emporter sur WhatsApp).
-// Les informations et le menu se modifient dans menu.js.
-(() => {
-  const R = window.RESTO;
+// Les informations et le menu viennent de la base (modifiables depuis la page admin).
+async function demarrer() {
+  let donnees;
+  try {
+    const r = await fetch('/api/resto');
+    if (!r.ok) throw new Error();
+    donnees = await r.json();
+  } catch {
+    document.getElementById('carte-menu').innerHTML = '<p class="vide">Le menu ne se charge pas. Vérifiez votre connexion et rechargez la page.</p>';
+    return;
+  }
+  const R = { ...donnees.infos, menu: donnees.menu.map((c) => ({ categorie: c.nom, plats: c.plats.map((p) => ({ ...p, id: String(p.id) })) })) };
+  R.position = R.position || { lat: 14.6391, lng: -17.1734 };
+  R.horaires = R.horaires || [];
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fcfa = (n) => Number(n || 0).toLocaleString('fr-FR') + ' FCFA';
@@ -10,7 +21,7 @@
   const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
   const aujourdhui = JOURS[new Date().getDay()];
   const tousLesPlats = R.menu.flatMap((c) => c.plats);
-  const disponible = (p) => !p.jour || p.jour === aujourdhui;
+  const disponible = (p) => p.disponible !== false && (!p.jour || p.jour === aujourdhui) && !R.commandes_fermees;
 
   // ---------- Informations ----------
   document.title = `${R.nom} · Cuisine sénégalaise à Yène`;
@@ -78,7 +89,7 @@
               <span class="plat-prix">${fcfa(p.prix)}</span>
               ${disponible(p)
                 ? `<span class="quantite"><button type="button" class="moins" data-moins="${esc(p.id)}" aria-label="Retirer un ${esc(p.nom)}" hidden>−</button><span data-q="${esc(p.id)}" hidden>0</span><button type="button" data-plus="${esc(p.id)}" aria-label="Ajouter un ${esc(p.nom)}">+</button></span>`
-                : `<span class="indispo-texte">Servi le ${esc(p.jour.toLowerCase())}</span>`}
+                : `<span class="indispo-texte">${R.commandes_fermees ? '' : p.disponible === false ? 'Épuisé aujourd\x27hui' : `Servi le ${esc(String(p.jour).toLowerCase())}`}</span>`}
             </div>
           </div>
         </article>`).join('')}
@@ -165,6 +176,12 @@
     window.open(`https://wa.me/${tel221(R.whatsapp)}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
   };
 
+  if (R.commandes_fermees) {
+    $('hero-etat').hidden = false;
+    $('hero-etat').classList.remove('ouvert');
+    $('hero-etat').textContent = 'Commandes fermées pour le moment';
+  }
   majQuantites();
   majPanier();
-})();
+}
+demarrer();

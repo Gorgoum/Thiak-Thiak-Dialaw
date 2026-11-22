@@ -1,0 +1,50 @@
+/* Page admin du Resto OUMY DJIAMIL (complète style.css) */
+.admin-cadre { max-width: 760px; margin: 0 auto; padding: 18px 16px 60px; }
+.carte-admin { padding: 18px; border-radius: var(--rayon); background: var(--carte); border: 1px solid var(--trait); box-shadow: var(--ombre); margin-bottom: 16px; }
+.carte-admin h1, .carte-admin h2 { margin-bottom: 10px; }
+.connexion { max-width: 420px; margin: 40px auto; }
+.connexion p { color: var(--encre-2); }
+.champ { display: block; margin: 12px 0; font-size: .9rem; font-weight: 600; color: var(--encre-2); }
+.champ input, .champ textarea, .champ select { display: block; width: 100%; margin-top: 6px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--trait); background: #fff; font: inherit; color: var(--encre); font-weight: 400; }
+.champ textarea { resize: vertical; }
+.grille-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 520px) { .grille-2 { grid-template-columns: 1fr; } }
+.bloc-champ { margin: 16px 0; padding: 12px 14px; border: 1px solid var(--trait); border-radius: 14px; }
+.bloc-champ legend { padding: 0 6px; font-weight: 700; color: var(--terre); }
+.ligne-boutons { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.aide { margin: 8px 0 0; color: var(--encre-2); font-size: .85rem; }
+.erreur { color: #b42318; font-weight: 600; }
+.lien-bouton { border: 0; background: none; padding: 6px 0; color: var(--vert); font-weight: 700; }
+.lien-bouton.danger { color: #b42318; }
+.interrupteur { display: flex; align-items: center; gap: 10px; margin: 14px 0; font-weight: 600; }
+.interrupteur input { width: 22px; height: 22px; accent-color: var(--vert); }
+.admin .nav { gap: 10px; }
+.onglets-admin { display: flex; gap: 8px; margin-bottom: 16px; }
+
+/* Catégories et plats */
+.categorie-admin { margin-bottom: 18px; padding: 14px; border-radius: var(--rayon); background: var(--carte); border: 1px solid var(--trait); }
+.categorie-tete { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.categorie-tete h2 { flex: 1; font-size: 1.3rem; color: var(--terre); }
+.petit { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--trait); background: #fff; font-weight: 700; color: var(--encre-2); }
+.petit:disabled { opacity: .35; }
+.plat-admin { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--trait); }
+.plat-admin img, .plat-admin .vignette { flex: none; width: 52px; height: 52px; border-radius: 10px; object-fit: cover; }
+.plat-admin .vignette { display: grid; place-items: center; background: linear-gradient(135deg, var(--terre-2), var(--terre)); color: var(--safran); font-family: var(--titre); font-weight: 700; }
+.plat-admin .infos-plat { flex: 1; min-width: 0; }
+.plat-admin .infos-plat b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plat-admin .infos-plat small { color: var(--encre-2); }
+.plat-admin.epuise .infos-plat { opacity: .5; }
+.etat { flex: none; padding: 6px 10px; border-radius: 999px; border: 0; font-size: .78rem; font-weight: 700; background: #e8f1ec; color: var(--vert); }
+.etat.non { background: #fde7e4; color: #b42318; }
+.actions-plat { display: flex; gap: 4px; flex: none; }
+.ajouter-plat { margin-top: 8px; }
+@media (max-width: 520px) { .actions-plat .petit.ordre { display: none; } }
+
+/* Photo du plat */
+.photo-zone { display: grid; justify-items: center; gap: 10px; padding: 12px; border: 1px dashed var(--trait); border-radius: 14px; background: #fff; }
+.photo-zone img { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; }
+.photo-vide { color: var(--encre-2); font-size: .9rem; padding: 18px 0; }
+.supprimer { display: block; margin: 14px auto 0; }
+
+.toast { position: fixed; z-index: 60; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 14px; background: var(--encre); color: #fff; font-weight: 600; box-shadow: var(--ombre); }
+.toast.erreur-toast { background: #b42318; }

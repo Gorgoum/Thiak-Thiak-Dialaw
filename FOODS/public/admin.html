@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Admin · Resto OUMY DJIAMIL</title>
+  <meta name="theme-color" content="#7a2e1d">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%237a2e1d'/%3E%3Ctext x='32' y='42' font-size='28' text-anchor='middle' fill='%23f3c46b' font-family='Georgia' font-weight='700'%3EOD%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin">
+  <header class="entete">
+    <a class="marque" href="/" target="_blank" rel="noopener">
+      <span class="sceau">OD</span>
+      <span class="marque-nom">Admin <b>OUMY DJIAMIL</b></span>
+    </a>
+    <nav class="nav" id="nav-admin" hidden>
+      <a href="/" target="_blank" rel="noopener">Voir le site</a>
+      <button type="button" class="lien-bouton" id="deconnexion">Déconnexion</button>
+    </nav>
+  </header>
+
+  <!-- Connexion -->
+  <main class="admin-cadre" id="ecran-connexion" hidden>
+    <form class="carte-admin connexion" id="f-connexion">
+      <h1>Page admin</h1>
+      <p>Modifiez le menu, les prix, les photos et les informations du restaurant.</p>
+      <label class="champ">Mot de passe
+        <input type="password" name="mot_de_passe" autocomplete="current-password" required>
+      </label>
+      <button class="btn btn-principal btn-large" type="submit">Se connecter</button>
+      <p class="erreur" id="erreur-connexion" hidden></p>
+    </form>
+  </main>
+
+  <!-- Administration -->
+  <main class="admin-cadre" id="ecran-admin" hidden>
+    <div class="onglets-admin" role="tablist">
+      <button type="button" class="onglet actif" data-onglet="menu">Menu</button>
+      <button type="button" class="onglet" data-onglet="resto">Restaurant</button>
+    </div>
+
+    <section id="onglet-menu">
+      <div id="liste-categories"></div>
+      <button type="button" class="btn btn-secondaire btn-large" id="ajouter-categorie">+ Ajouter une catégorie</button>
+    </section>
+
+    <section id="onglet-resto" hidden>
+      <form class="carte-admin" id="f-resto">
+        <h2>Le restaurant</h2>
+        <label class="champ">Nom<input name="nom" maxlength="80" required></label>
+        <label class="champ">Phrase d'accroche<input name="slogan" maxlength="160"></label>
+        <label class="champ">Présentation<textarea name="presentation" rows="3" maxlength="600"></textarea></label>
+        <div class="grille-2">
+          <label class="champ">Téléphone<input name="telephone" inputmode="tel" placeholder="77 123 45 67"></label>
+          <label class="champ">WhatsApp (commandes)<input name="whatsapp" inputmode="tel" placeholder="77 123 45 67"></label>
+        </div>
+        <label class="champ">Adresse (repère connu)<input name="adresse" maxlength="160" placeholder="Face à la mosquée de Yène Kao"></label>
+
+        <fieldset class="bloc-champ">
+          <legend>Position exacte (le livreur vient chercher les plats ici)</legend>
+          <div class="grille-2">
+            <label class="champ">Latitude<input name="lat" inputmode="decimal"></label>
+            <label class="champ">Longitude<input name="lng" inputmode="decimal"></label>
+          </div>
+          <div class="ligne-boutons">
+            <button type="button" class="btn btn-secondaire" id="ma-position">Utiliser ma position actuelle</button>
+            <a class="lien" id="voir-position" target="_blank" rel="noopener">Vérifier sur la carte</a>
+          </div>
+          <p class="aide">Faites-le depuis le restaurant, avec la localisation du téléphone activée.</p>
+        </fieldset>
+
+        <fieldset class="bloc-champ">
+          <legend>Horaires</legend>
+          <div id="horaires"></div>
+          <button type="button" class="lien-bouton" id="ajouter-horaire">+ Ajouter une ligne</button>
+        </fieldset>
+
+        <label class="interrupteur"><input type="checkbox" name="commandes_fermees"> <span>Fermer les commandes pour le moment (fermeture, congés…)</span></label>
+        <label class="champ">Adresse de Yobalema Yène (livraison)<input name="yobalema" placeholder="https://…"></label>
+
+        <button class="btn btn-principal btn-large" type="submit">Enregistrer</button>
+      </form>
+    </section>
+  </main>
+
+  <!-- Édition d'un plat -->
+  <div class="tiroir" id="tiroir-plat" hidden>
+    <div class="tiroir-fond" data-fermer></div>
+    <aside class="tiroir-panneau" role="dialog" aria-modal="true" aria-labelledby="titre-plat">
+      <header class="tiroir-tete">
+        <h2 id="titre-plat">Plat</h2>
+        <button type="button" class="btn-rond" data-fermer aria-label="Fermer">✕</button>
+      </header>
+      <form id="f-plat">
+        <div class="photo-zone">
+          <img id="photo-apercu" alt="" hidden>
+          <span class="photo-vide" id="photo-vide">Pas de photo</span>
+          <div class="ligne-boutons">
+            <label class="btn btn-secondaire">Choisir une photo<input type="file" accept="image/*" id="photo-fichier" hidden></label>
+            <button type="button" class="lien-bouton danger" id="photo-retirer" hidden>Retirer la photo</button>
+          </div>
+        </div>
+        <label class="champ">Nom du plat<input name="nom" maxlength="80" required></label>
+        <label class="champ">Description<textarea name="description" rows="2" maxlength="300"></textarea></label>
+        <div class="grille-2">
+          <label class="champ">Prix (FCFA)<input name="prix" type="number" inputmode="numeric" min="0" step="50" required></label>
+          <label class="champ">Servi
+            <select name="jour">
+              <option value="">Tous les jours</option>
+              <option>Lundi</option><option>Mardi</option><option>Mercredi</option><option>Jeudi</option>
+              <option>Vendredi</option><option>Samedi</option><option>Dimanche</option>
+            </select>
+          </label>
+        </div>
+        <label class="champ">Catégorie<select name="categorie_id"></select></label>
+        <label class="interrupteur"><input type="checkbox" name="disponible" checked> <span>Disponible aujourd'hui (décochez si épuisé)</span></label>
+        <button class="btn btn-principal btn-large" type="submit">Enregistrer</button>
+        <button type="button" class="lien-bouton danger supprimer" id="supprimer-plat" hidden>Supprimer ce plat</button>
+      </form>
+    </aside>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+  <script src="admin.js"></script>
+</body>
+</html>

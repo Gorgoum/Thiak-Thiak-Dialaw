@@ -1,0 +1,31 @@
+# Render (offre gratuite) : site du Resto OUMY DJIAMIL, dossier FOODS.
+# Yobalema Yène, lui, reste sur Cloudflare : ce fichier ne le concerne pas.
+services:
+  - type: web
+    name: resto-oumy-djiamil
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: FOODS
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /sante
+    autoDeploy: true
+    # ne se redéploie que si le site du restaurant change (pas pour Yobalema)
+    buildFilter:
+      paths:
+        - FOODS/**
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # Adresse de la base Neon (postgresql://…), à coller dans Render, jamais dans ce fichier
+      - key: DATABASE_URL
+        sync: false
+      # Mot de passe de la page admin, à choisir dans Render
+      - key: ADMIN_MOT_DE_PASSE
+        sync: false
+      # Clé des sessions admin, générée par Render
+      - key: JWT_SECRET
+        generateValue: true
