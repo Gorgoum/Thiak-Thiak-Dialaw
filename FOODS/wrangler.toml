@@ -15,7 +15,7 @@ html_handling = "none"   # garder les adresses exactes (/admin.html)
 [[d1_databases]]
 binding = "DB"
 database_name = "resto-oumy-djiamil"
-database_id = "a-remplir-apres-creation"
+database_id = "f88955ec-4f30-403e-a285-29ae5cec9c1d"
 migrations_dir = "migrations"
 
 # Secrets (jamais dans ce fichier) : wrangler secret put ADMIN_MOT_DE_PASSE / JWT_SECRET
