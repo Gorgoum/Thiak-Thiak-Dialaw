@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Resto OUMY DJIAMIL · Cuisine sénégalaise à Yène</title>
-  <meta name="description" content="Resto OUMY DJIAMIL : thiéboudienne, yassa, mafé et jus frais, à Yène. Commandez et faites-vous livrer par Yobalema Yène.">
+  <title>Restaurant · Yène</title>
+  <meta name="description" content="Restaurant à Yène : menu en ligne, commande livrée par Yobalema Yène.">
   <meta name="theme-color" content="#7a2e1d">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%237a2e1d'/%3E%3Ctext x='32' y='42' font-size='28' text-anchor='middle' fill='%23f3c46b' font-family='Georgia' font-weight='700'%3EOD%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
@@ -12,8 +12,8 @@
 <body>
   <header class="entete">
     <a class="marque" href="#accueil">
-      <span class="sceau">OD</span>
-      <span class="marque-nom">Resto <b>OUMY DJIAMIL</b></span>
+      <span class="sceau" id="sceau"></span>
+      <span class="marque-nom" id="marque-nom"></span>
     </a>
     <nav class="nav">
       <a href="#menu">Menu</a>
@@ -26,7 +26,7 @@
     <div class="hero-motif" aria-hidden="true"></div>
     <div class="hero-contenu">
       <p class="hero-sur">Cuisine sénégalaise · Yène</p>
-      <h1 id="hero-titre">Resto OUMY DJIAMIL</h1>
+      <h1 id="hero-titre"></h1>
       <p class="hero-slogan" id="hero-slogan"></p>
       <div class="hero-actions">
         <a class="btn btn-principal" href="#menu">Voir le menu</a>
@@ -70,7 +70,7 @@
   </section>
 
   <footer class="pied">
-    <p>© <span id="annee"></span> Resto OUMY DJIAMIL · Livraison assurée par <a id="lien-yobalema" target="_blank" rel="noopener">Yobalema Yène</a></p>
+    <p>© <span id="annee"></span> <span id="pied-nom"></span> · Livraison assurée par <a id="lien-yobalema" target="_blank" rel="noopener">Yobalema Yène</a></p>
   </footer>
 
   <!-- Barre du panier -->

@@ -1,4 +1,4 @@
-// Resto OUMY DJIAMIL : affichage du menu, panier, commande livrée par Yobalema Yène.
+// Site d'un restaurant partenaire (Resto OUMY DJIAMIL, Lamiral Food…) : affichage du menu, panier, commande livrée par Yobalema Yène.
 // Les informations et le menu viennent de la base (modifiables depuis la page admin).
 async function demarrer() {
   let donnees;
@@ -26,6 +26,11 @@ async function demarrer() {
   // ---------- Informations ----------
   document.title = `${R.nom} · Cuisine sénégalaise à Yène`;
   $('hero-titre').textContent = R.nom;
+  // nom et initiales du restaurant dans l'en-tête et le pied de page
+  const mots = String(R.nom || '').split(' ').filter((m) => m && m.toLowerCase() !== 'resto' && m[0].toLowerCase() !== m[0].toUpperCase());
+  $('sceau').textContent = mots.slice(0, 2).map((m) => m[0].toUpperCase()).join('');
+  $('marque-nom').innerHTML = `<b>${esc(R.nom)}</b>`;
+  $('pied-nom').textContent = R.nom;
   $('hero-slogan').textContent = R.slogan;
   $('presentation').textContent = R.presentation;
   $('adresse').textContent = R.adresse;

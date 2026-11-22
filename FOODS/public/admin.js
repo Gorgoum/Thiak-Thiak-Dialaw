@@ -1,4 +1,4 @@
-// Page admin du Resto OUMY DJIAMIL : menu (catégories, plats, photos) et informations du restaurant.
+// Page admin d'un restaurant partenaire : menu (catégories, plats, photos) et informations du restaurant.
 (() => {
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -225,6 +225,11 @@
     </div>`;
   function remplirResto() {
     const i = donnees.infos || {};
+    // nom et initiales du restaurant dans l'en-tête
+    const mots = String(i.nom || '').split(' ').filter((m) => m && m.toLowerCase() !== 'resto' && m[0].toLowerCase() !== m[0].toUpperCase());
+    $('sceau').textContent = mots.slice(0, 2).map((m) => m[0].toUpperCase()).join('');
+    $('marque-nom').textContent = i.nom || '';
+    document.title = `Admin · ${i.nom || 'Restaurant'}`;
     const f = $('f-resto');
     for (const k of ['nom', 'slogan', 'presentation', 'telephone', 'code_yobalema', 'adresse', 'yobalema']) f[k].value = i[k] || '';
     f.lat.value = i.position ? i.position.lat : '';

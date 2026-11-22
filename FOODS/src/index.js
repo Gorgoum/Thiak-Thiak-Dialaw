@@ -1,4 +1,5 @@
-// Resto OUMY DJIAMIL sur Cloudflare Workers (projet séparé de Yobalema Yène).
+// Site d'un restaurant partenaire sur Cloudflare Workers (projet séparé de Yobalema Yène).
+// Un même programme pour chaque restaurant : nom, code et base D1 propres à chacun (voir wrangler.toml).
 //  - /api/resto           : informations et menu (public)
 //  - /photos/:id.jpg      : photos des plats
 //  - /api/admin/…         : page admin (mot de passe)
@@ -23,9 +24,15 @@ async function un(db, sql, ...v) { return db.prepare(sql).bind(...v).first(); }
 async function exec(db, sql, ...v) { return db.prepare(sql).bind(...v).run(); }
 
 /** Base vide (tout premier démarrage) : on charge le menu d'exemple. */
-async function preparer(db) {
+async function preparer(db, env = {}) {
   if (await un(db, 'SELECT id FROM infos WHERE id = 1')) return;
   const { menu, ...infos } = EXEMPLE;
+  if (env.NOM_RESTO) {
+    infos.nom = env.NOM_RESTO;
+    infos.slogan = 'Des plats préparés le jour même, livrés chez vous';
+    infos.presentation = `Bienvenue chez ${env.NOM_RESTO}. Choisissez vos plats et faites-vous livrer par Yobalema Yène.`;
+  }
+  if (env.CODE_YOBALEMA) infos.code_yobalema = env.CODE_YOBALEMA;
   const lots = [db.prepare('INSERT OR IGNORE INTO infos (id, donnees) VALUES (1, ?)').bind(JSON.stringify(infos))];
   await db.batch(lots);
   for (const [i, cat] of menu.entries()) {
@@ -111,7 +118,7 @@ async function api(req, env, url) {
   let r;
 
   if (m === 'GET' && p === '/api/resto') {
-    await preparer(db);
+    await preparer(db, env);
     // lisible depuis l'application Yobalema (le menu s'affiche dans l'application, sans quitter Yobalema)
     return json(await lireMenu(db), 200, { 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
   }
@@ -137,7 +144,7 @@ async function api(req, env, url) {
   }
   if (!p.startsWith('/api/admin/')) return null;
   if (!(await verifier(env, String(req.headers.get('Authorization') || '').replace(/^Bearer /, '')))) throw new Erreur(401, 'Connectez-vous');
-  await preparer(db);
+  await preparer(db, env);
   const b = ['POST', 'PUT'].includes(m) ? await corps(req) : {};
 
   if (m === 'GET' && p === '/api/admin/menu') return json(await lireMenu(db));

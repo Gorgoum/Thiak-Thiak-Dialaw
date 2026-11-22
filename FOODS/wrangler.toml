@@ -22,3 +22,29 @@ migrations_dir = "migrations"
 
 [observability]
 enabled = true
+
+# ---------------------------------------------------------------------------
+# Lamiral Food : même programme, son propre site et sa propre base
+# Mise en ligne : wrangler deploy --env lamiral
+# ---------------------------------------------------------------------------
+[env.lamiral]
+name = "resto-lamiral-food"
+workers_dev = true
+
+[env.lamiral.vars]
+NOM_RESTO = "Lamiral Food"
+CODE_YOBALEMA = "lamiral-food"
+
+[env.lamiral.assets]
+directory = "./public"
+binding = "ASSETS"
+html_handling = "none"
+
+[[env.lamiral.d1_databases]]
+binding = "DB"
+database_name = "resto-lamiral-food"
+database_id = "d9c2371c-3fa4-426f-aec2-505b9519a98c"
+migrations_dir = "migrations"
+
+[env.lamiral.observability]
+enabled = true
