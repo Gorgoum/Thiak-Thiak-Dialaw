@@ -40,7 +40,7 @@ export function enregistrer(r) {
     // commande de plats depuis le site d'un restaurant partenaire : le départ est le restaurant (pas ce qu'envoie le téléphone)
     let resto = null;
     if (b.restaurant) {
-      resto = (await c.db.query('SELECT id, nom, adresse, lat, lng FROM restaurants WHERE code = $1 AND actif = 1', [texte(b.restaurant, 40)])).rows[0];
+      resto = (await c.db.query('SELECT id, nom, adresse, lat, lng, commission_pct FROM restaurants WHERE code = $1 AND actif = 1', [texte(b.restaurant, 40)])).rows[0];
       if (!resto) throw new HttpErreur(400, 'Ce restaurant ne prend pas de commandes pour le moment');
       b.depart = { lat: Number(resto.lat), lng: Number(resto.lng) };
       b.depart_repere = resto.adresse ? `${resto.nom} · ${resto.adresse}` : resto.nom;
@@ -83,7 +83,8 @@ export function enregistrer(r) {
     const enLigne = paiement !== 'especes';
 
     const d = await devis(c, b.depart, b.arrivee); // le prix est toujours recalculé côté serveur
-    const fAchat = type === 'achat' ? fraisAchat(montantAchat, await parametres(c.db)) : 0;
+    // restaurant partenaire : pas de frais d'achat pour le client (Yobalema prend sa commission sur les plats)
+    const fAchat = type === 'achat' && !resto ? fraisAchat(montantAchat, await parametres(c.db)) : 0;
     const code = codeAleatoire(16);
     const ins = await c.db.query(
       `INSERT INTO courses (client_nom, client_tel, suivi_token, type, description, montant_achat,
@@ -97,7 +98,7 @@ export function enregistrer(r) {
         paiement, enLigne ? 'en_attente' : 'a_la_livraison', 'en_attente', service, vehicule, d.frais_service || 0, fAchat]
     );
     const id = ins.rows[0].id;
-    if (resto) await c.db.query('UPDATE courses SET restaurant_id = $2 WHERE id = $1', [id, resto.id]);
+    if (resto) await c.db.query('UPDATE courses SET restaurant_id = $2, commission_resto = $3 WHERE id = $1', [id, resto.id, Math.round((montantAchat * (Number(resto.commission_pct) || 0)) / 100)]);
     const course = await lireCourse(c, id);
     c.attendre(notifierNouvelleCourse(c, course).catch((e) => console.error('Notification :', e.message)));
     return json({ ...course, suivi_token: code }, 201);

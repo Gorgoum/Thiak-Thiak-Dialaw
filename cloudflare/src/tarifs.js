@@ -57,14 +57,17 @@ export function partage(course, p) {
   const enLigne = course.paiement !== 'especes' && course.paiement_statut === 'paye';
   const pct = course.paiement === 'orange_money' ? p.frais_om_pct : p.frais_wave_pct;
   // commande de restaurant payée en ligne : le client a aussi payé les plats, avancés au restaurant par le livreur
-  const platsAvances = enLigne && course.restaurant_id ? Number(course.montant_achat) || 0 : 0;
+  // commission de Yobalema sur les plats d'un restaurant partenaire : le livreur a remis au restaurant
+  // le prix des plats moins cette commission (c'est ce qu'il a avancé)
+  const commissionResto = course.restaurant_id ? Number(course.commission_resto) || 0 : 0;
+  const platsAvances = enLigne && course.restaurant_id ? Math.max(0, (Number(course.montant_achat) || 0) - commissionResto) : 0;
   const fraisPaiement = enLigne ? Math.round(((prix + platsAvances) * (pct ?? 1)) / 100) : 0;
   return {
-    prix, base, commission, en_ligne: enLigne, plats_avances: platsAvances,
+    prix, base, commission, en_ligne: enLigne, plats_avances: platsAvances, commission_resto: commissionResto,
     frais_plateforme: fraisPlateforme,
     frais_paiement: fraisPaiement,
     part_livreur: base - commission,
-    gain_plateforme: commission + fraisPlateforme - fraisPaiement,
+    gain_plateforme: commission + fraisPlateforme + commissionResto - fraisPaiement,
   };
 }
 

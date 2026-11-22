@@ -13,10 +13,11 @@ export function mouvementDeCourse(course, p) {
   return {
     ...x,
     // en ligne : la plateforme doit sa part au chauffeur ; en espèces : il doit la commission et les frais
-    montant: x.en_ligne ? x.part_livreur + x.plats_avances : -(x.commission + x.frais_plateforme),
+    // en espèces, le livreur a aussi gardé la commission du restaurant (il lui a remis les plats moins 10 %)
+    montant: x.en_ligne ? x.part_livreur + x.plats_avances : -(x.commission + x.frais_plateforme + x.commission_resto),
     libelle: x.en_ligne
       ? `Course n° ${course.id} payée par ${NOMS_MOYENS[course.paiement] || course.paiement} : votre part${x.plats_avances ? ` + ${x.plats_avances.toLocaleString('fr-FR')} FCFA de plats avancés au restaurant` : ''}`
-      : `Course n° ${course.id} en espèces : commission${fraisTxt} à reverser`,
+      : `Course n° ${course.id} en espèces : commission${fraisTxt}${x.commission_resto ? ` + ${x.commission_resto.toLocaleString('fr-FR')} FCFA de commission restaurant` : ''} à reverser`,
   };
 }
 
@@ -24,7 +25,7 @@ export function mouvementDeCourse(course, p) {
 export async function inscrireCoursesLivrees(c, courseId = null) {
   const p = await parametres(c.db);
   const r = await c.db.query(
-    `SELECT co.id, co.livreur_id, co.prix, co.paiement, co.paiement_statut, co.livree_le, co.frais_service, co.frais_achat, co.montant_achat, co.restaurant_id
+    `SELECT co.id, co.livreur_id, co.prix, co.paiement, co.paiement_statut, co.livree_le, co.frais_service, co.frais_achat, co.montant_achat, co.restaurant_id, co.commission_resto
      FROM courses co
      WHERE co.statut = 'livree' AND co.livreur_id IS NOT NULL
        AND NOT EXISTS (SELECT 1 FROM mouvements m WHERE m.course_id = co.id AND m.type = 'course')
@@ -130,7 +131,7 @@ export async function transactions(c, { du, au }) {
             coalesce(m.frais_plateforme, 0) AS frais_plateforme, coalesce(m.frais_paiement, 0) AS frais_paiement,
             coalesce(m.part_livreur, m.prix - m.commission) AS part_livreur,
             coalesce(m.gain_plateforme, m.commission) AS gain_plateforme,
-            co.service, co.vehicule, co.type
+            co.service, co.vehicule, co.type, coalesce(co.commission_resto, 0) AS commission_resto
      FROM mouvements m JOIN utilisateurs u ON u.id = m.livreur_id LEFT JOIN courses co ON co.id = m.course_id
      WHERE m.type = 'course' AND m.cree_le >= $1 AND m.cree_le < $2 ORDER BY m.cree_le DESC`,
     [du, au]
@@ -138,12 +139,13 @@ export async function transactions(c, { du, au }) {
     ...x,
     prix: Number(x.prix), commission: Number(x.commission), frais_plateforme: Number(x.frais_plateforme),
     frais_paiement: Number(x.frais_paiement), part_livreur: Number(x.part_livreur), gain_plateforme: Number(x.gain_plateforme),
+    commission_resto: Number(x.commission_resto) || 0,
   }));
   const somme = (k) => lignes.reduce((s, x) => s + x[k], 0);
   return {
     lignes,
     totaux: {
-      nb: lignes.length, encaisse: somme('prix'), frais_paiement: somme('frais_paiement'), part_livreurs: somme('part_livreur'),
+      nb: lignes.length, encaisse: somme('prix') + somme('commission_resto'), commission_resto: somme('commission_resto'), frais_paiement: somme('frais_paiement'), part_livreurs: somme('part_livreur'),
       commission: somme('commission'), frais_plateforme: somme('frais_plateforme'), gain_plateforme: somme('gain_plateforme'),
     },
   };

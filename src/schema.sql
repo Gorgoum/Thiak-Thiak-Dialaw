@@ -195,3 +195,7 @@ ALTER TABLE courses ADD COLUMN IF NOT EXISTS restaurant_id INTEGER;
 ALTER TABLE courses ADD COLUMN IF NOT EXISTS plats_prets_le TIMESTAMPTZ;
 -- Adresse du site du restaurant (menu en ligne) : la tuile « Food » de l accueil y mène.
 ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS site TEXT;
+
+-- Commission de Yobalema sur les plats des restaurants partenaires (en %), et son montant figé sur chaque commande.
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS commission_pct INTEGER NOT NULL DEFAULT 10;
+ALTER TABLE courses ADD COLUMN IF NOT EXISTS commission_resto INTEGER NOT NULL DEFAULT 0;

@@ -17,7 +17,7 @@ const ACTIFS = "('en_attente', 'attente_paiement', 'acceptee', 'recuperee')";
 const vueCommande = (c) => ({
   id: c.id, statut: c.statut, description: c.description, montant_achat: c.montant_achat,
   cree_le: c.cree_le, acceptee_le: c.acceptee_le, arrive_le: c.arrive_le, recuperee_le: c.recuperee_le, livree_le: c.livree_le, annulee_le: c.annulee_le,
-  plats_prets_le: c.plats_prets_le, client_prenom: String(c.client_nom || '').split(/\s+/)[0],
+  plats_prets_le: c.plats_prets_le, commission_resto: c.commission_resto || 0, client_prenom: String(c.client_nom || '').split(/\s+/)[0],
   livreur_nom: c.livreur_nom || null, livreur_tel: c.livreur_tel || null, livreur_vehicule: c.livreur_vehicule || null,
 });
 
@@ -86,6 +86,7 @@ function lireRestaurant(b, creation) {
     nom: texte(b.nom, 80), adresse: texte(b.adresse, 160) || null, actif: b.actif !== false,
     code: texte(b.code, 40).toLowerCase(), telephone: normaliserTel(b.telephone), lat, lng,
     site: texte(b.site, 200) || null,
+    commission_pct: Math.max(0, Math.min(50, Math.round(Number(b.commission_pct ?? 10)) || 0)),
   };
   if (r.site && !/^https:\/\/[^\s]+$/.test(r.site)) return { erreur: 'Adresse du site invalide (https://…)' };
   if (r.nom.length < 2) return { erreur: 'Indiquez le nom du restaurant' };
@@ -99,7 +100,7 @@ function lireRestaurant(b, creation) {
 }
 
 gestion.get('/', a(async (req, res) => {
-  const r = await query('SELECT id, code, nom, telephone, lat, lng, adresse, actif, site, cree_le FROM restaurants ORDER BY nom');
+  const r = await query('SELECT id, code, nom, telephone, lat, lng, adresse, actif, site, commission_pct, cree_le FROM restaurants ORDER BY nom');
   const nb = new Map((await query('SELECT restaurant_id, COUNT(*) AS n FROM courses WHERE restaurant_id IS NOT NULL GROUP BY restaurant_id')).rows.map((x) => [x.restaurant_id, Number(x.n)]));
   res.json(r.rows.map((x) => ({ ...x, nb_commandes: nb.get(x.id) || 0 })));
 }));
@@ -110,15 +111,15 @@ gestion.post('/', a(async (req, res) => {
     return res.status(409).json({ erreur: 'Ce code ou ce numéro est déjà utilisé par un restaurant' });
   }
   const ins = await query(
-    'INSERT INTO restaurants (code, nom, telephone, pin_hash, lat, lng, adresse, actif, site) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
-    [r.code, r.nom, r.telephone, await bcrypt.hash(String(req.body.pin), 10), r.lat, r.lng, r.adresse, r.actif, r.site]
+    'INSERT INTO restaurants (code, nom, telephone, pin_hash, lat, lng, adresse, actif, site, commission_pct) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id',
+    [r.code, r.nom, r.telephone, await bcrypt.hash(String(req.body.pin), 10), r.lat, r.lng, r.adresse, r.actif, r.site, r.commission_pct]
   );
   res.status(201).json({ id: ins.rows[0].id });
 }));
 gestion.put('/:id', a(async (req, res) => {
   const r = lireRestaurant(req.body || {}, false);
   if (r.erreur) return res.status(400).json(r);
-  await query('UPDATE restaurants SET nom = $2, adresse = $3, lat = $4, lng = $5, actif = $6, site = $7 WHERE id = $1', [req.params.id, r.nom, r.adresse, r.lat, r.lng, r.actif, r.site]);
+  await query('UPDATE restaurants SET nom = $2, adresse = $3, lat = $4, lng = $5, actif = $6, site = $7, commission_pct = $8 WHERE id = $1', [req.params.id, r.nom, r.adresse, r.lat, r.lng, r.actif, r.site, r.commission_pct]);
   if (req.body.pin) await query('UPDATE restaurants SET pin_hash = $2 WHERE id = $1', [req.params.id, await bcrypt.hash(String(req.body.pin), 10)]);
   // nouveau numéro de connexion (unique entre restaurants)
   if (req.body.telephone) {

@@ -229,7 +229,7 @@ function trajet(c) {
       ? `<div class="ligne-info">${ico('utensils', 'ic-sm')} <b>${esc(c.restaurant_nom || 'Restaurant')} :</b> ${esc(c.description)}</div>
          <div class="plats-etat ${c.plats_prets_le ? 'prets' : ''}">${c.plats_prets_le ? `${ico('circle-check', 'ic-sm')} Plats prêts, vous pouvez les récupérer` : `${ico('clock', 'ic-sm')} En préparation au restaurant`}</div>`
       : `<div class="ligne-info">${ico(c.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${c.type === 'achat' ? '<b>Achat :</b> ' : ''}${esc(c.description)}</div>`}
-  ${c.type === 'achat' && c.montant_achat ? `<div class="meta">${c.restaurant_id ? `À payer au restaurant : ${fcfa(c.montant_achat)} ${c.paiement !== 'especes' ? '(payé en ligne par le client : remboursé sur votre solde)' : '(remboursé par le client en espèces)'}` : `Avance estimée : ${fcfa(c.montant_achat)} (remboursée par le client)`}</div>` : ''}`;
+  ${c.type === 'achat' && c.montant_achat ? `<div class="meta">${c.restaurant_id ? `À payer au restaurant : ${fcfa(c.montant_achat - (c.commission_resto || 0))}${c.commission_resto ? ` (plats ${fcfa(c.montant_achat)} − commission Yobalema)` : ''} ${c.paiement !== 'especes' ? '(payé en ligne par le client : remboursé sur votre solde)' : '(remboursé par le client en espèces)'}` : `Avance estimée : ${fcfa(c.montant_achat)} (remboursée par le client)`}</div>` : ''}`;
 }
 
 /** Ce qui va se passer tout seul (le GPS détecte l'arrivée, comme Google Maps). */

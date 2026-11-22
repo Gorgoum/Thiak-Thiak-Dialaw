@@ -147,11 +147,12 @@ let restaurants = [];
 async function chargerRestaurants() {
   restaurants = await api('GET', '/api/admin/restaurants');
   document.getElementById('restaurants').innerHTML = restaurants.length ? `
-    <tr><th>Restaurant</th><th>Téléphone</th><th>Code du site</th><th>Commandes</th><th>État</th><th>Actions</th></tr>
+    <tr><th>Restaurant</th><th>Téléphone</th><th>Code du site</th><th>Commission</th><th>Commandes</th><th>État</th><th>Actions</th></tr>
     ${restaurants.map((r) => `<tr>
       <td><b>${esc(r.nom)}</b>${r.adresse ? `<br><small class="meta">${esc(r.adresse)}</small>` : ''}</td>
       <td>${lienTel(r.telephone)}</td>
       <td><code>${esc(r.code)}</code></td>
+      <td>${Number(r.commission_pct ?? 10)} %</td>
       <td>${Number(r.nb_commandes) || 0}</td>
       <td>${r.actif ? '<span class="badge b-livree">Actif</span>' : '<span class="badge b-annulee">Désactivé</span>'}</td>
       <td class="actions-ligne"><button data-modifier-resto="${r.id}">${ico('settings', 'ic-sm')} Modifier</button></td>
@@ -165,6 +166,7 @@ function fenetreRestaurant(r = null) {
     ${champ('Téléphone (connexion)', 'telephone', x.telephone, 'required type="tel" inputmode="tel" placeholder="77 123 45 67"')}
     ${champ(r ? 'Nouveau code PIN (laisser vide pour ne pas changer)' : 'Code PIN (4 chiffres)', 'pin', '', `${r ? '' : 'required'} inputmode="numeric" pattern="\\d{4}" maxlength="4" autocomplete="new-password"`)}
     ${champ('Site du restaurant (menu en ligne, ouvert depuis la tuile Food)', 'site', x.site, 'type="url" placeholder="https://…" autocomplete="off"')}
+    ${champ('Commission Yobalema sur les plats (%)', 'commission_pct', x.commission_pct ?? 10, 'type="number" min="0" max="50" step="1" inputmode="numeric"')}
     ${champ('Adresse (repère connu)', 'adresse', x.adresse, 'maxlength="160" placeholder="Face à la mosquée de Yène Kao"')}
     <div class="grille-2">
       ${champ('Latitude', 'lat', x.lat, 'required inputmode="decimal" placeholder="14.6391"')}
@@ -173,7 +175,7 @@ function fenetreRestaurant(r = null) {
     <p class="meta">Position exacte du restaurant : le livreur vient y chercher les plats.</p>
     <label class="case"><input type="checkbox" name="actif" ${!r || r.actif ? 'checked' : ''}> Compte actif (reçoit les commandes)</label>`;
   ouvrirFenetre(r ? `Modifier ${r.nom}` : 'Ajouter un restaurant', contenu, async (d) => {
-    const corps = { ...d, lat: Number(String(d.lat).replace(',', '.')), lng: Number(String(d.lng).replace(',', '.')), actif: d.actif === 'on' };
+    const corps = { ...d, lat: Number(String(d.lat).replace(',', '.')), lng: Number(String(d.lng).replace(',', '.')), actif: d.actif === 'on', commission_pct: Number(d.commission_pct) };
     if (!corps.pin) delete corps.pin;
     if (r) await api('PUT', `/api/admin/restaurants/${r.id}`, corps);
     else await api('POST', '/api/admin/restaurants', corps);

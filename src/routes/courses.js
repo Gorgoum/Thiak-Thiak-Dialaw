@@ -48,7 +48,7 @@ router.post('/', a(async (req, res) => {
   // commande de plats depuis le site d'un restaurant partenaire : le départ est le restaurant (pas ce qu'envoie le téléphone)
   let resto = null;
   if (b.restaurant) {
-    resto = (await query('SELECT id, nom, adresse, lat, lng FROM restaurants WHERE code = $1 AND actif', [texte(b.restaurant, 40)])).rows[0];
+    resto = (await query('SELECT id, nom, adresse, lat, lng, commission_pct FROM restaurants WHERE code = $1 AND actif', [texte(b.restaurant, 40)])).rows[0];
     if (!resto) return res.status(400).json({ erreur: 'Ce restaurant ne prend pas de commandes pour le moment' });
     b.depart = { lat: Number(resto.lat), lng: Number(resto.lng) };
     b.depart_repere = resto.adresse ? `${resto.nom} · ${resto.adresse}` : resto.nom;
@@ -97,7 +97,8 @@ router.post('/', a(async (req, res) => {
   const enLigne = paiement !== 'especes';
 
   const d = await devis(b.depart, b.arrivee);
-  const fAchat = type === 'achat' ? fraisAchat(montantAchat, await parametres()) : 0;
+  // restaurant partenaire : pas de frais d'achat pour le client (Yobalema prend sa commission sur les plats)
+  const fAchat = type === 'achat' && !resto ? fraisAchat(montantAchat, await parametres()) : 0;
   const code = nouveauCode();
   const r = await query(
     `INSERT INTO courses (client_nom, client_tel, suivi_token, type, description, montant_achat,
@@ -111,7 +112,7 @@ router.post('/', a(async (req, res) => {
       paiement, enLigne ? 'en_attente' : 'a_la_livraison', 'en_attente', service, vehicule, d.frais_service || 0, fAchat]
   );
   const id = r.rows[0].id;
-  if (resto) await query('UPDATE courses SET restaurant_id = $2 WHERE id = $1', [id, resto.id]);
+  if (resto) await query('UPDATE courses SET restaurant_id = $2, commission_resto = $3 WHERE id = $1', [id, resto.id, Math.round((montantAchat * (Number(resto.commission_pct) || 0)) / 100)]);
   const course = await lireCourse(id);
   notifierNouvelleCourse(req.app.get('io'), course).catch((e) => console.error('Notification :', e.message));
   res.status(201).json({ ...course, suivi_token: code });

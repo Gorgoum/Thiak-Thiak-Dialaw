@@ -70,7 +70,7 @@ function carte(c) {
         <span class="meta">${heure(c.cree_le)}${c.client_prenom ? ` · pour ${esc(c.client_prenom)}` : ''}</span>
       </header>
       <ul class="plats-commande">${plats}</ul>
-      <div class="commande-total">À encaisser auprès du livreur : <b>${fcfa(c.montant_achat)}</b></div>
+      <div class="commande-total">Le livreur vous remet : <b>${fcfa(c.montant_achat - (c.commission_resto || 0))}</b>${c.commission_resto ? `<br><small class="meta">Plats ${fcfa(c.montant_achat)} − commission Yobalema ${fcfa(c.commission_resto)}</small>` : ''}</div>
       <div class="etape-resto ${e.classe}">${e.texte}</div>
       ${enCours && c.statut !== 'recuperee' ? (c.plats_prets_le
         ? `<div class="prets-ok">${ico('circle-check', 'ic-sm')} Plats prêts depuis ${heure(c.plats_prets_le)}</div>`

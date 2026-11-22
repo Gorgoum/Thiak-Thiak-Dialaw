@@ -522,6 +522,7 @@ function prixCourse(d = dernierDevis) {
 /** Frais d'achat (« Acheter pour moi ») : même calcul que le serveur. */
 function fraisAchatClient() {
   if (choix !== 'colis' || form.type.value !== 'achat') return 0;
+  if (commandeResto && commandeResto.code) return 0; // restaurant partenaire : Yobalema prend sa commission sur les plats
   const pct = Number(reglagesFrais.frais_achat_pct) || 0;
   if (!pct) return 0;
   return Math.max(Number(reglagesFrais.frais_achat_min) || 0, Math.round(((Number(form.montant_achat.value) || 0) * pct) / 100));

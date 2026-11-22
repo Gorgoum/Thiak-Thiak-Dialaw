@@ -141,7 +141,7 @@ export function enregistrer(r) {
     const res = await c.db.query(
       `SELECT id, type, description, montant_achat, depart_lat, depart_lng, depart_repere,
               arrivee_lat, arrivee_lng, arrivee_repere, distance_km, prix, paiement, paiement_statut, cree_le, service, vehicule, frais_service, frais_achat,
-              restaurant_id, plats_prets_le
+              restaurant_id, plats_prets_le, commission_resto
        FROM courses WHERE statut = 'en_attente' AND (service = 'livraison' OR vehicule IN ($1, $2)) ORDER BY cree_le DESC LIMIT 50`,
       (({ 0: a, 1: b }) => [a, b || a])(gammesDuChauffeur(moi.vehicule)) // chaque gamme à ses chauffeurs
     );
