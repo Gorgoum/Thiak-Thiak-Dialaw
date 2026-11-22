@@ -58,7 +58,7 @@
         </button>
         <button type="button" class="service" data-service="food">
           <span class="service-visuel"><img src="/img/photos/food.webp" alt=""></span>
-          <span class="service-nom">Food <small>bientôt</small></span>
+          <span class="service-nom">Food</span>
         </button>
         <button type="button" class="service" data-service="achats">
           <span class="service-visuel"><img src="/img/photos/achats.webp" alt=""></span>
@@ -240,6 +240,21 @@
         <button type="button" class="btn" data-fermer-conf>Modifier</button>
         <button type="button" class="btn btn-primaire" id="conf-envoyer"></button>
       </footer>
+    </aside>
+  </div>
+
+  <!-- Tiroir : restaurants partenaires (tuile « Food ») -->
+  <div class="tiroir" id="tiroir-food" hidden>
+    <div class="tiroir-fond" data-fermer-food></div>
+    <aside class="tiroir-panneau" role="dialog" aria-modal="true" aria-labelledby="titre-food">
+      <header>
+        <h2 id="titre-food">Restaurants</h2>
+        <button type="button" class="btn-rond" data-fermer-food aria-label="Fermer"><svg class="ic"><use href="/icons.svg#x"></use></svg></button>
+      </header>
+      <div class="contenu">
+        <p class="meta">Choisissez vos plats sur le menu du restaurant : la livraison se fait avec Yobalema.</p>
+        <div id="liste-restaurants"></div>
+      </div>
     </aside>
   </div>
 

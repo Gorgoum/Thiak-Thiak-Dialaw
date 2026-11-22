@@ -23,7 +23,9 @@ function lireRestaurant(b, creation) {
   const r = {
     nom: texte(b.nom, 80), adresse: texte(b.adresse, 160) || null, actif: b.actif !== false,
     code: texte(b.code, 40).toLowerCase(), telephone: normaliserTel(b.telephone), lat, lng,
+    site: texte(b.site, 200) || null,
   };
+  if (r.site && !/^https:\/\/[^\s]+$/.test(r.site)) throw new HttpErreur(400, 'Adresse du site invalide (https://…)');
   if (r.nom.length < 2) throw new HttpErreur(400, 'Indiquez le nom du restaurant');
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new HttpErreur(400, 'Position du restaurant invalide');
   if (creation) {
@@ -35,6 +37,12 @@ function lireRestaurant(b, creation) {
 }
 
 export function enregistrer(r) {
+  // liste publique des restaurants partenaires (tuile « Food » de l'accueil)
+  r.get('/api/restaurants', async (req, c) => {
+    const res = await c.db.query('SELECT nom, adresse, site FROM restaurants WHERE actif = 1 AND site IS NOT NULL ORDER BY nom');
+    return json(res.rows);
+  });
+
   // ---------------------------------------------------------------- espace restaurant
   r.post('/api/restaurant/connexion', async (req, c) => {
     const b = await lireCorps(req);
@@ -88,7 +96,7 @@ export function enregistrer(r) {
   // ---------------------------------------------------------------- gestion par l'admin
   r.get('/api/admin/restaurants', async (req, c) => {
     await exiger(req, c, 'admin');
-    const res = await c.db.query('SELECT id, code, nom, telephone, lat, lng, adresse, actif, cree_le FROM restaurants ORDER BY nom');
+    const res = await c.db.query('SELECT id, code, nom, telephone, lat, lng, adresse, actif, site, cree_le FROM restaurants ORDER BY nom');
     const nb = new Map((await c.db.query('SELECT restaurant_id, COUNT(*) AS n FROM courses WHERE restaurant_id IS NOT NULL GROUP BY restaurant_id')).rows.map((x) => [x.restaurant_id, Number(x.n)]));
     return json(res.rows.map((x) => ({ ...x, nb_commandes: nb.get(x.id) || 0 })));
   });
@@ -101,8 +109,8 @@ export function enregistrer(r) {
       throw new HttpErreur(409, 'Ce code ou ce numéro est déjà utilisé par un restaurant');
     }
     const ins = await c.db.query(
-      'INSERT INTO restaurants (code, nom, telephone, pin_hash, lat, lng, adresse, actif) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
-      [x.code, x.nom, x.telephone, await hacherPin(String(b.pin)), x.lat, x.lng, x.adresse, x.actif]
+      'INSERT INTO restaurants (code, nom, telephone, pin_hash, lat, lng, adresse, actif, site) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
+      [x.code, x.nom, x.telephone, await hacherPin(String(b.pin)), x.lat, x.lng, x.adresse, x.actif, x.site]
     );
     return json({ id: ins.rows[0].id }, 201);
   });
@@ -112,7 +120,7 @@ export function enregistrer(r) {
     const b = await lireCorps(req);
     const x = lireRestaurant(b, false);
     const id = Number(c.params.id);
-    await c.db.query('UPDATE restaurants SET nom = $2, adresse = $3, lat = $4, lng = $5, actif = $6 WHERE id = $1', [id, x.nom, x.adresse, x.lat, x.lng, x.actif]);
+    await c.db.query('UPDATE restaurants SET nom = $2, adresse = $3, lat = $4, lng = $5, actif = $6, site = $7 WHERE id = $1', [id, x.nom, x.adresse, x.lat, x.lng, x.actif, x.site]);
     if (b.pin) await c.db.query('UPDATE restaurants SET pin_hash = $2 WHERE id = $1', [id, await hacherPin(String(b.pin))]);
     // nouveau numéro de connexion (unique entre restaurants)
     if (b.telephone) {

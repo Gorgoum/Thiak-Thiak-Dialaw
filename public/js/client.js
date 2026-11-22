@@ -728,6 +728,26 @@ $('ouvrir-suivi').onclick = () => { ouvrirTiroir(); chargerListe(); };
 $('tiroir').addEventListener('click', (e) => { if (e.target.closest('[data-fermer]')) fermerTiroir(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('tiroir').hidden) fermerTiroir(); });
 
+/** Tuile « Food » : les restaurants partenaires ; « Voir le menu » ouvre le site du restaurant. */
+async function ouvrirFood() {
+  const el = $('liste-restaurants');
+  el.innerHTML = `<p class="vide">${ico('loader-circle', 'tourne')} Chargement…</p>`;
+  if ($('tiroir-food').hidden) empiler('food');
+  $('tiroir-food').hidden = false;
+  document.body.classList.add('sans-defilement');
+  try {
+    const liste = await api('GET', '/api/restaurants');
+    el.innerHTML = liste.length ? liste.map((r) => `
+      <a class="resto-carte" href="${esc(r.site)}">
+        <span class="resto-pic">${ico('utensils')}</span>
+        <span class="resto-texte"><b>${esc(r.nom)}</b>${r.adresse ? `<small>${esc(r.adresse)}</small>` : ''}</span>
+        <span class="resto-voir">Voir le menu ${ico('chevron-right', 'ic-sm')}</span>
+      </a>`).join('') : '<p class="vide">Aucun restaurant pour le moment. Revenez bientôt !</p>';
+  } catch (e) { el.innerHTML = `<p class="vide">${esc(e.message)}</p>`; }
+}
+function fermerFood() { $('tiroir-food').hidden = true; document.body.classList.remove('sans-defilement'); }
+$('tiroir-food').addEventListener('click', (e) => { if (e.target.closest('[data-fermer-food]')) fermerFood(); });
+
 function carteCourse(c) {
   const code = esc(c.suivi_token);
   const enCours = ['attente_paiement', 'en_attente', 'acceptee', 'recuperee'].includes(c.statut);
@@ -1488,6 +1508,7 @@ function fermerRecherche() {
 function empiler(ecran) { try { history.pushState({ ecran }, ''); } catch { /* navigation privée */ } }
 window.addEventListener('popstate', () => {
   if (!$('confirmation').hidden) { fermerConfirmation(); return; }
+  if (!$('tiroir-food').hidden) { fermerFood(); return; }
   if (!$('tiroir').hidden) { fermerTiroir(); return; }
   if (document.body.classList.contains('feuille-recherche')) { fermerRecherche(); return; }
   if ($('accueil').hidden && points.arrivee && !courseSuivie) {
@@ -1569,7 +1590,7 @@ function choisirService(service, chercher = true) {
 $('accueil').addEventListener('click', (e) => {
   const t = e.target.closest('[data-service]');
   if (t) {
-    if (t.dataset.service === 'food') { toast('Food arrive bientôt à Yène.'); return; }
+    if (t.dataset.service === 'food') { ouvrirFood(); return; }
     choisirService(t.dataset.service);
     return;
   }

@@ -193,3 +193,5 @@ CREATE TABLE IF NOT EXISTS restaurants (
 );
 ALTER TABLE courses ADD COLUMN IF NOT EXISTS restaurant_id INTEGER;
 ALTER TABLE courses ADD COLUMN IF NOT EXISTS plats_prets_le TIMESTAMPTZ;
+-- Adresse du site du restaurant (menu en ligne) : la tuile « Food » de l accueil y mène.
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS site TEXT;

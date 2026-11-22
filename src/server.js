@@ -65,6 +65,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/courses', require('./routes/courses'));
 app.use('/api/livreur', require('./routes/livreur'));
 app.use('/api/restaurant', require('./routes/restaurant').restaurant);
+app.use('/api/restaurants', require('./routes/restaurant').publics);
 app.use('/api/admin/restaurants', require('./routes/restaurant').gestion);
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/positions', require('./routes/positions'));

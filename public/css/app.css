@@ -1480,3 +1480,12 @@ body.sur-accueil { overflow: hidden; }
 /* Case à cocher dans les fenêtres de l admin */
 label.case { display: flex; align-items: center; gap: 10px; font-weight: 600; }
 label.case input { width: 20px; height: 20px; margin: 0; }
+
+/* Tuile « Food » : restaurants partenaires */
+.resto-carte { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line, #e4e7ec); color: inherit; text-decoration: none; box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,.06)); }
+.resto-carte:active { transform: scale(.99); }
+.resto-pic { flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #7a2e1d; color: #f3c46b; }
+.resto-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.resto-texte b { font-size: 1.05rem; }
+.resto-texte small { color: var(--ink-3, #667085); }
+.resto-voir { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--brand, #0a2a62); font-weight: 700; font-size: .9rem; }
