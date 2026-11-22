@@ -230,6 +230,11 @@
     $('sceau').textContent = mots.slice(0, 2).map((m) => m[0].toUpperCase()).join('');
     $('marque-nom').textContent = i.nom || '';
     document.title = `Admin · ${i.nom || 'Restaurant'}`;
+    // palettes de couleurs : un toucher montre tout de suite le résultat (enregistré avec le bouton)
+    appliquerTheme(i.theme);
+    $('palettes').innerHTML = Object.entries(THEMES).map(([cle, t]) => `
+      <label class="palette"><input type="radio" name="theme" value="${cle}" ${(i.theme || 'terre') === cle ? 'checked' : ''}>
+        <span class="pastilles"><i style="background:${t.principale}"></i><i style="background:${t.accent}"></i><i style="background:${t.secondaire}"></i></span>${esc(t.nom)}</label>`).join('');
     const f = $('f-resto');
     for (const k of ['nom', 'slogan', 'presentation', 'telephone', 'code_yobalema', 'adresse', 'yobalema']) f[k].value = i[k] || '';
     f.lat.value = i.position ? i.position.lat : '';
@@ -242,7 +247,10 @@
     const f = $('f-resto');
     $('voir-position').href = `https://www.openstreetmap.org/?mlat=${encodeURIComponent(f.lat.value)}&mlon=${encodeURIComponent(f.lng.value)}#map=18/${encodeURIComponent(f.lat.value)}/${encodeURIComponent(f.lng.value)}`;
   }
-  $('f-resto').addEventListener('input', (e) => { if (['lat', 'lng'].includes(e.target.name)) majLienPosition(); });
+  $('f-resto').addEventListener('input', (e) => {
+    if (['lat', 'lng'].includes(e.target.name)) majLienPosition();
+    if (e.target.name === 'theme') appliquerTheme(e.target.value);
+  });
   $('ajouter-horaire').onclick = () => $('horaires').insertAdjacentHTML('beforeend', ligneHoraire());
   $('ma-position').onclick = () => {
     if (!navigator.geolocation) return toast('Ce navigateur ne donne pas la position', true);
@@ -265,6 +273,7 @@
       telephone: f.telephone.value, code_yobalema: f.code_yobalema.value, adresse: f.adresse.value,
       position: { lat: Number(String(f.lat.value).replace(',', '.')), lng: Number(String(f.lng.value).replace(',', '.')) },
       horaires, yobalema: f.yobalema.value, commandes_fermees: f.commandes_fermees.checked,
+      theme: (f.querySelector('[name=theme]:checked') || {}).value,
     };
     try {
       donnees.infos = await api('PUT', '/api/admin/infos', corps);

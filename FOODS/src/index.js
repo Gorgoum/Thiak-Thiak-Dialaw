@@ -33,6 +33,7 @@ async function preparer(db, env = {}) {
     infos.presentation = `Bienvenue chez ${env.NOM_RESTO}. Choisissez vos plats et faites-vous livrer par Yobalema Yène.`;
   }
   if (env.CODE_YOBALEMA) infos.code_yobalema = env.CODE_YOBALEMA;
+  if (env.THEME) infos.theme = env.THEME;
   const lots = [db.prepare('INSERT OR IGNORE INTO infos (id, donnees) VALUES (1, ?)').bind(JSON.stringify(infos))];
   await db.batch(lots);
   for (const [i, cat] of menu.entries()) {
@@ -162,6 +163,7 @@ async function api(req, env, url) {
       telephone: tel(b.telephone), code_yobalema: texte(b.code_yobalema, 40).toLowerCase().replace(/[^a-z0-9-]/g, ''), adresse: texte(b.adresse, 160), position: { lat, lng },
       horaires: (Array.isArray(b.horaires) ? b.horaires : []).map((h) => [texte(h && h[0], 40), texte(h && h[1], 40)]).filter((h) => h[0] && h[1]).slice(0, 10),
       yobalema, commandes_fermees: !!b.commandes_fermees,
+      theme: ['terre', 'ocean', 'foret', 'nuit', 'piment'].includes(b.theme) ? b.theme : 'terre',
     };
     await exec(db, 'UPDATE infos SET donnees = ? WHERE id = 1', JSON.stringify(infos));
     return json(infos);

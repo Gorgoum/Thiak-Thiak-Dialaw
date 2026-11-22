@@ -25,6 +25,7 @@ async function demarrer() {
 
   // ---------- Informations ----------
   document.title = `${R.nom} · Cuisine sénégalaise à Yène`;
+  if (window.appliquerTheme) appliquerTheme(R.theme);
   $('hero-titre').textContent = R.nom;
   // nom et initiales du restaurant dans l'en-tête et le pied de page
   const mots = String(R.nom || '').split(' ').filter((m) => m && m.toLowerCase() !== 'resto' && m[0].toLowerCase() !== m[0].toUpperCase());

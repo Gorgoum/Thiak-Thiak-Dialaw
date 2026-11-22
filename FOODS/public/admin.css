@@ -34,7 +34,7 @@
 .plat-admin .infos-plat b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .plat-admin .infos-plat small { color: var(--encre-2); }
 .plat-admin.epuise .infos-plat { opacity: .5; }
-.etat { flex: none; padding: 6px 10px; border-radius: 999px; border: 0; font-size: .78rem; font-weight: 700; background: #e8f1ec; color: var(--vert); }
+.etat { flex: none; padding: 6px 10px; border-radius: 999px; border: 0; font-size: .78rem; font-weight: 700; background: color-mix(in srgb, var(--vert) 12%, white); color: var(--vert); }
 .etat.non { background: #fde7e4; color: #b42318; }
 .actions-plat { display: flex; gap: 4px; flex: none; }
 .ajouter-plat { margin-top: 8px; }
@@ -48,3 +48,12 @@
 
 .toast { position: fixed; z-index: 60; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 14px; background: var(--encre); color: #fff; font-weight: 600; box-shadow: var(--ombre); }
 .toast.erreur-toast { background: #b42318; }
+
+/* Choix de la palette de couleurs */
+.palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.palette { display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 12px; border: 2px solid var(--trait); background: #fff; font-weight: 600; cursor: pointer; }
+.palette:has(input:checked) { border-color: var(--terre); box-shadow: 0 0 0 3px color-mix(in srgb, var(--terre) 15%, transparent); }
+.palette input { position: absolute; opacity: 0; pointer-events: none; }
+.pastilles { display: inline-flex; }
+.pastilles i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; margin-left: -6px; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+.pastilles i:first-child { margin-left: 0; }

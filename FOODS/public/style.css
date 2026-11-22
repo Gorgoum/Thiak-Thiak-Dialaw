@@ -22,16 +22,16 @@ h1, h2, h3 { font-family: var(--titre); line-height: 1.15; margin: 0; }
 button { font: inherit; cursor: pointer; }
 
 /* En-tête */
-.entete { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; background: rgba(251, 246, 238, .94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--trait); }
+.entete { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; background: rgba(251, 246, 238, .94); background: color-mix(in srgb, var(--creme) 94%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--trait); }
 .marque { display: flex; align-items: center; gap: 10px; text-decoration: none; min-width: 0; }
 .sceau { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--terre); color: var(--safran); font-family: var(--titre); font-weight: 700; letter-spacing: .5px; }
 .marque-nom { font-family: var(--titre); font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .marque-nom b { color: var(--terre); }
 .nav { display: flex; align-items: center; gap: 4px; }
 .nav a { padding: 8px 10px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: .95rem; }
-.nav a:hover { background: #f3e7d8; }
+.nav a:hover { background: var(--trait); }
 .nav .nav-appel { background: var(--vert); color: #fff; }
-.nav .nav-appel:hover { background: #173b2c; }
+.nav .nav-appel:hover { background: color-mix(in srgb, var(--vert) 82%, black); }
 @media (max-width: 480px) { .nav a:not(.nav-appel) { display: none; } }
 
 /* Bandeau d'accueil */
@@ -55,10 +55,10 @@ button { font: inherit; cursor: pointer; }
 .btn:active { transform: scale(.98); }
 .btn small { font-weight: 500; font-size: .8rem; opacity: .85; margin-top: 2px; }
 .btn-principal { background: var(--safran); color: var(--encre); }
-.btn-principal:hover { background: #f6cf85; }
+.btn-principal:hover { background: color-mix(in srgb, var(--safran) 82%, white); }
 .btn-secondaire { background: #fff; color: var(--vert); border: 2px solid var(--vert); }
 .btn-large { width: 100%; }
-.btn-rond { width: 40px; height: 40px; border-radius: 50%; border: 0; background: #f3e7d8; color: var(--encre); font-size: 1rem; }
+.btn-rond { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--trait); color: var(--encre); font-size: 1rem; }
 
 /* Blocs */
 .bloc { max-width: 960px; margin: 0 auto; padding: 44px 16px 8px; }
@@ -80,17 +80,17 @@ button { font: inherit; cursor: pointer; }
 .plats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 @media (max-width: 720px) { .plats { grid-template-columns: 1fr; } }
 .plat { display: flex; gap: 14px; padding: 14px; border-radius: var(--rayon); background: var(--carte); border: 1px solid var(--trait); box-shadow: var(--ombre); }
-.plat-photo { flex: none; width: 84px; height: 84px; border-radius: 14px; object-fit: cover; background: #f3e7d8; }
+.plat-photo { flex: none; width: 84px; height: 84px; border-radius: 14px; object-fit: cover; background: var(--trait); }
 .plat-pastille { flex: none; display: grid; place-items: center; width: 84px; height: 84px; border-radius: 14px; background: linear-gradient(135deg, var(--terre-2), var(--terre)); color: var(--safran); font-family: var(--titre); font-size: 1.6rem; font-weight: 700; }
 .plat-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .plat-nom { font-weight: 700; font-size: 1.05rem; }
-.plat-jour { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #e8f1ec; color: var(--vert); font-size: .74rem; font-weight: 700; vertical-align: middle; }
+.plat-jour { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--vert) 12%, white); color: var(--vert); font-size: .74rem; font-weight: 700; vertical-align: middle; }
 .plat-desc { margin: 4px 0 10px; color: var(--encre-2); font-size: .9rem; }
 .plat-bas { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .plat-prix { font-weight: 800; color: var(--terre); }
 .quantite { display: inline-flex; align-items: center; gap: 4px; }
 .quantite button { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--safran); color: var(--encre); font-size: 1.2rem; font-weight: 800; line-height: 1; }
-.quantite button.moins { background: #f3e7d8; }
+.quantite button.moins { background: var(--trait); }
 .quantite span { min-width: 24px; text-align: center; font-weight: 800; }
 .plat.indispo { opacity: .55; }
 .plat.indispo .quantite { display: none; }

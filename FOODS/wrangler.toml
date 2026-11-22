@@ -34,6 +34,7 @@ workers_dev = true
 [env.lamiral.vars]
 NOM_RESTO = "Lamiral Food"
 CODE_YOBALEMA = "lamiral-food"
+THEME = "ocean"
 
 [env.lamiral.assets]
 directory = "./public"
