@@ -109,6 +109,7 @@ const Guidage = {
     this.cible = cible;
     this.surFin = surFin;
     this.actif = true;
+    this.estArrive = false;
     this.suivre = true;
     this.cap = 0;
     this.voix = Stock.get('tt_voix') !== 'non';
@@ -241,7 +242,7 @@ const Guidage = {
     if (c.length > 1) this.cap = capDeg(c[segment], c[Math.min(segment + 1, c.length - 1)]);
     this.horsRoute = min > SEUIL_HORS_ROUTE_M ? this.horsRoute + 1 : 0;
     if (this.horsRoute >= 2 && Date.now() - this.dernierCalcul > 10000) {
-      this.parler('Nouvel itinéraire');
+      this.parler('Nouvel itinéraire', true);
       this.afficher(ico('loader-circle', 'tourne'), 'Vous avez quitté le trajet, recalcul…', '');
       this.calculer(pos);
       return;
@@ -257,11 +258,12 @@ const Guidage = {
       const cle = `${this.idx}-${seuil}`;
       if (dEtape <= seuil && !this.annonces.has(cle)) {
         this.annonces.add(cle);
-        this.parler(seuil > 50 ? `Dans ${fmtDistanceVoix(dEtape)}, ${texte.charAt(0).toLowerCase()}${texte.slice(1)}` : texte);
+        // au premier calcul, la phrase de départ ci-dessous suffit (deux phrases d'affilée se coupaient)
+        if (!premiere) this.parler(seuil > 50 ? `Dans ${fmtDistanceVoix(dEtape)}, ${texte.charAt(0).toLowerCase()}${texte.slice(1)}` : texte, seuil <= 50);
         break;
       }
     }
-    if (premiere) this.parler(`${texte}. Arrivée dans ${fmtDistanceVoix(this.reste(pos, dEtape))}`);
+    if (premiere) this.parler(`${dEtape > 50 ? `Dans ${fmtDistanceVoix(dEtape)}, ${texte.charAt(0).toLowerCase()}${texte.slice(1)}` : texte}. Arrivée dans ${fmtDistanceVoix(this.reste(pos, dEtape))}`, true);
 
     // Reste du trajet
     const reste = this.reste(pos, dEtape);
@@ -282,19 +284,29 @@ const Guidage = {
   },
 
   arrive() {
+    if (this.estArrive) return; // le GPS continue d'envoyer des positions : une seule annonce
+    this.estArrive = true;
     const nom = this.cible.nom;
     this.afficher(ico('flag'), `Vous êtes arrivé : ${nom}`, '');
-    this.parler(`Vous êtes arrivé. ${nom}`);
+    this.parler(`Vous êtes arrivé. ${nom}`, true);
     const surFin = this.surFin;
-    setTimeout(() => { this.arreter(); if (surFin) surFin(); }, 2500);
+    // fermer le guidage quand la phrase est finie (au plus 10 s), sans la couper
+    const debut = Date.now();
+    const fermer = () => {
+      const parle = 'speechSynthesis' in window && (speechSynthesis.speaking || speechSynthesis.pending);
+      if (parle && Date.now() - debut < 10000) { setTimeout(fermer, 300); return; }
+      this.arreter(true, false);
+      if (surFin) surFin();
+    };
+    setTimeout(fermer, 2500);
   },
 
-  arreter(nettoyer = true) {
+  arreter(nettoyer = true, couperVoix = true) {
     if (this.traces) this.traces.forEach((t) => t.remove());
     this.traces = null;
     if (this.carte && this._lacher) this.carte.off('dragstart', this._lacher);
     if (this.verrouEcran) { this.verrouEcran.release().catch(() => {}); this.verrouEcran = null; }
-    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    if (couperVoix && 'speechSynthesis' in window) speechSynthesis.cancel();
     if (this.carteNav) {
       this.carteNav.remove();
       this.carteNav = null;
@@ -336,14 +348,37 @@ const Guidage = {
     $nav('nav-dist').textContent = distance;
   },
 
-  parler(texte) {
+  /**
+   * Lit une phrase à voix haute, en entier.
+   * urgent : coupe la phrase en cours (« Tournez à droite » au moment de tourner) ; sinon elle attend son tour.
+   */
+  parler(texte, urgent = false) {
     if (!this.voix || !('speechSynthesis' in window)) return;
+    if (texte === this.derniereParole && speechSynthesis.speaking) return; // pas deux fois la même phrase
     const u = new SpeechSynthesisUtterance(texte);
     u.lang = 'fr-FR';
-    u.rate = 1;
-    speechSynthesis.cancel();
+    u.rate = 0.95;
+    const voix = voixFrancaise();
+    if (voix) u.voice = voix;
+    // Chrome peut abandonner une phrase en cours si plus rien ne la référence : on la garde
+    this.parole = u;
+    u.onend = u.onerror = () => { if (this.parole === u) this.parole = null; };
+    this.derniereParole = texte;
+    if (urgent) speechSynthesis.cancel();
+    speechSynthesis.resume(); // Chrome Android reste parfois en pause après une coupure
     speechSynthesis.speak(u);
   },
 };
 
 function $nav(id) { return document.getElementById(id); }
+
+/** Voix française du téléphone (de préférence installée sur l'appareil : marche sans internet). */
+let voixFr = null;
+function voixFrancaise() {
+  if (voixFr) return voixFr;
+  const toutes = ('speechSynthesis' in window && speechSynthesis.getVoices()) || [];
+  const fr = toutes.filter((v) => /^fr/i.test(v.lang));
+  voixFr = fr.find((v) => v.localService && /fr[-_]FR/i.test(v.lang)) || fr.find((v) => /fr[-_]FR/i.test(v.lang)) || fr[0] || null;
+  return voixFr;
+}
+if ('speechSynthesis' in window) speechSynthesis.addEventListener?.('voiceschanged', () => { voixFr = null; voixFrancaise(); });
