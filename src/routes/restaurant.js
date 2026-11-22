@@ -118,6 +118,12 @@ gestion.put('/:id', a(async (req, res) => {
   if (r.erreur) return res.status(400).json(r);
   await query('UPDATE restaurants SET nom = $2, adresse = $3, lat = $4, lng = $5, actif = $6 WHERE id = $1', [req.params.id, r.nom, r.adresse, r.lat, r.lng, r.actif]);
   if (req.body.pin) await query('UPDATE restaurants SET pin_hash = $2 WHERE id = $1', [req.params.id, await bcrypt.hash(String(req.body.pin), 10)]);
+  // nouveau numéro de connexion (unique entre restaurants)
+  if (req.body.telephone) {
+    if (!r.telephone) return res.status(400).json({ erreur: 'Numéro invalide (ex : 77 123 45 67)' });
+    if ((await query('SELECT 1 FROM restaurants WHERE telephone = $1 AND id <> $2', [r.telephone, req.params.id])).rows.length) return res.status(409).json({ erreur: 'Ce numéro est déjà utilisé par un autre restaurant' });
+    await query('UPDATE restaurants SET telephone = $2 WHERE id = $1', [req.params.id, r.telephone]);
+  }
   res.json({ ok: true });
 }));
 

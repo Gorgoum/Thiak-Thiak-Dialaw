@@ -114,6 +114,12 @@ export function enregistrer(r) {
     const id = Number(c.params.id);
     await c.db.query('UPDATE restaurants SET nom = $2, adresse = $3, lat = $4, lng = $5, actif = $6 WHERE id = $1', [id, x.nom, x.adresse, x.lat, x.lng, x.actif]);
     if (b.pin) await c.db.query('UPDATE restaurants SET pin_hash = $2 WHERE id = $1', [id, await hacherPin(String(b.pin))]);
+    // nouveau numéro de connexion (unique entre restaurants)
+    if (b.telephone) {
+      if (!x.telephone) throw new HttpErreur(400, 'Numéro invalide (ex : 77 123 45 67)');
+      if ((await c.db.query('SELECT 1 FROM restaurants WHERE telephone = $1 AND id <> $2', [x.telephone, id])).rows.length) throw new HttpErreur(409, 'Ce numéro est déjà utilisé par un autre restaurant');
+      await c.db.query('UPDATE restaurants SET telephone = $2 WHERE id = $1', [id, x.telephone]);
+    }
     return json({ ok: true });
   });
 }

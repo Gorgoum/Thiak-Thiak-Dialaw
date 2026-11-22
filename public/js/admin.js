@@ -162,7 +162,7 @@ function fenetreRestaurant(r = null) {
   const contenu = `
     ${champ('Nom du restaurant', 'nom', x.nom, 'required maxlength="80" autocomplete="off"')}
     ${r ? '' : champ('Code du site (lettres minuscules et tirets, ex : oumy-djiamil)', 'code', '', 'required pattern="[a-z0-9-]{3,40}" autocomplete="off"')}
-    ${r ? '' : champ('Téléphone (connexion)', 'telephone', '', 'required type="tel" inputmode="tel" placeholder="77 123 45 67"')}
+    ${champ('Téléphone (connexion)', 'telephone', x.telephone, 'required type="tel" inputmode="tel" placeholder="77 123 45 67"')}
     ${champ(r ? 'Nouveau code PIN (laisser vide pour ne pas changer)' : 'Code PIN (4 chiffres)', 'pin', '', `${r ? '' : 'required'} inputmode="numeric" pattern="\\d{4}" maxlength="4" autocomplete="new-password"`)}
     ${champ('Adresse (repère connu)', 'adresse', x.adresse, 'maxlength="160" placeholder="Face à la mosquée de Yène Kao"')}
     <div class="grille-2">
