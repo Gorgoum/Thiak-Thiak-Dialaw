@@ -16,9 +16,9 @@ function mouvementDeCourse(c, p) {
   return {
     ...x,
     // en ligne : la plateforme doit sa part au chauffeur ; en espèces : il doit la commission et les frais
-    montant: x.en_ligne ? x.part_livreur : -(x.commission + x.frais_plateforme),
+    montant: x.en_ligne ? x.part_livreur + x.plats_avances : -(x.commission + x.frais_plateforme),
     libelle: x.en_ligne
-      ? `Course n° ${c.id} payée par ${NOMS_MOYENS[c.paiement] || c.paiement} : votre part`
+      ? `Course n° ${c.id} payée par ${NOMS_MOYENS[c.paiement] || c.paiement} : votre part${x.plats_avances ? ` + ${x.plats_avances.toLocaleString('fr-FR')} FCFA de plats avancés au restaurant` : ''}`
       : `Course n° ${c.id} en espèces : commission${fraisTxt} à reverser`,
   };
 }
@@ -32,7 +32,7 @@ async function inscrireCoursesLivrees(courseId = null) {
   // Requêtes simples, filtre final en JavaScript : même résultat sur PostgreSQL et sur la base de test
   // (pg-mem ne retrouve pas toujours par son index une course dont le statut vient de changer).
   const livrees = (await query(
-    `SELECT id, statut, livreur_id, prix, paiement, paiement_statut, livree_le, frais_service, frais_achat FROM courses
+    `SELECT id, statut, livreur_id, prix, paiement, paiement_statut, livree_le, frais_service, frais_achat, montant_achat, restaurant_id FROM courses
      WHERE livree_le IS NOT NULL ${courseId ? 'AND id = $1' : ''}`,
     courseId ? [courseId] : []
   )).rows.filter((x) => x.statut === 'livree' && x.livreur_id != null);

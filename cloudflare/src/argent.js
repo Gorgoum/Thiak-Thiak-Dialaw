@@ -13,9 +13,9 @@ export function mouvementDeCourse(course, p) {
   return {
     ...x,
     // en ligne : la plateforme doit sa part au chauffeur ; en espèces : il doit la commission et les frais
-    montant: x.en_ligne ? x.part_livreur : -(x.commission + x.frais_plateforme),
+    montant: x.en_ligne ? x.part_livreur + x.plats_avances : -(x.commission + x.frais_plateforme),
     libelle: x.en_ligne
-      ? `Course n° ${course.id} payée par ${NOMS_MOYENS[course.paiement] || course.paiement} : votre part`
+      ? `Course n° ${course.id} payée par ${NOMS_MOYENS[course.paiement] || course.paiement} : votre part${x.plats_avances ? ` + ${x.plats_avances.toLocaleString('fr-FR')} FCFA de plats avancés au restaurant` : ''}`
       : `Course n° ${course.id} en espèces : commission${fraisTxt} à reverser`,
   };
 }
@@ -24,7 +24,7 @@ export function mouvementDeCourse(course, p) {
 export async function inscrireCoursesLivrees(c, courseId = null) {
   const p = await parametres(c.db);
   const r = await c.db.query(
-    `SELECT co.id, co.livreur_id, co.prix, co.paiement, co.paiement_statut, co.livree_le, co.frais_service, co.frais_achat
+    `SELECT co.id, co.livreur_id, co.prix, co.paiement, co.paiement_statut, co.livree_le, co.frais_service, co.frais_achat, co.montant_achat, co.restaurant_id
      FROM courses co
      WHERE co.statut = 'livree' AND co.livreur_id IS NOT NULL
        AND NOT EXISTS (SELECT 1 FROM mouvements m WHERE m.course_id = co.id AND m.type = 'course')

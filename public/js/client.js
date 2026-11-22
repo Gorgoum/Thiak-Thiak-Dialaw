@@ -634,7 +634,9 @@ form.addEventListener('input', (e) => { if (/^destinataire_/.test(e.target.name)
 
 function majCommander() {
   const m = moyenChoisi();
-  $('btn-commander').innerHTML = `<span>Commander</span><small>${fcfa(prixCourse())}</small>`;
+  // commande de restaurant payée en ligne : les plats sont payés avec la livraison
+  const platsEnLigne = commandeResto && commandeResto.code && m !== 'especes' ? Number(form.montant_achat.value) || 0 : 0;
+  $('btn-commander').innerHTML = `<span>Commander</span><small>${fcfa(prixCourse() + platsEnLigne)}</small>`;
   const qui = estTrajet() ? 'un chauffeur' : 'un livreur';
   const fsrv = (dernierDevis && dernierDevis.frais_service) || 0;
   const fa = fraisAchatClient();
@@ -642,7 +644,9 @@ function majCommander() {
   $('fiche-note').textContent = (m === 'especes'
     ? (estTrajet() ? 'Espèces, à l\'arrivée' : 'Espèces, à la livraison')
     : `${MOYENS[m].nom}, après l'acceptation`)
-    + (detail ? ` · dont ${detail}${fa ? ' · achats en plus' : ''}` : '');
+    + (commandeResto && commandeResto.code
+      ? (platsEnLigne ? ` · plats ${fcfa(platsEnLigne)} + livraison ${fcfa(prixCourse())}` : ` · livraison seulement : les plats (${fcfa(form.montant_achat.value)}) se paient en espèces au livreur`)
+      : (detail ? ` · dont ${detail}${fa ? ' · achats en plus' : ''}` : ''));
 }
 
 /** Moyen de paiement : une petite liste, le dernier choix est gardé. */

@@ -27,7 +27,7 @@ const alerterLivreur = (livreurId, titre, corps) => livreurId && push.envoyer([l
  */
 async function demanderPaiement(io, courseId, origine) {
   const c = (await query(
-    `SELECT id, suivi_token, prix, client_tel, depart_repere, arrivee_repere, paiement, paiement_statut, nangu_id
+    `SELECT id, suivi_token, prix, montant_achat, restaurant_id, client_tel, depart_repere, arrivee_repere, paiement, paiement_statut, nangu_id
      FROM courses WHERE id = $1`, [courseId]
   )).rows[0];
   if (!c || c.paiement === 'especes' || c.paiement_statut === 'paye') return null;
@@ -43,7 +43,7 @@ async function demanderPaiement(io, courseId, origine) {
   if (!p) {
     const retour = origine && origine.startsWith('https://') ? `${origine}/retour-paiement/${c.suivi_token}` : null;
     p = await nangu.creerPaiement({
-      id: c.id, suivi: c.suivi_token, essai: Date.now().toString(36), prix: c.prix, client_tel: c.client_tel,
+      id: c.id, suivi: c.suivi_token, essai: Date.now().toString(36), prix: c.prix + (c.restaurant_id ? Number(c.montant_achat) || 0 : 0), client_tel: c.client_tel,
       depart_repere: c.depart_repere, arrivee_repere: c.arrivee_repere, retour, expireDans: DELAI_PAIEMENT,
     }, c.paiement);
     const infos = nangu.infosPaiement(p);

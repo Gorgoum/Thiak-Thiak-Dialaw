@@ -229,7 +229,7 @@ function trajet(c) {
       ? `<div class="ligne-info">${ico('utensils', 'ic-sm')} <b>${esc(c.restaurant_nom || 'Restaurant')} :</b> ${esc(c.description)}</div>
          <div class="plats-etat ${c.plats_prets_le ? 'prets' : ''}">${c.plats_prets_le ? `${ico('circle-check', 'ic-sm')} Plats prêts, vous pouvez les récupérer` : `${ico('clock', 'ic-sm')} En préparation au restaurant`}</div>`
       : `<div class="ligne-info">${ico(c.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${c.type === 'achat' ? '<b>Achat :</b> ' : ''}${esc(c.description)}</div>`}
-  ${c.type === 'achat' && c.montant_achat ? `<div class="meta">${c.restaurant_id ? `À payer au restaurant : ${fcfa(c.montant_achat)} (remboursé par le client)` : `Avance estimée : ${fcfa(c.montant_achat)} (remboursée par le client)`}</div>` : ''}`;
+  ${c.type === 'achat' && c.montant_achat ? `<div class="meta">${c.restaurant_id ? `À payer au restaurant : ${fcfa(c.montant_achat)} ${c.paiement !== 'especes' ? '(payé en ligne par le client : remboursé sur votre solde)' : '(remboursé par le client en espèces)'}` : `Avance estimée : ${fcfa(c.montant_achat)} (remboursée par le client)`}</div>` : ''}`;
 }
 
 /** Ce qui va se passer tout seul (le GPS détecte l'arrivée, comme Google Maps). */
@@ -267,7 +267,8 @@ function carteActive(c) {
   const cible = versDepart ? [c.depart_lat, c.depart_lng] : [c.arrivee_lat, c.arrivee_lng];
   const payeEnLigne = c.paiement_statut === 'paye';
   const moyen = c.paiement === 'orange_money' ? 'Orange Money' : 'Wave';
-  const achats = c.type === 'achat' ? c.montant_achat : 0;
+  // plats d'un restaurant payés en ligne par le client : remboursés au livreur sur son solde, rien à encaisser
+  const achats = c.type === 'achat' && !(c.restaurant_id && payeEnLigne) ? c.montant_achat : 0;
   const aEncaisser = (payeEnLigne ? 0 : c.prix) + achats;
   let detailEncaisser = '';
   if (payeEnLigne && achats) detailEncaisser = `<br><small>Course déjà payée par ${moyen} · seulement les achats (montant réel du ticket)</small>`;
@@ -476,7 +477,7 @@ function afficherApp(u) {
       toast(c.service === 'trajet' ? 'Course démarrée. Bonne route !' : 'Livraison démarrée. Bonne route !');
     } else if (c && c.livreur_id && c.statut === 'livree' && recent(c.livree_le)) {
       bip();
-      const reste = (c.paiement_statut === 'paye' ? 0 : c.prix) + (c.type === 'achat' ? (c.montant_achat || 0) : 0);
+      const reste = (c.paiement_statut === 'paye' ? 0 : c.prix) + (c.type === 'achat' && !(c.restaurant_id && c.paiement_statut === 'paye') ? (c.montant_achat || 0) : 0);
       toast(`${c.service === 'trajet' ? 'Arrivé à destination' : 'Livraison terminée'} ✓${reste ? ` Encaissez ${fcfa(reste)}.` : ''}`);
     }
     // course à payer en ligne : le livreur sait tout de suite si le client a payé, ou s'il a renoncé

@@ -23,7 +23,7 @@ const alerterLivreur = (c, livreurId, titre, corps) => {
 /** Un livreur a accepté une course payée en ligne : on crée (ou reprend) le paiement et on prévient le client. */
 export async function demanderPaiement(c, courseId) {
   const x = (await c.db.query(
-    `SELECT id, suivi_token, prix, client_tel, depart_repere, arrivee_repere, paiement, paiement_statut, nangu_id
+    `SELECT id, suivi_token, prix, montant_achat, restaurant_id, client_tel, depart_repere, arrivee_repere, paiement, paiement_statut, nangu_id
      FROM courses WHERE id = $1`, [courseId]
   )).rows[0];
   if (!x || x.paiement === 'especes' || x.paiement_statut === 'paye') return null;
@@ -38,7 +38,7 @@ export async function demanderPaiement(c, courseId) {
   if (!p) {
     const retour = c.url.protocol === 'https:' ? `${c.url.origin}/retour-paiement/${x.suivi_token}` : null;
     p = await nangu.creerPaiement(c.env, {
-      id: x.id, suivi: x.suivi_token, essai: Date.now().toString(36), prix: x.prix, client_tel: x.client_tel,
+      id: x.id, suivi: x.suivi_token, essai: Date.now().toString(36), prix: x.prix + (x.restaurant_id ? Number(x.montant_achat) || 0 : 0), client_tel: x.client_tel,
       depart_repere: x.depart_repere, arrivee_repere: x.arrivee_repere, retour, expireDans: DELAI_PAIEMENT,
     }, x.paiement);
     const infos = nangu.infosPaiement(c.env, p);
