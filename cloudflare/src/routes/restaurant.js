@@ -37,6 +37,25 @@ function lireRestaurant(b, creation) {
   return r;
 }
 
+
+/** Commandes d'un restaurant sur un mois (« 2026-11 ») : la liste et le bilan (ventes et commission des commandes livrées). */
+function bilanCommandes(lignes) {
+  const livrees = lignes.filter((c) => c.statut === 'livree');
+  return {
+    nb: lignes.length,
+    livrees: livrees.length,
+    annulees: lignes.filter((c) => c.statut === 'annulee').length,
+    ventes: livrees.reduce((s, c) => s + (Number(c.montant_achat) || 0), 0),
+    commission: livrees.reduce((s, c) => s + (Number(c.commission_resto) || 0), 0),
+  };
+}
+function bornesMois(mois) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(mois || ''));
+  const debut = m ? new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, 1)) : new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
+  const fin = new Date(Date.UTC(debut.getUTCFullYear(), debut.getUTCMonth() + 1, 1));
+  return [debut.toISOString(), fin.toISOString()];
+}
+
 export function enregistrer(r) {
   // liste publique des restaurants partenaires (tuile « Food » de l'accueil)
   r.get('/api/restaurants', async (req, c) => {
@@ -100,6 +119,13 @@ export function enregistrer(r) {
     const res = await c.db.query('SELECT id, code, nom, telephone, lat, lng, adresse, actif, site, commission_pct, cree_le FROM restaurants ORDER BY nom');
     const nb = new Map((await c.db.query('SELECT restaurant_id, COUNT(*) AS n FROM courses WHERE restaurant_id IS NOT NULL GROUP BY restaurant_id')).rows.map((x) => [x.restaurant_id, Number(x.n)]));
     return json(res.rows.map((x) => ({ ...x, nb_commandes: nb.get(x.id) || 0 })));
+  });
+
+  r.get('/api/admin/restaurants/:id/commandes', async (req, c) => {
+    await exiger(req, c, 'admin');
+    const [du, au] = bornesMois(c.url.searchParams.get('mois'));
+    const res = await c.db.query(`${SELECT_COURSE} WHERE c.restaurant_id = $1 AND c.cree_le >= $2 AND c.cree_le < $3 ORDER BY c.cree_le DESC`, [Number(c.params.id), du, au]);
+    return json({ lignes: res.rows, bilan: bilanCommandes(res.rows) });
   });
 
   r.post('/api/admin/restaurants', async (req, c) => {

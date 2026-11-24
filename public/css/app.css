@@ -1568,3 +1568,9 @@ label.case input { width: 20px; height: 20px; margin: 0; }
 .food-rubriques { padding-left: max(16px, calc((100% - 1100px) / 2 + 16px)); padding-right: max(16px, calc((100% - 1100px) / 2 + 16px)); }
 .food-hero > .food-rond { position: relative; z-index: 1; }
 @media (min-width: 1132px) { .food-hero > .food-rond { margin-left: calc((100% - 1100px) / 2); } }
+
+/* Admin : commande d'un restaurant partenaire */
+.badge-resto { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: #fdf0e6; color: #7a2e1d; font-weight: 700; font-size: .78rem; }
+
+/* Admin : fenêtre large (commandes d un restaurant) */
+#fenetre.fenetre-large { width: min(1100px, 96vw); max-width: 96vw; }

@@ -75,6 +75,25 @@ restaurant.post('/commandes/:id/prets', a(async (req, res) => {
   res.json({ ok: true });
 }));
 
+
+/** Commandes d'un restaurant sur un mois (« 2026-11 ») : la liste et le bilan (ventes et commission des commandes livrées). */
+function bilanCommandes(lignes) {
+  const livrees = lignes.filter((c) => c.statut === 'livree');
+  return {
+    nb: lignes.length,
+    livrees: livrees.length,
+    annulees: lignes.filter((c) => c.statut === 'annulee').length,
+    ventes: livrees.reduce((s, c) => s + (Number(c.montant_achat) || 0), 0),
+    commission: livrees.reduce((s, c) => s + (Number(c.commission_resto) || 0), 0),
+  };
+}
+function bornesMois(mois) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(mois || ''));
+  const debut = m ? new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, 1)) : new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
+  const fin = new Date(Date.UTC(debut.getUTCFullYear(), debut.getUTCMonth() + 1, 1));
+  return [debut.toISOString(), fin.toISOString()];
+}
+
 // ---------------------------------------------------------------- gestion par l'admin
 const gestion = express.Router();
 gestion.use(exiger('admin'));
@@ -104,6 +123,12 @@ gestion.get('/', a(async (req, res) => {
   const nb = new Map((await query('SELECT restaurant_id, COUNT(*) AS n FROM courses WHERE restaurant_id IS NOT NULL GROUP BY restaurant_id')).rows.map((x) => [x.restaurant_id, Number(x.n)]));
   res.json(r.rows.map((x) => ({ ...x, nb_commandes: nb.get(x.id) || 0 })));
 }));
+gestion.get('/:id/commandes', a(async (req, res) => {
+  const [du, au] = bornesMois(req.query.mois);
+  const r = await query(`${SELECT_COURSE} WHERE c.restaurant_id = $1 AND c.cree_le >= $2 AND c.cree_le < $3 ORDER BY c.cree_le DESC`, [req.params.id, du, au]);
+  res.json({ lignes: r.rows, bilan: bilanCommandes(r.rows) });
+}));
+
 gestion.post('/', a(async (req, res) => {
   const r = lireRestaurant(req.body || {}, true);
   if (r.erreur) return res.status(400).json(r);

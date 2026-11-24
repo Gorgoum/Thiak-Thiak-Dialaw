@@ -47,7 +47,7 @@ async function chargerCourses() {
       <td><button data-gerer-course="${x.id}">${ico('settings', 'ic-sm')} Gérer</button></td>
       <td>${dateCourte(x.cree_le)}</td>
       <td>${badge(x.statut, x.service)}</td>
-      <td><div class="trajet" style="margin:0"><div>${esc(x.depart_repere)}</div><div>${esc(x.arrivee_repere)}</div></div><span class="meta">${ico(x.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${esc(x.description)}</span></td>
+      <td><div class="trajet" style="margin:0"><div>${esc(x.depart_repere)}</div><div>${esc(x.arrivee_repere)}</div></div><span class="meta">${x.restaurant_nom ? `<span class="badge-resto">${ico('utensils', 'ic-sm')} ${esc(x.restaurant_nom)}</span> ` : ''}${ico(x.type === 'achat' ? 'shopping-bag' : 'package', 'ic-sm')} ${esc(x.description)}</span></td>
       <td>${esc(x.client_nom)}<br>${lienTel(x.client_tel)}</td>
       <td>${x.livreur_nom ? `${esc(x.livreur_nom)}<br>${lienTel(x.livreur_tel)}` : '–'}</td>
       <td class="prix-course">${fcfa(x.prix)}</td>
@@ -155,9 +155,43 @@ async function chargerRestaurants() {
       <td>${Number(r.commission_pct ?? 10)} %</td>
       <td>${Number(r.nb_commandes) || 0}</td>
       <td>${r.actif ? '<span class="badge b-livree">Actif</span>' : '<span class="badge b-annulee">Désactivé</span>'}</td>
-      <td class="actions-ligne"><button data-modifier-resto="${r.id}">${ico('settings', 'ic-sm')} Modifier</button></td>
+      <td class="actions-ligne"><button data-commandes-resto="${r.id}">${ico('list', 'ic-sm')} Commandes</button><button data-modifier-resto="${r.id}">${ico('settings', 'ic-sm')} Modifier</button></td>
     </tr>`).join('')}` : '<tr><td class="meta">Aucun restaurant pour le moment.</td></tr>';
 }
+/** Commandes d'un restaurant sur un mois : qui a commandé, quoi, combien, et la commission de Yobalema. */
+async function fenetreCommandesResto(r, mois = new Date().toISOString().slice(0, 7)) {
+  ouvrirFenetre(`Commandes · ${r.nom}`, `<p class="vide">${ico('loader-circle', 'tourne')} Chargement…</p>`, null);
+  document.getElementById('fenetre').classList.add('fenetre-large'); // tableau large
+  try {
+    const d = await api('GET', `/api/admin/restaurants/${r.id}/commandes?mois=${mois}`);
+    const b = d.bilan;
+    document.getElementById('fenetre-corps').innerHTML = `
+      <label>Mois<input type="month" id="mois-commandes-resto" value="${mois}"></label>
+      <div class="stats">
+        <div class="stat"><div class="v">${b.nb}</div><div class="l">commandes</div></div>
+        <div class="stat"><div class="v">${b.livrees}</div><div class="l">livrées</div></div>
+        <div class="stat"><div class="v">${fcfa(b.ventes)}</div><div class="l">ventes du restaurant</div></div>
+        <div class="stat"><div class="v">${fcfa(b.commission)}</div><div class="l">commission Yobalema</div></div>
+      </div>
+      <div class="defile"><table class="tableau">
+        <tr><th>#</th><th>Date</th><th>Client</th><th>Plats</th><th>Montant</th><th>Commission</th><th>Paiement</th><th>Statut</th><th>Livreur</th></tr>
+        ${d.lignes.map((x) => `<tr>
+          <td>${x.id}</td>
+          <td>${dateCourte(x.cree_le)}</td>
+          <td>${esc(x.client_nom)}<br>${lienTel(x.client_tel)}</td>
+          <td>${esc(x.description)}</td>
+          <td>${fcfa(x.montant_achat)}</td>
+          <td>${fcfa(x.commission_resto || 0)}</td>
+          <td>${x.paiement === 'especes' ? 'Espèces' : x.paiement === 'wave' ? 'Wave' : 'Orange Money'}${x.paiement !== 'especes' ? ` · ${x.paiement_statut === 'paye' ? 'payé' : 'non payé'}` : ''}</td>
+          <td>${badge(x.statut, x.service)}</td>
+          <td>${x.livreur_nom ? esc(x.livreur_nom) : '–'}</td>
+        </tr>`).join('') || '<tr><td colspan="9" class="vide">Aucune commande ce mois-ci.</td></tr>'}
+      </table></div>
+      <p class="meta">Ventes et commission : commandes livrées seulement.${b.annulees ? ` ${b.annulees} commande${b.annulees > 1 ? 's' : ''} annulée${b.annulees > 1 ? 's' : ''}.` : ''}</p>`;
+    document.getElementById('mois-commandes-resto').onchange = (e) => fenetreCommandesResto(r, e.target.value);
+  } catch (err) { document.getElementById('fenetre-corps').innerHTML = `<p class="vide">${esc(err.message)}</p>`; }
+}
+
 function fenetreRestaurant(r = null) {
   const x = r || {};
   const contenu = `
@@ -192,6 +226,7 @@ let surEnregistrer = null;
 
 /** Ouvre la fenêtre : titre, contenu HTML, action du bouton Enregistrer (null = pas de bouton). */
 function ouvrirFenetre(titre, contenu, enregistrer, libelle = 'Enregistrer') {
+  document.getElementById('fenetre').classList.remove('fenetre-large');
   document.getElementById('fenetre-titre').textContent = titre;
   document.getElementById('fenetre-corps').innerHTML = contenu;
   const ok = document.getElementById('fenetre-ok');
@@ -441,6 +476,8 @@ document.getElementById('ajout-restaurant').onclick = () => fenetreRestaurant();
 document.getElementById('restaurants').addEventListener('click', (e) => {
   const b = e.target.closest('[data-modifier-resto]');
   if (b) fenetreRestaurant(restaurants.find((r) => r.id === Number(b.dataset.modifierResto)));
+  const cmd = e.target.closest('[data-commandes-resto]');
+  if (cmd) fenetreCommandesResto(restaurants.find((r) => r.id === Number(cmd.dataset.commandesResto)));
 });
 
 document.getElementById('courses').addEventListener('click', (e) => {
